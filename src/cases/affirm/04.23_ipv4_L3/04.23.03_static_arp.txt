@@ -1,0 +1,92 @@
+*** Settings ***
+Suite Setup       Init Test Case    ${s1_ip}    ${s1_port}    ${s1_alias}    ${s2_ip}    ${s2_port}    ${s2_alias}
+Suite Teardown    Uninit Test Case    ${s1_alias}    ${s2_alias}
+Force Tags        P2
+Resource          ../../../resource/Switch.txt
+Resource          ../vars.txt
+Library           ../../../lib/Tools.py
+Resource          ../../../resource/xfsend.txt
+
+*** Variables ***
+${arpIp}          10.1.1.3
+${arpMac}         00-01-0f-01-00-01
+
+*** Test Cases ***
+01_静态arp
+    [Tags]
+    Comment    Step 1
+    Exec Cmd    ${s1_alias}    clear arp-cache
+    Build 10 Ipv4 Packet On TesterP2
+    Check TesterP1 RXNum Should Be    ${0}
+    Comment    Step2
+    Config 10 Static Arp On Vlan10
+    ${output}=    Exec Cmd    ${s1_alias}    show arp
+    : FOR    ${index}    IN RANGE    1    11
+    \    Should Match Regexp    ${output}    (?i)${arpIp}\\s+${arpMac}\\s+
+    \    ${arpIp}=    Tools.Incr Ip    ${arpIp}
+    \    ${arpMac}=    Tools.Incr Mac    ${arpMac}
+    Check TesterP1 RXNum Should Be    ${100}
+    Comment    Step3
+    Del 10 Static Arp On Vlan10
+    Check TesterP1 RXNum Should Be    ${0}
+    Comment    Step4
+    Config 10 Static Arp On Vlan10
+    Check TesterP1 RXNum Should Be    ${100}
+    [Teardown]    Clear Static Arp
+
+*** Keywords ***
+Clear Static Arp
+    Exec Cmd List    ${s1_alias}    config    no interface vlan 10
+    Exec Cmd List    ${s1_alias}    config    interface vlan 10    ip address 10.1.1.1 255.255.0.0    ipv6 address 2010:1::1/64
+
+Config 10 Static Arp On Vlan10
+    Set Suite Variable    ${arpIp}    10.1.1.3
+    Set Suite Variable    ${arpMac}    00-01-0f-01-00-01
+    : FOR    ${index}    IN RANGE    1    11
+    \    Exec Cmd List    ${s1_alias}    config    interface vlan 10    arp ${arpIp} ${arpMac} interface ${s1p3}
+    \    ${arpIp}=    Tools.Incr Ip    ${arpIp}
+    \    ${arpMac}=    Tools.Incr Mac    ${arpMac}
+    Set Suite Variable    ${arpIp}    10.1.1.3
+    Set Suite Variable    ${arpMac}    00-01-0f-01-00-01
+
+Del 10 Static Arp On Vlan10
+    Set Suite Variable    ${arpIp}    10.1.1.3
+    : FOR    ${index}    IN RANGE    1    11
+    \    Exec Cmd List    ${s1_alias}    config    interface vlan 10    no arp ${arpIp}
+    \    ${arpIp}=    Tools.Incr Ip    ${arpIp}
+    Set Suite Variable    ${arpIp}    10.1.1.3
+
+Build 10 Ipv4 Packet On TesterP2
+    [Documentation]    在testerp2上设置流量:
+    ...    - srcmac: 00-00-00-00-00-01; dstmac: s2 cpu-mac
+    ...    - srcip: 20.1.1.2; dstip 10.1.1.3-12
+    Set Suite Variable    ${arpIp}    10.1.1.3
+    Xfsend.Connect To XFSend    ${tester_address}    ${tester_alias}
+    : FOR    ${index}    IN RANGE    1    11
+    \    Build Ether    dst=${S2_VLAN_MAC}    src=00:00:00:00:00:01
+    \    Build Ip    dst=${arpIp}    src=20.1.1.2
+    \    Build Packet
+    \    ${arpIp}=    Tools.Incr Ip    ${arpIp}
+    Set Suite Variable    ${arpIp}    10.1.1.3
+    ${streamList}=    Build Stream
+    Set Stream From Scapy    ${tester_alias}    ${testerp2}    ${streamList}
+    ${getPackets}=    Get Stream    ${tester_alias}    ${testerp2}
+    Log    ${getPackets}
+
+Check TesterP1 RXNum Should Be
+    [Arguments]    ${should_rxnum}
+    Clear Statics    ${tester_alias}    ${testerp2}
+    Clear Statics    ${tester_alias}    ${testerp1}
+    ${capflag}=    Start Capture    ${tester_alias}    ${testerp1}    filter=ip src 20.1.1.2
+    Comment    Sleep    1
+    Start Transmit    ${tester_alias}    ${testerp2}    10
+    Sleep    5
+    ${capstopflag}=    Stop Capture    ${tester_alias}    ${testerp1}
+    ${rxNum}=    Get Statics    ${tester_alias}    ${testerp1}
+    Log    ${rxNum}
+    ${txNum}=    Get Statics    ${tester_alias}    ${testerp2}
+    Log    ${txNum}
+    ${capnum}=    Get Capture Packet Num    ${tester_alias}    ${testerp1}
+    ${cappackets}=    Get Capture Packet    ${tester_alias}    ${testerp1}
+    Log    ${cappackets}
+    Should Be Equal    ${capnum}    ${should_rxnum}

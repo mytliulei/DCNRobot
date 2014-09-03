@@ -1,0 +1,72 @@
+*** Settings ***
+Resource          ../../resource/Sta.txt
+Resource          ../../resource/AC.txt
+Resource          ../../resource/AP.txt
+Resource          ../../resource/Switch.txt
+Library           ../../lib/Tools.py
+
+*** Variables ***
+${ac1_ip}         80.0.0.42
+${ac1_port}       ${10006}
+${ac1_alias}      affirm_ac1
+${ac2_ip}         80.0.0.42
+${ac2_port}       ${10007}
+${ac2_alias}      affirm_ac2
+${ap1_ip}         80.0.0.42
+${ap1_port}       ${10009}
+${ap1_alias}      affirm_ap1
+${ap2_ip}         80.0.0.42
+${ap2_port}       ${10010}
+${ap2_alias}      affirm_ap2
+${sta1_ip}        80.0.0.19
+${sta1_port}      ${22}
+${sta1_username}    root
+${sta1_password}    123456
+${sta2_ip}        80.0.0.14
+${sta2_port}      ${22}
+${sta2_username}    root
+${sta2_password}    123456
+${sta1_alias}     affirm_sta1
+${sta2_alias}     affirm_sta2
+${pc1_ip}         172.16.1.54
+${pc1_port}       ${22}
+${pc1_username}    root
+${pc1_password}    123456
+${pc1_alias}      affirm_pc1
+${s3_ip}          80.0.0.42
+${s3_port}        ${10008}
+${s3_alias}       affirm_s3
+${s2p1}           Ethernet1/0/1
+${s1p2}           Ethernet1/0/1
+${s1p1}           Ethernet1/0/1
+${s3p1}           Ethernet1/4
+${s3p2}           Ethernet1/1
+${s3p3}           Ethernet1/2
+${s3p4}           Ethernet1/3
+${s3p5}           Ethernet1/10
+${s3p6}           Ethernet1/9
+${s3p7}           Ethernet1/11
+${sta1_netcard}    wls224
+${sta2_netcard}    wls192
+${applyProfileTime}    ${100}
+
+*** Keywords ***
+Init Test Case
+    wifiAcConsole.Open Console    ${ac1_ip}    ${ac1_port}    ${ac1_alias}
+    wifiAcConsole.Open Console    ${ac2_ip}    ${ac2_port}    ${ac2_alias}
+    AP.Open Console    ${ap1_ip}    ${ap1_port}    ${ap1_alias}
+    AP.Open Console    ${ap2_ip}    ${ap2_port}    ${ap2_alias}
+    Sta.Open SSH Connection    ${sta1_ip}    ${sta1_alias}    ${sta1_username}    ${sta1_password}    ${sta1_port}
+    Sta.Open SSH Connection    ${sta2_ip}    ${sta2_alias}    ${sta2_username}    ${sta2_password}    ${sta2_port}
+    Sta.Open SSH Connection    ${pc1_ip}    ${pc1_alias}    ${pc1_username}    ${pc1_password}    ${pc1_port}
+    Switch.Open Console    ${s3_ip}    ${s3_port}    ${s3_alias}
+
+Uninit Test Case
+    wifiAcConsole.Close Console    ${ac1_alias}
+    wifiAcConsole.Close Console    ${ac2_alias}
+    AP.Close Console    ${ap1_alias}
+    AP.Close Console    ${ap2_alias}
+    sshClient.Close SSH Connection    ${sta1_alias}
+    sshClient.Close SSH Connection    ${sta2_alias}
+    sshClient.Close SSH Connection    ${pc1_alias}
+    Switch.Close Console    ${s3_alias}

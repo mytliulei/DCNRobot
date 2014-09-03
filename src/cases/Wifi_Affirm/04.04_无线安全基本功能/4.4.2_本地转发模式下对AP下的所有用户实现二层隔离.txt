@@ -1,0 +1,257 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          ../vars.txt
+
+*** Variables ***
+${staticIp_sta1}    192.168.98.100
+${staticIp_sta2}    192.168.98.200
+${stationisoClear}    ${False}
+
+*** Test Cases ***
+本地转发模式下对AP下的所有用户实现二层隔离
+    Comment    step1
+    Config AC1 and apply ap profile to ap2
+    Check AC1 and S3
+    Comment    step2
+    Sta1 Connect test1 Sta2 Connect test2 and Config Ip OK
+    Comment    step3
+    Sta1 and Sta2 Ping Other OK
+    Comment    step4
+    Config AC1 Station-isolation allowed vlan add 4092 and apply ap profile to ap2
+    Check AC1 Station-isolation Allowed Vlan 4092
+    Comment    step5
+    Sta1 and Sta2 Ping Other Failed
+    Comment    step6
+    Sta1 and Sta2 reConnect To test1
+    Sta1 and Sta2 Ping Other OK
+    Comment    step7
+    Sta1 and Sta2 reConnect To test2
+    Sta1 and Sta2 Ping Other OK
+    Comment    step8
+    Config AC1 Station-isolation allowed vlan remove 4092 and apply ap profile to ap2
+    Check AC1 Station-isolation Allowed remove 4092
+    Comment    step9
+    Sta1 and Sta2 Ping Other OK
+    Comment    step10
+    Sta1 and Sta2 reConnect To test1
+    Sta1 and Sta2 Ping Other OK
+    Comment    step11
+    Sta1 Connect test1 Sta2 Connect test2 and Config Ip OK
+    Sta1 and Sta2 Ping Other OK
+    [Teardown]    Clear TestCase Config
+
+*** Keywords ***
+Config AC1 and apply ap profile to ap2
+    [Documentation]    操作:
+    ...    - \ Vlan 4092从tunnel vlan删除
+    ...    - \ 在ac1修改network1的关联vlan为4092，下发配置。
+    ...    - \ Sp3p3 ,s3p4改为trunk口，允许vlan 4092通过，native vlan为20
+    Comment    Config AC1
+    AC.Exec Cmd List In WirelessMode    ${ac1_alias}    l2tunnel vlan-list remove 4092
+    AC.Exec Cmd List In WirelessMode    ${ac1_alias}    network 1    vlan 4092
+    AC.Apply AP Profile    ${ac1_alias}    2
+    AC.Wait For AP Profile Apply OK    ${ac1_alias}    2
+    Comment    Config S3
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    interface ${s3p3}    switchport mode trunk    switchport trunk allowed vlan 4092    switchport trunk native vlan 20
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    interface ${s3p4}    switchport mode trunk    switchport trunk allowed vlan 4092    switchport trunk native vlan 30
+
+Check AC1 and S3
+    [Documentation]    预期
+    ...    - Ac1：tunnel vlan list中没有4092
+    ...    - \ Show wireless network 2看到default vlan 为4092。
+    ...    - \ S3： Show interface Ethernet s3p3/s3p4,看到为trunk，allow vlan中包含4092
+    Comment    Check AC1
+    AC.Enable Mode    ${ac1_alias}
+    ${output}=    AC.Exec Cmd    ${ac1_alias}    show wireless l2tunnel vlan-list
+    Should Not Match Regexp    ${output}    (?m)4092\s
+    ${output}=    AC.Exec Cmd    ${ac1_alias}    show wireless network 1
+    Should Match Regexp    ${output}    (?m)Default VLAN.*?4092
+    Comment    Check S3
+    Switch.Enable Mode    ${s3_alias}
+    ${output}=    Switch.Exec Cmd    ${s3_alias}    show running-config interface ${s3p3}
+    Should Match Regexp    ${output}    (?m)switchport trunk allowed vlan 4092
+    Should Match Regexp    ${output}    (?m)switchport trunk native vlan 20
+    ${output}=    Switch.Exec Cmd    ${s3_alias}    show running-config interface ${s3p4}
+    Should Match Regexp    ${output}    (?m)switchport trunk allowed vlan 4092
+    Should Match Regexp    ${output}    (?m)switchport trunk native vlan 30
+
+Sta1 Connect test1 Sta2 Connect test2 and Config Ip OK
+    [Documentation]    操作:
+    ...    - 将STA1关联网络test1，sta2关联test2，
+    ...    - Sta1，sta2采用静态地址192.168.92.x,网关为192.168.92.1
+    ...
+    ...    预期：
+    ...    - 成功关联,
+    ...    - 配制地址成功
+    Check Sta Wpa Scan    ${sta1_alias}    ${sta1_netcard}    affirm_auto_31    ${WIFI_AFFIRM_AP2_MAC}
+    ${ap2mac_type1_network2}=    Tools.Incr Mac    ${WIFI_AFFIRM_AP2_MAC}
+    Check Sta Wpa Scan    ${sta2_alias}    ${sta2_netcard}    affirm_auto_32    ${ap2mac_type1_network2}
+    Sta.Sta Wpa Open Connect    ${sta1_alias}    ${sta1_netcard}    affirm_auto_31    ${WIFI_AFFIRM_AP2_MAC}    ${False}
+    Sta.Sta Wpa Open Connect    ${sta2_alias}    ${sta2_netcard}    affirm_auto_32    ${ap2mac_type1_network2}    ${False}
+    Sleep    10
+    Comment    config sta1 sta2 ip
+    Sta.Execute Command    ${sta1_alias}    dhclient -r ${sta1_netcard}
+    Sta.Execute Command    ${sta1_alias}    ifconfig ${sta1_netcard} ${staticIp_sta1} netmask 255.255.255.0
+    Sta.Execute Command    ${sta2_alias}    dhclient -r ${sta2_netcard}
+    Sta.Execute Command    ${sta2_alias}    ifconfig ${sta2_netcard} ${staticIp_sta2} netmask 255.255.255.0
+    ${output}=    Sta.Execute Command    ${sta1_alias}    ifconfig -v ${sta1_netcard}
+    Should Match Regexp    ${output}    inet.+?${staticIp_sta1}\\s
+    ${output}=    Sta.Execute Command    ${sta2_alias}    ifconfig -v ${sta2_netcard}
+    Should Match Regexp    ${output}    inet.+?${staticIp_sta2}\\s
+
+Check Sta Wpa Scan
+    [Arguments]    ${alias}    ${netcard}    ${ssid}    ${bssid}    @{args}
+    Sta.Execute Command    ${alias}    ifconfig ${netcard} up
+    ${modeMatchstr}=    Set Variable    ${EMPTY}
+    : FOR    ${index}    IN    @{args}
+    \    ${modeMatchstr}=    Set Variable    ${modeMatchstr}.*?${index}
+    : FOR    ${index}    IN RANGE    0    5
+    \    Sta.Execute Command    ${alias}    wpa_cli -i ${netcard} scan
+    \    Sleep    3
+    \    ${output}=    Sta.Execute Command    ${alias}    wpa_cli -i ${netcard} scan_results
+    \    Log    ${output}
+    \    ${matchApMac}=    Tools.Convert Macaddress Format    ${bssid}    -    :
+    \    ${matchFlag}=    Tools.Is Match From String    ${output}    (?im)${matchApMac}${modeMatchstr}.*?${ssid}
+    \    Run Keyword If    ${matchFlag}    Exit For Loop
+    Log    (?im)${matchApMac}${modeMatchstr}.*?${ssid}
+    Comment    Should Be True    ${matchFlag}
+
+Sta1 and Sta2 Ping Other OK
+    [Documentation]    操作:
+    ...    - STA1和STA2互ping
+    ...
+    ...    预期:
+    ...    - 能够 ping 通
+    : FOR    ${index}    IN RANGE    0    3
+    \    ${lossVaule}=    Sta.Check Sta Ping    ${sta1_alias}    ${staticIp_sta2}
+    \    Run Keyword If    ${lossVaule} == 0    Exit For Loop
+    \    Sleep    3
+    Should Be Equal    ${lossVaule}    ${0}
+    : FOR    ${index}    IN RANGE    0    3
+    \    ${lossVaule}=    Sta.Check Sta Ping    ${sta2_alias}    ${staticIp_sta1}
+    \    Run Keyword If    ${lossVaule} == 0    Exit For Loop
+    \    Sleep    3
+    Should Be Equal    ${lossVaule}    ${0}
+
+Config AC1 Station-isolation allowed vlan add 4092 and apply ap profile to ap2
+    [Documentation]    操作:
+    ...    - 在ac1上通过 proflile 命令station-isolation allowed vlan add 4092，并下发配置
+    Comment    Config AC1
+    AC.Exec Cmd List In WirelessMode    ${ac1_alias}    ap profile 2    station-isolation allowed vlan add 4092
+    Set Suite Variable    ${stationisoClear}    ${True}
+    AC.Apply AP Profile    ${ac1_alias}    2
+    AC.Wait For AP Profile Apply OK    ${ac1_alias}    2
+
+Check AC1 Station-isolation Allowed Vlan 4092
+    [Documentation]    预期:
+    ...    - 配置下发成功，AP2的配置状态为success
+    ...    - Show wireless ap profile 2 看到Station-isolation Allowed Vlan. 4092
+    AC.Enable Mode    ${ac1_alias}
+    : FOR    ${index}    IN RANGE    0    5
+    \    ${output}=    AC.Exec Cmd    ${ac1_alias}    show wireless ap status
+    \    ${apstatusFlag}=    Tools.Is Match From String    ${output}    (?im)${WIFI_AFFIRM_AP2_MAC}.*?Managed\\s*?Success
+    \    Run Keyword If    ${apstatusFlag}    Exit For Loop
+    \    Sleep    3
+    Should Be True    ${apstatusFlag}
+    ${output}=    AC.Exec Cmd    ${ac1_alias}    show wireless ap profile 2
+    Should Match Regexp    ${output}    (?im)Station-isolation Allowed Vlan.*?4092
+    [Teardown]
+
+Sta1 and Sta2 Ping Other Failed
+    [Documentation]    操作:
+    ...    - STA1和STA2互ping
+    ...
+    ...    预期:
+    ...    - 能够 ping 通
+    : FOR    ${index}    IN RANGE    0    2
+    \    ${lossVaule}=    Sta.Check Sta Ping    ${sta1_alias}    ${staticIp_sta2}
+    \    Run Keyword If    ${lossVaule} == 100    Exit For Loop
+    \    Sleep    3
+    Should Be Equal    ${lossVaule}    ${100}
+    : FOR    ${index}    IN RANGE    0    2
+    \    ${lossVaule}=    Sta.Check Sta Ping    ${sta2_alias}    ${staticIp_sta1}
+    \    Run Keyword If    ${lossVaule} == 100    Exit For Loop
+    \    Sleep    3
+    Should Be Equal    ${lossVaule}    ${100}
+
+Sta1 and Sta2 reConnect To test1
+    [Documentation]    操作:
+    ...    - 让 STA1 和 STA2 下线后再都关联到 test1
+    Sta.Sta Wpa Disconnect    ${sta1_alias}    ${sta1_netcard}
+    Sta.Sta Wpa Disconnect    ${sta2_alias}    ${sta2_netcard}
+    Check Sta Wpa Scan    ${sta1_alias}    ${sta1_netcard}    affirm_auto_31    ${WIFI_AFFIRM_AP2_MAC}
+    Check Sta Wpa Scan    ${sta2_alias}    ${sta2_netcard}    affirm_auto_31    ${WIFI_AFFIRM_AP2_MAC}
+    Sta.Sta Wpa Open Connect    ${sta1_alias}    ${sta1_netcard}    affirm_auto_31    ${WIFI_AFFIRM_AP2_MAC}    ${False}
+    Sta.Sta Wpa Open Connect    ${sta2_alias}    ${sta2_netcard}    affirm_auto_31    ${WIFI_AFFIRM_AP2_MAC}    ${False}
+    Sleep    10
+    Comment    config sta1 sta2 ip
+    Sta.Execute Command    ${sta1_alias}    dhclient -r ${sta1_netcard}
+    Sta.Execute Command    ${sta1_alias}    ifconfig ${sta1_netcard} ${staticIp_sta1} netmask 255.255.255.0
+    Sta.Execute Command    ${sta2_alias}    dhclient -r ${sta2_netcard}
+    Sta.Execute Command    ${sta2_alias}    ifconfig ${sta2_netcard} ${staticIp_sta2} netmask 255.255.255.0
+    ${output}=    Sta.Execute Command    ${sta1_alias}    ifconfig -v ${sta1_netcard}
+    Should Match Regexp    ${output}    inet.+?${staticIp_sta1}\\s
+    ${output}=    Sta.Execute Command    ${sta2_alias}    ifconfig -v ${sta2_netcard}
+    Should Match Regexp    ${output}    inet.+?${staticIp_sta2}\\s
+
+Sta1 and Sta2 reConnect To test2
+    [Documentation]    操作:
+    ...    - 让 STA1 和 STA2 下线后再都关联到 test2
+    Sta.Sta Wpa Disconnect    ${sta1_alias}    ${sta1_netcard}
+    Sta.Sta Wpa Disconnect    ${sta2_alias}    ${sta2_netcard}
+    ${ap2mac_type1_network2}=    Tools.Incr Mac    ${WIFI_AFFIRM_AP2_MAC}
+    Check Sta Wpa Scan    ${sta1_alias}    ${sta1_netcard}    affirm_auto_32    ${ap2mac_type1_network2}
+    Check Sta Wpa Scan    ${sta2_alias}    ${sta2_netcard}    affirm_auto_32    ${ap2mac_type1_network2}
+    Sta.Sta Wpa Open Connect    ${sta1_alias}    ${sta1_netcard}    affirm_auto_32    ${ap2mac_type1_network2}    ${False}
+    Sta.Sta Wpa Open Connect    ${sta2_alias}    ${sta2_netcard}    affirm_auto_32    ${ap2mac_type1_network2}    ${False}
+    Sleep    10
+    Comment    config sta1 sta2 ip
+    Sta.Execute Command    ${sta1_alias}    dhclient -r ${sta1_netcard}
+    Sta.Execute Command    ${sta1_alias}    ifconfig ${sta1_netcard} ${staticIp_sta1} netmask 255.255.255.0
+    Sta.Execute Command    ${sta2_alias}    dhclient -r ${sta2_netcard}
+    Sta.Execute Command    ${sta2_alias}    ifconfig ${sta2_netcard} ${staticIp_sta2} netmask 255.255.255.0
+    ${output}=    Sta.Execute Command    ${sta1_alias}    ifconfig -v ${sta1_netcard}
+    Should Match Regexp    ${output}    inet.+?${staticIp_sta1}\\s
+    ${output}=    Sta.Execute Command    ${sta2_alias}    ifconfig -v ${sta2_netcard}
+    Should Match Regexp    ${output}    inet.+?${staticIp_sta2}\\s
+
+Config AC1 Station-isolation allowed vlan remove 4092 and apply ap profile to ap2
+    [Documentation]    操作:
+    ...    - 在ac1上通过 proflile 命令station-isolation allowed vlan remove 4092，并下发配置
+    Comment    Config AC1
+    AC.Exec Cmd List In WirelessMode    ${ac1_alias}    ap profile 2    station-isolation allowed vlan remove 4092
+    Set Suite Variable    ${stationisoClear}    ${False}
+    AC.Apply AP Profile    ${ac1_alias}    2
+    AC.Wait For AP Profile Apply OK    ${ac1_alias}    2
+
+Check AC1 Station-isolation Allowed remove 4092
+    [Documentation]    预期:
+    ...    - 配置下发成功，AP2的配置状态为success
+    ...    - Show wireless ap profile 2 看到Station-isolation Allowed Vlan 没有 4092
+    AC.Enable Mode    ${ac1_alias}
+    : FOR    ${index}    IN RANGE    0    5
+    \    ${output}=    AC.Exec Cmd    ${ac1_alias}    show wireless ap status
+    \    ${apstatusFlag}=    Tools.Is Match From String    ${output}    (?im)${WIFI_AFFIRM_AP2_MAC}.*?Managed\\s*?Success
+    \    Run Keyword If    ${apstatusFlag}    Exit For Loop
+    \    Sleep    3
+    Should Be True    ${apstatusFlag}
+    ${output}=    AC.Exec Cmd    ${ac1_alias}    show wireless ap profile 2
+    Should Not Match Regexp    ${output}    (?im)Station-isolation Allowed Vlan.*?4092
+
+Clear TestCase Config
+    Log    ${stationisoClear}
+    Run Keyword If    ${stationisoClear}    Clear Config If Station-isolation allowed vlan Failed
+    Sta.Sta Wpa Disconnect    ${sta1_alias}    ${sta1_netcard}
+    Sta.Sta Wpa Disconnect    ${sta2_alias}    ${sta2_netcard}
+    AC.Exec Cmd List In WirelessMode    ${ac1_alias}    network 1    vlan 4091
+    AC.Exec Cmd List In WirelessMode    ${ac1_alias}    l2tunnel vlan-list add 4092
+    AC.Apply AP Profile    ${ac1_alias}    1
+    AC.Wait For AP Profile Apply OK    ${ac1_alias}    1
+    AC.Apply AP Profile    ${ac1_alias}    2
+    AC.Wait For AP Profile Apply OK    ${ac1_alias}    2
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    interface ${s3p3}    no switchport mode    switchport access vlan 20
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    interface ${s3p4}    no switchport mode    switchport access vlan 30
+
+Clear Config If Station-isolation allowed vlan Failed
+    Run Keyword If Test Failed    Config AC1 Station-isolation allowed vlan remove 4092 and apply ap profile to ap2

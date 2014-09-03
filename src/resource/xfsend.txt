@@ -1,0 +1,204 @@
+*** Settings ***
+Library           ../lib/XiaoFish.py
+
+*** Keywords ***
+Connect To XFSend
+    [Arguments]    ${address}    ${alias}
+    Import Library    Remote    ${address}    WITH NAME    ${alias}
+    ${rc}=    Run Keyword    ${alias}.Init Xfsend
+    [Return]    ${rc}
+
+Start Transmit
+    [Arguments]    ${alias}    ${ifNum}    ${count}=1    ${interval}=0
+    ${rc}=    Run Keyword    ${alias}.Send Stream    ${ifNum}    ${count}    ${interval}
+    [Return]    ${rc}
+
+Set Stream From Scapy
+    [Arguments]    ${alias}    ${ifNum}    ${packetStrList}
+    ${rc}=    Run Keyword    ${alias}.Set Stream From Scapy    ${ifNum}    ${packetStrList}
+    [Return]    ${rc}
+
+Get Stream
+    [Arguments]    ${alias}    ${ifNum}    ${num}=0
+    ${packet}=    Run Keyword    ${alias}.Get Stream    ${ifNum}    ${num}
+    [Return]    ${packet}
+
+Stop Transmit
+    [Arguments]    ${alias}    ${ifNum}
+    ${rc}=    Run Keyword    ${alias}.Stop Stream    ${ifNum}
+    [Return]    ${rc}
+
+Start Capture
+    [Arguments]    ${alias}    ${ifNum}    ${filter}=${None}    ${timeout}=${None}    ${count}=${0}
+    ${rc}=    Run Keyword    ${alias}.Capture Packet    ${ifNum}    ${filter}    ${timeout}    ${count}
+    [Return]    ${rc}
+
+Stop Capture
+    [Arguments]    ${alias}    ${ifNum}
+    ${rc}=    Run Keyword    ${alias}.Stop Capture    ${ifNum}
+    [Return]    ${rc}
+
+Set Stream From Pcap
+    [Arguments]    ${alias}    ${ifNum}    ${packetbytes}
+    ${rc}=    Run Keyword    ${alias}.Set Stream From Pcap    ${ifNum}    ${packetbytes}
+    [Return]    ${rc}
+
+Set Stream From HexStr
+    [Arguments]    ${alias}    ${ifNum}    ${packetStrList}
+    ${rc}=    Run Keyword    ${alias}.Set Stream From Hexstr    ${ifNum}    ${packetStrList}
+    [Return]    ${rc}
+
+Get Capture Packet Num
+    [Arguments]    ${alias}    ${ifNum}
+    ${num}=    Run Keyword    ${alias}.Get Capture Packet Num    ${ifNum}
+    [Return]    ${num}
+
+Get Capture Packet
+    [Arguments]    ${alias}    ${ifNum}
+    ${packet}=    Run Keyword    ${alias}.Get Capture Packet    ${ifNum}
+    [Return]    ${packet}
+
+Get Statics
+    [Arguments]    ${alias}    ${ifNum}    ${stats}=${None}
+    ${rc}=    Run Keyword    ${alias}.Get Statics    ${ifNum}    ${stats}
+    [Return]    ${rc}
+
+Clear Statics
+    [Arguments]    ${alias}    ${ifNum}
+    ${rc}=    Run Keyword    ${alias}.Clear Statics    ${ifNum}
+    [Return]    ${rc}
+
+Get Send Stream Num
+    [Arguments]    ${alias}    ${ifNum}
+    ${num}=    Run Keyword    ${alias}.Get Send Stream Num    ${ifNum}
+
+Wait Send Stream Over
+    [Arguments]    ${alias}    ${ifNum}    ${timeout}=${300}
+    : FOR    ${index}    IN RANGE    ${timeout}
+    \    ${rc}=    Run Keyword    ${alias}.Get Send Stream Status    ${ifNum}
+    \    Exit For Loop If    ${rc} < 0
+    \    Sleep    1
+    [Return]    ${rc}
+
+Get Stream From Pcap
+    [Arguments]    ${filename}
+    ${packetbytes}=    XiaoFish.Get Stream From Pcapfile    ${filename}
+    [Return]    ${packetbytes}
+
+Build Stream
+    ${StreamList}=    XiaoFish.Build Stream
+    [Return]    ${StreamList}
+
+Build Packet
+    [Arguments]    ${length}=${128}    ${packetstr}=${None}
+    ${rc}=    XiaoFish.Build Packet    ${length}    ${packetstr}
+    [Return]    ${rc}
+
+Build Ether
+    [Arguments]    ${dst}=ff:ff:ff:ff:ff:ff    ${src}=00:00:00:00:00:00    ${typeid}=${None}
+    [Documentation]    build Ethernet field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - dst \ \ \ : Dest Mac \ \ \ = ff:ff:ff:ff:ff:ff
+    ...    \ \ \ \ \ \ - src \ \ \ : Source Mac \ = 00:00:00:00:00:00
+    ...    \ \ \ \ \ - typeid : type \ \ \ \ \ \ \ = None
+    ...
+    ...    \ \ \ return:
+    ...    \ \ packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Ether | dst=00:00:00:00:00:01 | src=00:00:00:00:00:02 |
+    ...    | Build Ether | src=00:00:00:00:00:02 |
+    ...    | Build Ether | dst=00:00:00:00:00:02 |
+    ${plen}=    XiaoFish.Build Ether    ${dst}    ${src}    ${typeid}
+    [Return]    ${plen}
+
+Build Arp
+    [Arguments]    ${hwtype}=${0x1}    ${ptype}=${0x800}    ${hwlen}=${6}    ${plen}=${4}    ${op}=${1}    ${hwsrc}=00:00:00:00:00:00
+    ...    ${psrc}=0.0.0.0    ${hwdst}=00:00:00:00:00:00    ${pdst}=0.0.0.0
+    [Documentation]    build arp field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - hwtype = 0x1
+    ...    \ \ \ \ \ \ - ptype \ = 0x800
+    ...    \ \ \ \ \ - hwlen \ = 6
+    ...    \ \ \ \ - plen \ \ = 4
+    ...    \ \ \ - op \ \ \ \ = 1
+    ...    \ \ - hwsrc \ = 00:00:00:00:00:00
+    ...    \ - psrc \ \ = 0.0.0.0
+    ...    - hwdst \ = 00:00:00:00:00:00
+    ...    - pdst \ \ = 0.0.0.0
+    ...
+    ...    return:
+    ...    packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Arp | hwsrc=00:00:00:00:00:01 | psrc=10.1.1.1 | hwdst=10.1.1.254 |
+    ...    | Build Arp | op=${2} | hwsrc=00:00:00:00:00:02 | psrc=10.1.1.254 | pdst=10.1.1.1 |
+    ${packetlen}=    XiaoFish.Build Arp    ${hwtype}    ${ptype}    ${hwlen}    ${op}    ${hwsrc}
+    ...    ${psrc}    ${hwdst}    ${pdst}    ${plen}
+    [Return]    ${packetlen}
+
+Build Ip
+    [Arguments]    ${version}=${4}    ${ihl}=${None}    ${tos}=${0x0}    ${iplen}=${None}    ${iden}=${0}    ${flags}=${0}
+    ...    ${frag}=${0}    ${ttl}=${64}    ${proto}=${0}    ${chksum}=${None}    ${src}=0.0.0.0    ${dst}=0.0.0.0
+    ...    ${options}=${None}
+    [Documentation]    build ip field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - version = 4
+    ...    \ \ \ \ \ \ - ihl \ \ \ \ = None
+    ...    \ \ \ \ \ - tos \ \ \ \ = 0x0
+    ...    \ \ \ \ - iplen \ \ = None
+    ...    \ \ \ - iden \ \ \ = 0
+    ...    \ \ - flags \ \ = 0
+    ...    \ - frag \ \ \ = 0
+    ...    - ttl \ \ \ \ = 64
+    ...    - proto \ \ = 0
+    ...    - chksum \ = None
+    ...    - src \ \ \ \ = 0.0.0.0
+    ...    - dst \ \ \ \ = 0.0.0.0
+    ...    - options = None \ #packets list
+    ...
+    ...    return:
+    ...    packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Ip | src=10.1.1.1 | dst=10.1.1.254 |
+    ${packetlen}=    XiaoFish.Build Ip    ${version}    ${ihl}    ${tos}    ${iplen}    ${iden}
+    ...    ${flags}    ${frag}    ${ttl}    ${proto}    ${chksum}    ${src}
+    ...    ${dst}    ${options}
+    [Return]    ${packetlen}
+
+Build Dot1Q
+    [Arguments]    ${prio}=${0}    ${cfi}=${0}    ${vlan}=${1}    ${typeid}=${None}
+    [Documentation]    build 802.1Q field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - prio \ \ \ = 0
+    ...    \ \ \ \ \ \ - cfi \ \ \ \ \ = 0
+    ...    \ \ \ \ \ - vlan \ \ \ = 1
+    ...    \ \ \ \ - typeid \ = None
+    ...
+    ...    \ \ return:
+    ...    \ packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Dot1q | prio=${7} | vlan=${10} |
+    ${packetlen}=    XiaoFish.Build Dot1q    ${prio}    ${cfi}    ${vlan}    ${typeid}
+    [Return]    ${packetlen}
+
+Build Payload
+    [Arguments]    ${payload}
+    [Documentation]    build payload field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - payload \ = None; \ filled automatically using \x00; if you fill manually,please assinged using hexstring,and length para is invlaid
+    ...
+    ...    \ \ \ \ \ return:
+    ...    \ \ \ \ packet field length
+    ...
+    ...    \ \ exapmle:
+    ...    \ | Build Payload | 000102030405 |
+    ${packetlen}=    XiaoFish.Build Payload    ${payload}
+    [Return]    ${packetlen}

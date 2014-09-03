@@ -1,0 +1,92 @@
+*** Settings ***
+Suite Setup       Init Test Case    ${s1_ip}    ${s1_port}    ${s1_alias}    ${s2_ip}    ${s2_port}    ${s2_alias}
+Suite Teardown    Uninit Test Case    ${s1_alias}    ${s2_alias}
+Force Tags        P1
+Resource          ../../../resource/Switch.txt
+Resource          ../vars.txt
+Library           ../../../lib/Tools.py
+
+*** Variables ***
+${ip1}            200.1.1.1
+${ip2}            201.1.1.1
+
+*** Test Cases ***
+01_L3端口建立和删除
+    Comment    Step1
+    Exec Cmd List    ${s1_alias}    config    interface ${s1p3}    switchport mode trunk
+    Add 10 Interface Vlan and Ip
+    Sleep    3
+    Check Interface Vlan Up
+    Ping 10 Ip Should Success
+    Comment    Step2
+    Shutdown 10 Interface Vlan
+    Sleep    3
+    Check Interface Vlan Down
+    Ping 10 Ip Should Fail
+    Comment    Step3
+    Del 10 Interface Vlan
+    Check 10 Interface Vlan Not Exists
+    [Teardown]    Clear Interface Vlan    ${2001}    ${2010}
+
+*** Keywords ***
+Clear Interface Vlan
+    [Arguments]    ${vlanBegin}    ${vlanEnd}
+    ${vlanLoop}=    Evaluate    ${vlanEnd}+1
+    : FOR    ${index}    IN RANGE    ${vlanBegin}    ${vlanLoop}
+    \    ${vlanIdString}=    Convert To String    ${index}
+    \    Exec Cmd List    ${s1_alias}    config    no interface vlan ${vlanIdString}
+    ${vlanBeginString}=    Convert To String    ${vlanBegin}
+    ${vlanEndString}=    Convert To String    ${vlanEnd}
+    Exec Cmd List    ${s1_alias}    config    no vlan ${vlanBeginString}-${vlanEndString}
+    Exec Cmd List    ${s1_alias}    config    interface ${s1p3}    switchport mode access    switchport access vlan 10
+
+Add 10 Interface Vlan and Ip
+    Exec Cmd List    ${s1_alias}    config    vlan 2001-2010
+    : FOR    ${index}    IN RANGE    1    11
+    \    ${vlanId}=    Evaluate    ${index}+2000
+    \    ${vlanIdString}=    Convert To String    ${vlanId}
+    \    Exec Cmd List    ${s1_alias}    config    interface vlan ${vlanIdString}    ip address ${ip1} 255.255.255.0    ip address ${ip2} 255.255.255.0 secondary
+    \    ${ip1}=    Tools.Incr Ip    ${ip1}    mask=${24}
+    \    ${ip2}=    Tools.Incr Ip    ${ip2}    mask=${24}
+
+Check Interface Vlan Up
+    : FOR    ${index}    IN RANGE    2001    2011
+    \    ${vlanIdString}=    Convert To String    ${index}
+    \    ${output}=    Exec Cmd    ${s1_alias}    show interface vlan ${vlanIdString}
+    \    Should Match Regexp    ${output}    Vlan${vlanIdString}${SPACE}is up
+
+Shutdown 10 Interface Vlan
+    : FOR    ${index}    IN RANGE    2001    2011
+    \    ${vlanIdString}=    Convert To String    ${index}
+    \    Exec Cmd List    ${s1_alias}    config    interface vlan ${vlanIdString}    shutdown
+
+Check Interface Vlan Down
+    : FOR    ${index}    IN RANGE    2001    2011
+    \    ${vlanIdString}=    Convert To String    ${index}
+    \    ${output}=    Exec Cmd    ${s1_alias}    show interface vlan ${vlanIdString}
+    \    Should Match Regexp    ${output}    Vlan${vlanIdString}${SPACE}is administratively down
+
+Del 10 Interface Vlan
+    : FOR    ${index}    IN RANGE    2001    2011
+    \    ${vlanIdString}=    Convert To String    ${index}
+    \    Exec Cmd List    ${s1_alias}    config    no interface vlan ${vlanIdString}
+
+Check 10 Interface Vlan Not Exists
+    : FOR    ${index}    IN RANGE    2001    2011
+    \    ${vlanIdString}=    Convert To String    ${index}
+    \    ${output}=    Exec Cmd    ${s1_alias}    show interface vlan ${vlanIdString}
+    \    Should Match Regexp    ${output}    interface Vlan${vlanIdString} doesn't exist or error
+
+Ping 10 Ip Should Success
+    Set Suite Variable    ${ip1}    200.1.1.1
+    : FOR    ${index}    IN RANGE    1    11
+    \    ${output}=    Exec Cmd    ${s2_alias}    ping ${ip1}
+    \    Should Match Regexp    ${output}    Success rate is 100 percent
+    \    ${ip1}=    Tools.Incr Ip    ${ip1}    mask=${24}
+
+Ping 10 Ip Should Fail
+    Set Suite Variable    ${ip1}    200.1.1.1
+    : FOR    ${index}    IN RANGE    1    11
+    \    ${output}=    Exec Cmd    ${s2_alias}    ping ${ip1}
+    \    Should Match Regexp    ${output}    Success rate is 0 percent
+    \    ${ip1}=    Tools.Incr Ip    ${ip1}    mask=${24}

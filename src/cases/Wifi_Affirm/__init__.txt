@@ -1,0 +1,179 @@
+*** Settings ***
+Suite Setup       Init Affirm Test
+Suite Teardown    Uninit Affirm Test
+Force Tags        wifi    affirm
+Resource          vars.txt
+
+*** Keywords ***
+Init Affirm Test
+    Init Test Case
+    Comment    获取动态变量
+    Get Dynamic Vars
+    Comment    初始化 AC1
+    Init AC1 Config
+    Comment    初始化 AC2
+    Init AC2 Config
+    Comment    初始化 S3
+    Init S3 Config
+    Comment    初始化 AP1
+    Init AP1 Config
+    Comment    初始化 AP2
+    Init AP2 Config
+    Comment    初始化Sta1
+    Init Sta1 Config
+    Comment    初始化Sta2
+    Init Sta2 Config
+    Comment    初始化PC1
+    Init PC1 Config
+    [Teardown]    Uninit Test Case
+
+Init AC1 Config
+    ${ac1Version}=    AC.Show Version    ${ac1_alias}
+    Log    ${ac1Version}
+    AC.Set WatchDog Disable    ${ac1_alias}
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    vlan 40;4091-4093
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    vlan 40    switchport interface ${s1p2}
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    interface vlan 40    ip address 40.1.1.1 255.255.255.0    ipv6 address 2001:40::1/64
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    interface vlan 4091    ip address 192.168.97.1 255.255.255.0    ipv6 address 2001:91::1/64
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    interface vlan 4092    ip address 192.168.98.1 255.255.255.0    ipv6 address 2001:92::1/64
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    interface vlan 4093    ip address 192.168.99.1 255.255.255.0    ipv6 address 2001:93::1/64
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    interface loopback 1    ip address 1.1.1.3 255.255.255.255    ipv6 address 2001::1/128
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    router ospf    network 0.0.0.0/0 area 0    redistribute connected
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    keep-alive-interval 10000    keep-alive-max-count 3    static-ip 1.1.1.3    static-ipv6 2001::1
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    no auto-ip-assign    ap profile 1    radio 1
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    service dhcp
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    ip dhcp pool vlan4091    network-address 192.168.97.2 24    default-router 192.168.97.1
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    ip dhcp pool vlan4092    network-address 192.168.98.2 24    default-router 192.168.98.1
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    ip dhcp pool vlan4093    network-address 192.168.99.2 24    default-router 192.168.99.1
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    network 1    ssid affirm_auto_31    vlan 4091
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    network 2    ssid affirm_auto_32    vlan 4092
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    ap profile 1    hwtype ${WIFI_AFFIRM_HWTYPE1}
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    enable
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    ap profile 2    hwtype ${WIFI_AFFIRM_HWTYPE2}    radio 1    vap 1
+    ...    enable
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    ap database ${WIFI_AFFIRM_AP1_MAC}    profile 1
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    ap database ${WIFI_AFFIRM_AP2_MAC}    profile 2
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    no discovery vlan-list 1    discovery ip-list 20.1.1.3    discovery ip-list 30.1.1.3    discovery ipv6-list 2001:20::3
+    ...    discovery ipv6-list 2001:30::3
+    AC.Exec Cmd List In ConfigMode    ${ac1_alias}    wireless    l2tunnel vlan-list 4091-4093
+    AC.Exec Cmd List    ${ac1_alias}    clock set 09:00:00 2012.12.21
+    AC.Write Config    ${ac1_alias}
+
+Init AC2 Config
+    ${ac2Version}=    AC.Show Version    ${ac2_alias}
+    Log    ${ac2Version}
+    AC.Set WatchDog Disable    ${ac2_alias}
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    vlan 30;4091-4093
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    vlan 30    switchport interface ${s2p1}
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    interface vlan 30    ip address 30.1.1.2 255.255.255.0    ipv6 address 2001:30::2/64
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    interface vlan 4091    ip address 192.168.97.1 255.255.255.0    ipv6 address 2001:91::1/64
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    interface vlan 4092    ip address 192.168.98.1 \ 255.255.255.0    ipv6 address 2001:92::1/64
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    interface vlan 4093    ip address 192.168.99.1 255.255.255.0    ipv6 address 2001:93::1/64
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    interface loopback 1    ip address 2.2.2.2 255.255.255.255    ipv6 address 2003::1/128
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    router ospf    network 0.0.0.0/0 area 0    redistribute connected
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    keep-alive-interval 10000    keep-alive-max-count 3    static-ip 2.2.2.2    static-ipv6 2003::1
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    no auto-ip-assign
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    network 1    ssid affirm_auto_31    vlan 4091
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    network 2    ssid affirm_auto_32    vlan 4092
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    ap profile 1    hwtype ${WIFI_AFFIRM_HWTYPE1}
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    enable
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    ap profile 2    hwtype ${WIFI_AFFIRM_HWTYPE2}    radio 1    vap 1
+    ...    enable
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    ap database ${WIFI_AFFIRM_AP1_MAC}    profile 1
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    ap database ${WIFI_AFFIRM_AP2_MAC}    profile 2
+    AC.Exec Cmd List In ConfigMode    ${ac2_alias}    wireless    l2tunnel vlan-list 4091-4093
+    AC.Exec Cmd List    ${ac2_alias}    clock set 09:00:00 2012.12.21
+    AC.Write Config    ${ac2_alias}
+
+Init AP1 Config
+    ${ap1Version}=    AP.Get System    ${ap1_alias}
+    Log    ${ap1Version}
+    AP.Exec Cmd List    ${ap1_alias}    set management static-ip 20.1.1.3    set management static-ipv6 2001:20::3
+    AP.Exec Cmd List    ${ap1_alias}    set management dhcp-status down    set management dhcpv6-status down
+    AP.Exec Cmd List    ${ap1_alias}    set static-ip-route gateway 20.1.1.2    set static-ipv6-route gateway 2001:20::2
+    AP.Exec Cmd List    ${ap1_alias}    set management static-ipv6-prefix-length 64
+    AP.Save Running    ${ap1_alias}
+
+Init AP2 Config
+    ${ap2Version}=    AP.Get System    ${ap2_alias}
+    Log    ${ap2Version}
+    AP.Exec Cmd List    ${ap2_alias}    set management static-ip 30.1.1.3    set management static-ipv6 2001:30::3
+    AP.Exec Cmd List    ${ap2_alias}    set management dhcp-status down    set management dhcpv6-status down
+    AP.Exec Cmd List    ${ap2_alias}    set static-ip-route gateway 30.1.1.1    set static-ipv6-route gateway 2001:30::1
+    AP.Exec Cmd List    ${ap2_alias}    set management static-ipv6-prefix-length 64
+    AP.Save Running    ${ap2_alias}
+
+Init S3 Config
+    ${s3Version}=    Switch.Show Version    ${s3_alias}
+    Log    ${s3Version}
+    Switch.Set WatchDog Disable    ${s3_alias}
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    vlan 20    switchport interface ${s3p3}
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    interface vlan 20    ip address 20.1.1.2 \ 255.255.255.0    ipv6 address 2001:20::2/64
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    vlan 30    switchport interface ${s3p1}    switchport interface ${s3p4}
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    interface vlan 30    ip address 30.1.1.1 \ 255.255.255.0    ipv6 address 2001:30::1/64
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    vlan 40    switchport interface ${s3p2}
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    interface vlan 40    ip address 40.1.1.2 \ 255.255.255.0    ipv6 address 2001:40::2/64
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    vlan 192    switchport interface ${s3p5}
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    interface vlan 192    ip address 192.168.10.31 255.255.255.0
+    Switch.Exec Cmd List In ConfigMode    ${s3_alias}    router ospf    network 0.0.0.0/0 area 0    redistribute connected
+    Switch.Exec Cmd List    ${s3_alias}    clock set 09:00:00 2012.12.21
+    Switch.Write Config    ${s3_alias}
+
+Init Sta1 Config
+    Sta.Execute Command    ${sta1_alias}    ifconfig ${sta1_netcard} up
+    Sta.Execute Command    ${sta1_alias}    wpa_supplicant -B -i ${sta1_netcard} -c /etc/wpa_supplicant/wpa_supplicant.conf
+
+Init Sta2 Config
+    Sta.Execute Command    ${sta2_alias}    ifconfig ${sta2_netcard} up
+    Sta.Execute Command    ${sta2_alias}    wpa_supplicant -B -i ${sta2_netcard} -c /etc/wpa_supplicant/wpa_supplicant.conf
+
+Init PC1 Config
+
+Get Dynamic Vars
+    Comment    获取sta1 wlan card mac
+    ${output}=    Sta.Execute Command    ${sta1_alias}    ifconfig -v ${sta1_netcard}
+    ${sta1mac}=    Tools.Get Value From String    ${output}    (?m)ether\\s([^\\s]+)\\s
+    Should Not Be Equal    ${sta1mac}    ${None}
+    ${sta1mac}=    Tools.Convert Macaddress Format    ${sta1mac}
+    Set Global Variable    ${WIFI_AFFIRM_STA1_MAC}    ${sta1mac}
+    Comment    获取sta2 wlan card mac
+    ${output}=    Sta.Execute Command    ${sta2_alias}    ifconfig -v ${sta2_netcard}
+    ${sta2mac}=    Tools.Get Value From String    ${output}    (?m)ether\\s([^\\s]+)\\s
+    Should Not Be Equal    ${sta2mac}    ${None}
+    ${sta2mac}=    Tools.Convert Macaddress Format    ${sta2mac}
+    Set Global Variable    ${WIFI_AFFIRM_STA2_MAC}    ${sta2mac}
+    Comment    获取ap1 device type
+    ${output}=    AP.Exec Cmd    ${ap1_alias}    get system device-type
+    ${ap1type}=    Tools.Get Value From String    ${output}    (?m)^(\\d+)\\r\\n
+    Should Not Be Equal    ${ap1type}    ${None}
+    Set Global Variable    ${WIFI_AFFIRM_HWTYPE1}    ${ap1type}
+    Comment    获取ap2 device type
+    ${output}=    AP.Exec Cmd    ${ap2_alias}    get system device-type
+    ${ap2type}=    Tools.Get Value From String    ${output}    (?m)^(\\d+)\\r\\n
+    Should Not Be Equal    ${ap2type}    ${None}
+    Set Global Variable    ${WIFI_AFFIRM_HWTYPE2}    ${ap2type}
+    Comment    获取ac1 vlan mac
+    ${ac1Vlanmac}=    AC.Get Vlan Mac    ${ac1_alias}
+    Set Global Variable    ${WIFI_AFFIRM_AC1_VLANMAC}    ${ac1Vlanmac}
+    Comment    获取ap1 mac
+    ${ap1mac}=    AP.Get Management Mac    ${ap1_alias}
+    ${ap1mac}=    Tools.Convert Macaddress Format    ${ap1mac}
+    Set Global Variable    ${WIFI_AFFIRM_AP1_MAC}    ${ap1mac}
+    Comment    获取ap2 mac
+    ${ap2mac}=    AP.Get Management Mac    ${ap2_alias}
+    ${ap2mac}=    Tools.Convert Macaddress Format    ${ap2mac}
+    Set Global Variable    ${WIFI_AFFIRM_AP2_MAC}    ${ap2mac}
+
+Uninit Affirm Test
+    Init Test Case
+    Comment    配置ap1
+    Uninit AP1 Config
+    Comment    配置ap2
+    Uninit AP1 Config
+    [Teardown]    Uninit Test Case
+
+Uninit AP1 Config
+    AP.Exec Cmd List    ${ap1_alias}    ifconfig ath0 down    ifconfig ath1 down    ifconfig ath16 down
+
+Uninit AP2 Config
+    AP.Exec Cmd List    ${ap2_alias}    ifconfig ath0 down    ifconfig ath1 down    ifconfig ath16 down

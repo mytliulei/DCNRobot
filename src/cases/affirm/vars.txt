@@ -1,0 +1,32 @@
+*** Settings ***
+Resource          ../../resource/Switch.txt
+
+*** Variables ***
+${s1_ip}          172.16.11.51
+${s1_port}        10003
+${s1_alias}       s1
+${s2_ip}          172.16.11.51
+${s2_port}        10002
+${s2_alias}       s2
+${s1p1}           Ethernet1/0/1
+${s1p2}           Ethernet1/0/13
+${s1p3}           Ethernet1/0/17
+${s2p1}           Ethernet1/0/13
+${s2p2}           Ethernet1/0/14
+${s2p3}           Ethernet1/0/17
+${dut_L3}         ${1}
+${testerp1}       2
+${testerp2}       1
+${tester_address}    http://172.16.11.152:11918
+${tester_alias}    xf1
+
+*** Keywords ***
+Init Test Case
+    [Arguments]    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}    ${s2_ccm_ip}    ${s2_ccm_port}    ${s2_alias}
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Open Console    ${s2_ccm_ip}    ${s2_ccm_port}    ${s2_alias}
+
+Uninit Test Case
+    [Arguments]    ${s1_alias}    ${s2_alias}
+    Close Console    ${s1_alias}
+    Close Console    ${s2_alias}

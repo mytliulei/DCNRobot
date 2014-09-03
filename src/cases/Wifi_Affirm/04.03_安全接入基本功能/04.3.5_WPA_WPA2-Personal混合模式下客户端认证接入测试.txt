@@ -1,0 +1,128 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          ../vars.txt
+
+*** Variables ***
+
+*** Test Cases ***
+4.3.5 WPA WPA2-Personal混合模式下客户端认证接入测试
+    Comment    step1
+    Config AC1 Security Mode Wpa-personal
+    Check AC1 Security Mode Wpa-personal
+    Comment    step2
+    AC1 Apply Wireless Profile To AP1
+    Check AC1 Apply Profile To AP1
+    Comment    step3
+    Sta.Sta Wpa2 Psk Connect    ${sta1_alias}    ${sta1_netcard}    affirm_auto_31    abcd1234    ${WIFI_AFFIRM_AP1_MAC}
+    Check AC WirelessClient Online    ${ac1_alias}    ${WIFI_AFFIRM_STA1_MAC}
+    Comment    step4
+    Check Sta1 Ping PC1
+    Comment    step5
+    Sta1 Disconnect And Check offline On AC1
+    Comment    step6
+    Sta.Sta Wpa Psk Connect    ${sta1_alias}    ${sta1_netcard}    affirm_auto_31    abcd1234    ${WIFI_AFFIRM_AP1_MAC}
+    Check AC WirelessClient Online    ${ac1_alias}    ${WIFI_AFFIRM_STA1_MAC}
+    Comment    step7
+    Check Sta1 Ping PC1
+    Comment    step8
+    Sta1 Disconnect And Check offline On AC1
+    [Teardown]    Clear TestCase Config
+
+*** Keywords ***
+Config AC1 Security Mode Wpa-personal
+    [Documentation]    操作:
+    ...
+    ...    配置AC1的network1的安全接入方式为混合模式：WPA/WPA2-Personal，密码为abcd1234。
+    ...
+    ...    - Wireless
+    ...    - Network 1
+    ...    - Security mode wpa-personal
+    ...    - Wpa key abcd1234
+    ...    - Wpa versions
+    AC.Exec Cmd List In WirelessMode    ${ac1_alias}    network 1    security mode wpa-personal    wpa key abcd1234    wpa versions
+
+Check AC1 Security Mode Wpa-personal
+    [Documentation]    在AC1上面Show wireless network 1可以看到相关的配置:
+    ...
+    ...    - Security Mode.................................. WPA Personal
+    AC.Enable Mode    ${ac1_alias}
+    ${output}=    AC.Exec Cmd    ${ac1_alias}    show wireless network 1
+    Should Match Regexp    ${output}    (?m)Security Mode.*?WPA Personal
+
+AC1 Apply Wireless Profile To AP1
+    [Documentation]    将配置下发到AP1。
+    ...    - Wireless ap profile apply 1
+    AC.Enable Mode    ${ac1_alias}
+    Telnet.Write    wireless ap profile apply 1
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Prompt
+    Run Keyword Unless    ${writeFlag}    Telnet.Read
+    AC.Wait For AP Profile Apply OK    ${ac1_alias}    1
+
+Check AC1 Apply Profile To AP1
+    Sta.Execute Command    ${sta1_alias}    ifconfig ${sta1_netcard} up
+    : FOR    ${index}    IN RANGE    0    10
+    \    Sta.Execute Command    ${sta1_alias}    wpa_cli -i ${sta1_netcard} scan
+    \    Sleep    5
+    \    ${output}=    Sta.Execute Command    ${sta1_alias}    wpa_cli -i ${sta1_netcard} scan_results
+    \    ${matchAp1Mac}=    Tools.Convert Macaddress Format    ${WIFI_AFFIRM_AP1_MAC}    -    :
+    \    ${matchFlag}=    Tools.Is Match From String    ${output}    (?m)${matchAp1Mac}.*?WPA-PSK-.*?WPA2-PSK-.*?affirm_auto_31
+    \    Run Keyword If    ${matchFlag}    Exit For Loop
+    Should Be True    ${matchFlag}
+
+Check Sta1 Ping PC1
+    [Documentation]    操作:
+    ...    - 在STA1上ping PC1
+    ...
+    ...    预期:
+    ...    - 能够ping通。
+    : FOR    ${index}    IN RANGE    0    3
+    \    ${lossVaule}=    Sta.Check Sta Ping    ${sta1_alias}    192.168.10.2
+    \    Run Keyword If    ${lossVaule} == 0    Exit For Loop
+    \    Sleep    3
+    Should Be Equal    ${lossVaule}    ${0}
+
+Clear TestCase Config
+    Clear Sta1 Config
+    Clear AC1 Config
+
+Clear AC1 Config
+    AC.Exec Cmd List In WirelessMode    ${ac1_alias}    network 1    security mode none    no wpa key    no wpa versions
+    AC1 Apply Wireless Profile To AP1
+
+Clear Sta1 Config
+    Run Keyword If Test Failed    Sta.Sta Wpa Disconnect    ${sta1_alias}    ${sta1_netcard}
+
+Check AC WirelessClient Online
+    [Arguments]    ${alias}    ${mac}    ${retry}=${60}    ${interval}=${10}
+    : FOR    ${index}    IN RANGE    0    ${retry}
+    \    AC.Enable Mode    ${alias}
+    \    ${output}=    AC.Exec Cmd    ${alias}    show wireless client summary
+    \    ${matchFlag}=    Tools.Is Match From String    ${output}    (?i)${mac}
+    \    Run Keyword If    ${matchFlag}    Exit For Loop
+    \    Sleep    ${interval}
+    Should Be True    ${matchFlag}
+    [Return]    ${matchFlag}
+
+Check AC WirelessClient Offline
+    [Arguments]    ${alias}    ${mac}    ${retry}=${60}    ${interval}=${10}
+    : FOR    ${index}    IN RANGE    0    ${retry}
+    \    AC.Enable Mode    ${alias}
+    \    ${output}=    AC.Exec Cmd    ${alias}    show wireless client summary
+    \    ${matchFlag}=    Tools.Is Match From String    ${output}    (?i)${mac}
+    \    Run Keyword If    ${matchFlag} == False    Exit For Loop
+    \    Sleep    ${interval}
+    Should Be True    ${matchFlag} == False
+    [Return]    ${matchFlag}
+
+Sta1 Disconnect And Check offline On AC1
+    [Documentation]    操作:
+    ...    - 客户端STA1断开与test1的连接。
+    ...
+    ...    预期:
+    ...    - 客户端下线成功。Show wireless client summery不能看到sta1。
+    Sta.Sta Wpa Disconnect    ${sta1_alias}    ${sta1_netcard}
+    Check AC WirelessClient Offline    ${ac1_alias}    ${WIFI_AFFIRM_STA1_MAC}

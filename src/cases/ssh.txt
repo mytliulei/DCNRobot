@@ -1,0 +1,50 @@
+*** Settings ***
+Resource          ../resource/Sta.txt
+Resource          ../resource/AP.txt
+Resource          ../resource/AC.txt
+
+*** Test Cases ***
+sshopen
+    Sta.Open SSH Connection    172.16.11.152    sc1    tester2    123456
+    ${out}=    Sta.Execute Command    sc1    ifconfig
+    Log    ${out}
+    ${out}=    Sta.Execute Sudo Command    sc1    sudo dhclient eth1    123456
+    Log    ${out}
+    Sta.Close SSH Connection    sc1
+
+ap control
+    AP.Open Console    80.0.0.42    10010    ap1
+    ${version}=    AP.Get System    ap1
+    Log    ${version}
+    ${apmac}=    AP.Get Base Mac    ap1
+    Log    ${apmac}
+    AP.Factory Reset    ap1
+    AP.Reboot AP    ap1
+    ${version}=    AP.Exec Cmd    ap1    get system
+    Log    ${version}
+    ${version}=    AP.Exec Cmd List    ap1    get system
+    Log    ${version}
+    AP.Close Console    ap1
+
+ac control
+    AC.Open Console    80.0.0.42    10006    ac1
+    ${version}=    AC.Show Version    ac1
+    Log    ${version}
+    ${acmac}=    AC.Get Cpu Mac    ac1
+    Log    ${acmac}
+    AC.Set Default    ac1
+    AC.Reload AC    ac1
+    ${version}=    AC.Exec Cmd    ac1    show version
+    Log    ${version}
+    ${version}=    AC.Exec Cmd List    ac1    show version
+    Log    ${version}
+    ${acvlanmac}=    AC.Get Vlan Mac    ac1
+    Log    ${acvlanmac}
+    AC.Close Console    ac1
+
+xxset variable if
+    ${key3}=    Set Variable    abc
+    ${keyFlag}=    Set Variable    ${True}
+    Comment    Run Keyword If    ${keyFlag}    Set Test Variable    ${key3}    "${key3}"
+    ${keyFlag}=    Evaluate    not ${keyFlag}
+    Log    ${keyFlag}

@@ -1,0 +1,62 @@
+*** Settings ***
+Suite Setup       Init Affirm Test
+Suite Teardown    Uninit Affirm Test
+Force Tags        affirm
+Resource          ../../Resource/Switch.txt
+Resource          vars.txt
+
+*** Variables ***
+
+*** Keywords ***
+Init Affirm Test
+    Init Test Case    ${s1_ip}    ${s1_port}    ${s1_alias}    ${s2_ip}    ${s2_port}    ${s2_alias}
+    Comment    初始化s1的配置
+    Show Version    ${s1_alias}
+    ${s1_cpu_mac}=    Get Cpu Mac    ${s1_alias}
+    Set Global Variable    ${S1_CPU_MAC}    ${s1_cpu_mac}
+    ${s1_vlan_mac}=    Get Vlan Mac    ${s1_alias}
+    Set Global Variable    ${S1_VLAN_MAC}    ${s1_vlan_mac}
+    ${s2_cpu_mac}=    Get Cpu Mac    ${s2_alias}
+    Set Global Variable    ${S2_CPU_MAC}    ${s2_cpu_mac}
+    ${s2_vlan_mac}=    Get Vlan Mac    ${s2_alias}
+    Set Global Variable    ${S2_VLAN_MAC}    ${s2_vlan_mac}
+    Init S1 Config
+    Comment    初始化s2的配置
+    Show Version    ${s2_alias}
+    Init S2 Config
+    Sleep    5
+    Uninit Test Case    ${s1_alias}    ${s2_alias}
+
+Init S1 Config
+    Exec Cmd List    ${s1_alias}    config    vlan 10    switchport interface ${s1p3}
+    Exec Cmd List    ${s1_alias}    config    vlan 12    switchport interface ${s1p1}
+    Exec Cmd List    ${s1_alias}    config    interface vlan 10    ip address 10.1.1.1 255.255.0.0    ipv6 address 2010:1::1/64
+    Exec Cmd List    ${s1_alias}    config    interface vlan 12    ip address 12.1.1.1 255.255.255.0    ipv6 address 2012::1/64
+    Exec Cmd List    ${s1_alias}    config    interface ${s1p2}    shutdown
+    Run Keyword If    ${dut_L3}==${1}    Exec Cmd List    ${s1_alias}    config    router rip    network 0.0.0.0/0
+
+Init S2 Config
+    Exec Cmd List    ${s2_alias}    config    vlan 20    switchport interface ${s2p3}
+    Exec Cmd List    ${s2_alias}    config    vlan 12    switchport interface ${s2p1}
+    Exec Cmd List    ${s2_alias}    config    interface vlan 20    ip address 20.1.1.1 255.255.0.0    ipv6 address 2020:2::1/64
+    Exec Cmd List    ${s2_alias}    config    interface vlan 12    ip address 12.1.1.2 \ 255.255.255.0    ipv6 address 2012::2/64
+    Exec Cmd List    ${s2_alias}    config    interface ${s2p2}    shutdown
+    Run Keyword If    ${dut_L3}==${1}    Exec Cmd List    ${s2_alias}    config    router rip    network 0.0.0.0/0
+
+Uninit Affirm Test
+    Init Test Case    ${s1_ip}    ${s1_port}    ${s1_alias}    ${s2_ip}    ${s2_port}    ${s2_alias}
+    Uninit S1 Config
+    Uninit S2 Config
+    Uninit Test Case    ${s1_alias}    ${s2_alias}
+
+Uninit S1 Config
+    Run Keyword If    ${dut_L3}==${1}    Exec Cmd List    ${s1_alias}    config    no router rip
+    Exec Cmd List    ${s1_alias}    config    no interface vlan 10    no interface vlan 12
+    Exec Cmd List    ${s1_alias}    config    no vlan 10,12
+    Exec Cmd List    ${s1_alias}    config    interface ${s1p2}    no shutdown
+
+Uninit S2 Config
+    Run Keyword If    ${dut_L3}==${1}    Exec Cmd List    ${s2_alias}    config    no router rip
+    Exec Cmd List    ${s2_alias}    config    no interface vlan 20    no interface vlan 12
+    Exec Cmd List    ${s2_alias}    config    no vlan 20,12
+    Exec Cmd List    ${s2_alias}    config    interface ${s2p2}    no shutdown
