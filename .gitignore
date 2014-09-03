@@ -1,4 +1,4 @@
 *.pyc
 *.pyo
 test*.txt
-.tags
+.tags*
