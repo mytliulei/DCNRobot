@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 #-*- coding: UTF-8 -*-
-'''override robot.libarires.Telnet,add monitor parameters
+'''override robot.libarires.Telnet.
+   add monitor parameters to log all output
+   add keyword read_lazy,and read_very_lazy for processing debug messages
 '''
 
 from __future__ import with_statement
