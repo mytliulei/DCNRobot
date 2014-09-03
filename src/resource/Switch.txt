@@ -222,3 +222,77 @@ Enter BootRom From BootRom
     Telnet.Read Until Regexp    ${regexp_bootrom}
     Telnet.Set Timeout    ${sw_timeout}
     Telnet.Read
+
+Get Debug Output Until Expect
+    [Arguments]    ${alias}    ${expect}    ${timeout}=${180}
+    [Documentation]    在debug信息中查找expect信息，并返回信息，注意如果没有expect信息，在timeout到时候会返回全部信息
+    ...
+    ...    参数：
+    ...    - alias：设备console别名
+    ...    - expect： 要查找的信息
+    ...    - timeout：默认180s，注意单位为s
+    ...
+    ...    返回：是否查找成功，输出信息
+    ...
+    ...    用法：
+    ...    - 先使用关键字Start Debug
+    ...    - 然后Get Debug Output Until Expect
+    ...    - 最后关闭debug： Stop Debug
+    Telnet.Switch Connection    ${alias}
+    ${telneTimeout}=    Evaluate    ${timeout} + 60
+    Telnet.Set Timeout    ${telneTimeout}
+    ${output}=    Set Variable    ${EMPTY}
+    :FOR    ${index}    IN RANGE    0    ${timeout}
+    \    ${ioutput}=    Telnet.Read Lazy
+    \    ${output}=    Evaluate    '''${ioutput}'''+'''${output}'''
+    \    ${matchFlag}=    Tools.Is Match From String    ${output}    ${expect}
+    \    Run Keyword If    ${matchFlag}    Exit For Loop
+    \    Sleep    1
+    Telnet.Set Timeout    ${sw_timeout}
+    Log    ${output}
+    [Return]    ${matchFlag}    ${output}
+
+Stop Debug
+    [Arguments]    ${alias}    ${cmd}=\x0e
+    [Documentation]    关闭 debug
+    ...
+    ...    参数：
+    ...    - alias：设备console别名
+    ...    - cmd： 默认为ctrl-o
+    Telnet.Switch Connection    ${alias}
+    Telnet.Write    ${cmd}
+    Telnet.Read Until Prompt
+    Telnet.Read
+
+Start Debug
+    [Arguments]    ${alias}    ${cmd}
+    [Documentation]    打开debug
+    ...
+    ...    参数：
+    ...    - alias：设备console别名
+    ...    - cmd：debug命令
+    Telnet.Switch Connection    ${alias}
+    Telnet.Write    ${cmd}
+
+Get Debug Output Until Timeout
+    [Arguments]    ${alias}    ${timeout}
+    [Documentation]    获取timeout时间内的debug信息
+    ...
+    ...    参数：
+    ...    - alias：设备console别名
+    ...    - timeout： \ 注意单位为s
+    ...
+    ...    返回：timeout时间内的输出信息
+    ...
+    ...    用法：
+    ...    - 先使用关键字Start Debug
+    ...    - 然后Get Debug Output Until Timeout
+    ...    - 最后关闭debug： Stop Debug
+    Telnet.Switch Connection    ${alias}
+    ${telneTimeout}=    Evaluate    ${timeout} + 60
+    Telnet.Set Timeout    ${telneTimeout}
+    Sleep    ${timeout}
+    ${output}=    Telnet.Read Lazy
+    Telnet.Set Timeout    ${sw_timeout}
+    Log    ${output}
+    [Return]    ${output}
