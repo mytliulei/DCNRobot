@@ -7,6 +7,7 @@ import inspect
 
 from robot.api import logger
 from robot.version import get_version
+from robot.libraries import Remote
 from scapy.all import *
 
 import rfbase
@@ -89,4 +90,3 @@ class Ixia(object):
         '''
         pass
 
-    
