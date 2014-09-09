@@ -48,6 +48,15 @@ proc evalIxiaCmd {cmdstr} {
         "stop_transmit" {
             set ret [StopTransmit $cmdstr]
         }
+        "get_statistics" {
+            set ret [GetStatistics $cmdstr]
+        }
+        "start_capture" {
+            set ret [StartCapture $cmdstr]
+        }
+        "stop_capture" {
+            set ret [StopCapture $cmdstr]
+        }
         default {
             set ret None
         }
@@ -67,6 +76,21 @@ proc StartTransmit {cmdstr} {
 
 #stop ixia stream
 proc StopTransmit {cmdstr} {
+
+}
+
+#get ixia statistics
+proc GetStatistics {cmdstr} {
+
+}
+
+#start capture
+proc StartCapture {cmdstr} {
+
+}
+
+#start capture
+proc StopCapture {cmdstr} {
 
 }
 
