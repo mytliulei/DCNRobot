@@ -75,7 +75,7 @@ class Ixia(object):
         self._pkt_class.empty_packet_list()
         return self._pkt_streamlist_hexstring
 
-    def start_proxy_server(self,alias,ixos_ver):
+    def start_proxy_server(self,alias,ixia_ver):
         '''
         '''
         pass
