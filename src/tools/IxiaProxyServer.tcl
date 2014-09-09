@@ -42,6 +42,12 @@ proc evalIxiaCmd {cmdstr} {
         "set_stream_from_hexstr" {
             set ret [SetStreamFromHexstr $cmdstr]
         }
+        "start_transmit" {
+            set ret [StartTransmit $cmdstr]
+        }
+        "stop_transmit" {
+            set ret [StopTransmit $cmdstr]
+        }
         default {
             set ret None
         }
@@ -51,6 +57,16 @@ proc evalIxiaCmd {cmdstr} {
 
 #set ixia stream from hexstring
 proc SetStreamFromHexstr {cmdstr} {
+
+}
+
+#start ixia stream
+proc StartTransmit {cmdstr} {
+
+}
+
+#stop ixia stream
+proc StopTransmit {cmdstr} {
 
 }
 
