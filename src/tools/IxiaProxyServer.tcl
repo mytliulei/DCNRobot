@@ -30,6 +30,7 @@ proc IxiaCmd {chan} {
         #eval ixia cmd
         if {$line != ""} {
             cmdret = evalIxiaCmd($line)
+            puts $chan $cmdret
         }
     }
 }
