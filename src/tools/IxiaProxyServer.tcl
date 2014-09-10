@@ -66,6 +66,12 @@ proc evalIxiaCmd {cmdstr} {
         "clear_statics" {
             set ret [ClearStatistics $cmdstr]
         }
+        "get_capture_packet" {
+            set ret [GetCapturePacket $cmdstr]
+        }
+        "get_capture_packet_num"  {
+            set ret [GetCapturePacketNum $cmdstr]
+        }
         default {
             set ret None
         }
@@ -266,12 +272,8 @@ proc GetStatistics {cmdstr} {
                 set statnum [stat cget -bitsReceived]
                 lappend ret $statnum
             }
-            default {
-
-            }
         }
     }
-
     set retstr [join $ret]
     return $retstr
 }
@@ -343,7 +345,7 @@ proc StopCapture {cmdstr} {
 proc CheckTransmitDone {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
-    if {[expr $cmdlen % 3] != 0} {
+    if {$cmdlen != 3} {
         return -100
     }
     global ixia_ip
@@ -359,6 +361,54 @@ proc CheckTransmitDone {cmdstr} {
     return $ret
 }
 
+#get capture packet
+proc GetCapturePacket {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 5} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set fromPacket [lindex $cmdlist 3]
+    set toPacket [lindex $cmdlist 4]
+    captureBuffer get $chasId $port $card $fromPacket $toPacket
+    set ret ""
+    for {set i $fromPacket} {$i <= $toPacket} {incr i} {
+        captureBuffer getframe $i
+        set data [captureBuffer cget -frame]
+        lappend ret $data
+    }
+    set retstr [join $ret "$"]
+    return $retstr
+}
+
+#get capture packet Num
+proc GetCapturePacketNum {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 3} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    #set portlist [list [list $chasId $port $card]]
+    capture get $chasId $port $card
+    set ret [capture cget -nPackets]
+    return $ret
+}
 
 #connect to ixia
 proc ConnectToIxia {ip} {
