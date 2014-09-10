@@ -63,6 +63,9 @@ proc evalIxiaCmd {cmdstr} {
         "check_transmit_done" {
             set ret [CheckTransmitDone $cmdstr]
         }
+        "clear_statics" {
+            set ret [ClearStatistics $cmdstr]
+        }
         default {
             set ret None
         }
@@ -72,7 +75,73 @@ proc evalIxiaCmd {cmdstr} {
 
 #set ixia stream from hexstring
 proc SetStreamFromHexstr {cmdstr} {
-
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 9} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set streamId [lindex $cmdlist 3]
+    set streamRateMode [lindex $cmdlist 4]
+    set streamRate [lindex $cmdlist 5]
+    set streamMode [lindex $cmdlist 6]
+    set numFrames [lindex $cmdlist 7]
+    set ReturnId [lindex $cmdlist 8]
+    set packet [lindex $cmdlist 9]
+    set dstmac [string trim [join [split [string range $packet 0 17] "$"]]]
+    set srcmac [string trim [join [split [string range $packet 18 35] "$"]]]
+    set pattern [string trim [join [split [string range $packet 36 end] "$"]]]
+    set portlist [list [list $chasId $port $card]]
+    #ixia config
+    stream setDefault
+    #streamRateMode
+    # 0: usePercentRate
+    # 1: streamRateModeFps
+    # 2: streamRateModeBps
+    if {$streamRateMode == 0} {
+        stream config -rateMode usePercentRate
+        stream config -percentPacketRate $streamRate
+    } elseif {$streamRateMode == 1} {
+        stream config -rateMode streamRateModeFps
+        stream config -fpsRate $streamRate
+    } elseif {$streamRateMode == 2} {
+        stream config -rateMode streamRateModeBps
+        stream config -bpsRate $streamRate
+    }
+    #stream Mode
+    # 0: continuous
+    # 1: end
+    # 2: advance
+    # 3: return to ID
+    if {$streamMode == 0} {
+        stream config -dma contPacket
+    } elseif {$streamMode == 1} {
+        stream config -numFrames $numFrames
+        stream config -dma stopStream
+    } elseif {$streamMode == 2} {
+        stream config -numFrames $numFrames
+        stream config -dma advance
+    } elsif {$streamMode == 3} {
+        stream config -numFrames $numFrames
+        stream config -dma gotoFirst
+        stream config -returnToId $ReturnId
+    }
+    stream config -sa $srcmac
+    stream config -da $dstmac
+    stream config -frameSizeType sizeAuto
+    stream config -patternType nonRepeat
+    stream config -dataPattern userpattern
+    stream config -pattern $pattern
+    stream config -frameType "08 00"
+    protocol setDefault
+    stream set $chasId $port $card $streamId
 }
 
 #start ixia stream
@@ -83,7 +152,7 @@ proc StartTransmit {cmdstr} {
         return -100
     }
     global ixia_ip
-    if {[ConnectToIxia $ixia_ip] != 0 ]} {
+    if {[ConnectToIxia $ixia_ip] != 0} {
         return -400
     }
     set chasId [GetIxiaChassID $ixia_ip]
@@ -91,7 +160,7 @@ proc StartTransmit {cmdstr} {
     foreach {x port card} $cmdlist {
         set portlist [list [list $chasId $port $card]]
         set res [ixStartTransmit portlist]
-        set res [expr $ret + $res]
+        set ret [expr $ret + $res]
     }
     return $ret
 }
@@ -104,7 +173,7 @@ proc StopTransmit {cmdstr} {
         return -100
     }
     global ixia_ip
-    if {[ConnectToIxia $ixia_ip] != 0 ]} {
+    if {[ConnectToIxia $ixia_ip] != 0} {
         return -400
     }
     set chasId [GetIxiaChassID $ixia_ip]
@@ -112,14 +181,120 @@ proc StopTransmit {cmdstr} {
     foreach {x port card} $cmdlist {
         set portlist [list [list $chasId $port $card]]
         set res [ixStopTransmit portlist]
-        set res [expr $ret + $res]
+        set ret [expr $ret + $res]
     }
     return $ret
 }
 
 #get ixia statistics
 proc GetStatistics {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 3} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set portlist [list [list $chasId $port $card] ]
+    set ret ""
+    set statlist [lrange $cmdlist 3 end]
+    foreach stat_type $statlist {
+        switch -exact $stat_type {
+            "txpps" {
+                stat getRate allStats $chasId $port $card
+                set statnum [stat cget -framesSent]
+                lappend ret $statnum
+            }
+            "txBps" {
+                stat getRate allStats $chasId $port $card
+                set statnum [stat cget -bytesSent]
+                lappend ret $statnum
+            }
+            "txbps" {
+                stat getRate allStats $chasId $port $card
+                set statnum [stat cget -bitsSent]
+                lappend ret $statnum
+            }
+            "txpackets" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -framesSent]
+                lappend ret $statnum
+            }
+            "txbytes" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -bytesSent]
+                lappend ret $statnum
+            }
+            "txbits" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -bitsSent]
+                lappend ret $statnum
+            }
+            "rxpps" {
+                stat getRate allStats $chasId $port $card
+                set statnum [stat cget -framesReceived]
+                lappend ret $statnum
+            }
+            "rxBps" {
+                stat getRate allStats $chasId $port $card
+                set statnum [stat cget -bytesReceived]
+                lappend ret $statnum
+            }
+            "rxbps" {
+                stat getRate allStats $chasId $port $card
+                set statnum [stat cget -bitsReceived]
+                lappend ret $statnum
+            }
+            "rxpackets" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -framesReceived]
+                lappend ret $statnum
+            }
+            "rxbytes" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -bytesReceived]
+                lappend ret $statnum
+            }
+            "rxbits" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -bitsReceived]
+                lappend ret $statnum
+            }
+            default {
 
+            }
+        }
+    }
+
+    set retstr [join $ret]
+    return $retstr
+}
+
+#clear ixia statistics
+proc ClearStatistics {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {[expr $cmdlen % 3] != 0} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set ret 0
+    foreach {x port card} $cmdlist {
+        set portlist [list [list $chasId $port $card]]
+        set res [ixClearStats portlist]
+        set ret [expr $ret + $res]
+    }
+    return $ret
 }
 
 #start capture
@@ -130,7 +305,7 @@ proc StartCapture {cmdstr} {
         return -100
     }
     global ixia_ip
-    if {[ConnectToIxia $ixia_ip] != 0 ]} {
+    if {[ConnectToIxia $ixia_ip] != 0} {
         return -400
     }
     set chasId [GetIxiaChassID $ixia_ip]
@@ -138,7 +313,7 @@ proc StartCapture {cmdstr} {
     foreach {x port card} $cmdlist {
         set portlist [list [list $chasId $port $card]]
         set res [ixStartCapture portlist]
-        set res [expr $ret + $res]
+        set ret [expr $ret + $res]
     }
     return $ret
 }
@@ -151,7 +326,7 @@ proc StopCapture {cmdstr} {
         return -100
     }
     global ixia_ip
-    if {[ConnectToIxia $ixia_ip] != 0 ]} {
+    if {[ConnectToIxia $ixia_ip] != 0} {
         return -400
     }
     set chasId [GetIxiaChassID $ixia_ip]
@@ -159,7 +334,7 @@ proc StopCapture {cmdstr} {
     foreach {x port card} $cmdlist {
         set portlist [list [list $chasId $port $card]]
         set res [ixStopCapture portlist]
-        set res [expr $ret + $res]
+        set ret [expr $ret + $res]
     }
     return $ret
 }
@@ -172,7 +347,7 @@ proc CheckTransmitDone {cmdstr} {
         return -100
     }
     global ixia_ip
-    if {[ConnectToIxia $ixia_ip] != 0 ]} {
+    if {[ConnectToIxia $ixia_ip] != 0} {
         return -400
     }
     set chasId [GetIxiaChassID $ixia_ip]
@@ -225,4 +400,3 @@ if {[ConnectToIxia $ixia_ip] == 0} {
     #code error -400: not connect to ixia
     exit -400
 }
-
