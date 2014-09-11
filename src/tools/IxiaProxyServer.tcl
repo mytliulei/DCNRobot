@@ -75,6 +75,9 @@ proc evalIxiaCmd {cmdstr} {
         "shutdown_proxy_server" {
             exit 0
         }
+        "set_port_mode_default" {
+            set ret [SetPortModeDefault $cmdstr]
+        }
         default {
             set ret None
         }
@@ -151,6 +154,28 @@ proc SetStreamFromHexstr {cmdstr} {
     stream config -frameType "08 00"
     protocol setDefault
     stream set $chasId $port $card $streamId
+    ixWriteConfigToHardware portlist -noProtocolServer
+}
+
+#set ixia port mode default
+proc SetPortModeDefault {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 3} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set portlist [list [list $chasId $port $card]]
+    set ret [port setModeDefaults $chasId $port $card]
+    ixWriteConfigToHardware portlist
+    return $ret
 }
 
 #start ixia stream
@@ -426,7 +451,7 @@ proc GetIxiaChassID {ip} {
     return $chasid
 }
 
-set bind_addr 127.0.0.1
+set bind_addr 0.0.0.0
 set bind_port 11917
 set ixia_version 4.10
 set ixia_ip 0.0.0.0
@@ -447,6 +472,7 @@ if {$argc > 2} {
 }
 
 if {[ConnectToIxia $ixia_ip] == 0} {
+    puts "ConnectToIxia success"
     socket -server ProcessConn -myaddr $bind_addr $bind_port
     vwait forever
 } else {
