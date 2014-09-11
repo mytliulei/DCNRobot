@@ -72,6 +72,9 @@ proc evalIxiaCmd {cmdstr} {
         "get_capture_packet_num"  {
             set ret [GetCapturePacketNum $cmdstr]
         }
+        "shutdown_proxy_server" {
+            exit 0
+        }
         default {
             set ret None
         }
