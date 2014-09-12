@@ -54,7 +54,6 @@ class Ixia(object):
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
         self._capture_filter = {}
-        self._pkt_streamlist_cmdstring = []
         self._start_proxy_server()
         self._start_ixia_client()
 
@@ -209,6 +208,9 @@ class Ixia(object):
     def start_capture(self,chasId,port,card,cap_filter=None):
         '''
         '''
+        capture_index = '%s %s' % (port,card)
+        self._capture_packet_buffer[capture_index] = []
+        self._capture_filter[capture_index] = cap_filter
         cmd = 'start_capture %s %s %s\n' % (chasId,port,card)
         try:
             self._ixia_client_handle.sendall(cmd)
@@ -216,8 +218,6 @@ class Ixia(object):
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
         ret = self._read_ret()
-        capture_index = '%s %s' % (port,card)
-        self._capture_filter[capture_index] = cap_filter
         return ret.strip()
 
     def stop_capture(self,chasId,port,card):
@@ -333,9 +333,31 @@ class Ixia(object):
     def build_stream(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
         '''
         '''
-        self._pkt_streamlist_cmdstring = self._pkt_class.get_packet_list()
+        streamStr = self._pkt_class.get_packet_list(ixiaFlag=1)
         self._pkt_class.empty_packet_list()
-        return self._pkt_streamlist_cmdstring
-        pass
+        cmd = 'set_stream_from_hexstr %s %s %s %s %s %s %s %s %s\n' % (chasId,port,card,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        ret = self._read_ret()
+        return ret.strip()
+
+    def get_statistics(self,chasId,port,card,statisType):
+        '''
+        args:
+        - statisType: txpps,txBps,txbps,txpackets,txbytes,txbits
+                      rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
+        '''
+        cmd = 'get_statistics %s %s %s %s\n' % (chasId,port,card,statisType)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        ret = self._read_ret()
+        retList = ret.strip().split()
+        return retList[0] if len(retList) == 1 else retList
 
 

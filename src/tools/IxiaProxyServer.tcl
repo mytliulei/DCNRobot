@@ -111,6 +111,7 @@ proc SetStreamFromHexstr {cmdstr} {
     set srcmac [string trim [join [split [string range $packet 18 35] "$"]]]
     set pattern [string trim [join [split [string range $packet 36 end] "$"]]]
     set portlist [list [list $chasId $port $card]]
+    set packetlen [llength [split $packet "$"]] + 4
     #ixia config
     stream setDefault
     #streamRateMode
@@ -147,7 +148,10 @@ proc SetStreamFromHexstr {cmdstr} {
     }
     stream config -sa $srcmac
     stream config -da $dstmac
-    stream config -frameSizeType sizeAuto
+    stream config -frameSizeType sizeFixed
+    stream config -frameSize $packetlen
+    stream config -frameSizeMIN $packetlen
+    stream config -frameSizeMAX $packetlen
     stream config -patternType nonRepeat
     stream config -dataPattern userpattern
     stream config -pattern $pattern
