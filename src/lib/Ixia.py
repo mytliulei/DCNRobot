@@ -54,6 +54,7 @@ class Ixia(object):
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
         self._capture_filter = {}
+        self._pkt_streamlist_cmdstring = []
         self._start_proxy_server()
         self._start_ixia_client()
 
@@ -314,7 +315,6 @@ class Ixia(object):
             packetList.append(ptk)
         self._capture_packet_buffer[capture_index] = packetList
 
-
     def _read_ret(self):
         '''
         '''
@@ -329,5 +329,13 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('read return from proxy server error')
+
+    def build_stream(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
+        '''
+        '''
+        self._pkt_streamlist_cmdstring = self._pkt_class.get_packet_list()
+        self._pkt_class.empty_packet_list()
+        return self._pkt_streamlist_cmdstring
+        pass
 
 
