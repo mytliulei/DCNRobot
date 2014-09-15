@@ -1,0 +1,12 @@
+STP Route Convergence test
+===========================
+
+The convergence test sets up the user defined topology, subsequently measuring the convergence time by using the first/last timestamps method or packet loss method.
+
+In this test, two Ixia receive (Rx) ports simulate STP bridges, Bridge 1 and Bridge 2. Both bridges are connected to a root bridge and emulate the same simulated LAN. However, the routes from Bridge 1 have smaller metrics (lower costs), which should cause the DUT to forward traffic over them instead of Bridge 2’s routes.
+
+The transmit port begins transmitting a stream of frames. The DUT should forward all the packets over the bridge with the lower metric (Bridge 1).
+
+After a time interval has elapsed, the receive port simulating Bridge 1 interrupt their routes. The DUT should detect that the lower cost route has gone down and switch traffic to Bridge 2’s routes. 
+
+

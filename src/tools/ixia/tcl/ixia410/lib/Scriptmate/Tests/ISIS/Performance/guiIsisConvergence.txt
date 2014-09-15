@@ -1,0 +1,11 @@
+OSPF Convergence test
+=====================
+
+This test tests the ability of an OSPF router to switch between preferred and less-preferred routes when the preferred routes are withdrawn and re-advertised. This test differs from the OSPF Route Convergence Test in the following ways:
+
+- It supports both IPv4 and IPv6 addressing
+- It supports OSPF version 2 and version 3
+- It allows you to specify which Link State Advertisements (LSAs) are advertised and withdrawn
+- It does not use packet loss to determine convergence time (though it does report the number of packets lost)
+
+In this test, two Ixia receive (Rx) ports simulate OSPF routers. Both routers advertise the same route prefixes to the simulated network. However, the routes advertised by the first transmit/receive port pair have smaller metrics (lower costs), which should cause the DUT to forward traffic over them instead of the routes advertised by the second port. 

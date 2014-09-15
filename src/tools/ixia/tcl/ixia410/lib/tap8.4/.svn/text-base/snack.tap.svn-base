@@ -1,0 +1,30 @@
+format  {TclDevKit Project File}
+fmtver  2.0
+fmttool {TclDevKit TclApp PackageDefinition} 2.5
+
+##  Saved at : Thu Nov 28 05:18:32 PM PST 2002
+##  By       : andreask@pliers.activestate.com
+##
+##  Generated manually
+
+########
+#####
+###
+##
+#
+
+Package {snack 2.2}
+Platform win32-ix86
+Base    @TDK_LIBDIR@/snack2.2
+Path    pkgIndex.tcl
+Path    snack.tcl
+Path    libsound.dll
+Path    libsnacksphere.dll
+Path    libsnackogg.dll
+Path    libsnack.dll
+
+#
+##
+###
+#####
+########

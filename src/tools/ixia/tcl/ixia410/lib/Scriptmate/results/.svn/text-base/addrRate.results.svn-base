@@ -1,0 +1,58 @@
+Tested by             : IXIA	- ixos 4.10.250.4 EA               
+                        IxRouter 4.10.3.83                      
+                        IxScriptMate 5.20.GA                    
+                        Copyright ? 1997 - 2005 IXIA            
+
+Product Name          : Your switch/router name here            
+Version Number        : Your firmware version here              
+Serial Number         : Your switch/router serial number here   
+User Name             : Your name here                          
+Date & Time           : Thursday, Feb 28, 2008    03:52:20 PM   
+
+Test Name/Type        : RFC 2889 Address Learning Rate Test     
+Protocol              : MAC(Ethernet Type 08 00)                
+Number of Trials      : 1                                       
+Estimated Run Time    : 00:01:00 sec                             
+
+Chassis Chain         : 172.16.1.251                            
+Chassis Id(s)         : 1                                       
+
+Theoretical maximum Frame Rates (frames/second) for different frame sizes (bytes):
+
+Speed             	        64	       128	       256	       512	      1024	      1280	      1518
+------------------    	    ----------------------------------------------------------------------------------------------------------
+10   Mbps         	     14881	      8446	      4529	      2350	      1198	       962	       813
+100  Mbps         	    148810	     84460	     45290	     23497	     11973	      9616	      8128
+1000 Mbps         	   1488096	    844595	    452899	    234963	    119732	     96154	     81275
+10000 Mbps        	  14880952	   8445946	   4528986	   2349625	   1197318	    961539	    812744
+155  Mbps (Oc-3)  	    288000	    145116	     72840	     36491	     18263	     14614	     12324
+622  Mbps (Oc-12) 	   1152000	    580465	    291362	    145965	     73054	     58454	     49296
+2488 Mbps (Oc-48) 	   4608000	   2321860	   1165447	    583860	    292215	    233817	    197182
+9952 Mbps (Oc-192)	  18432000	   9287442	   4661790	   2335439	   1168859	    935270	    788730
+
+======================================================================================================================================
+
+
+- Port Configuration - One-to-Many
+==================================
+
+chassis.card.port   	Speed 	Duplex
+--------------------------------------
+Group1		1.12.1              	100   	FULL  		1.12.2              	100   	FULL  	
+                                      				1.12.3              	100   	FULL  	
+                                      				1.12.4              	100   	FULL  	
+
+
+Trial 1:
+========
+
+Frame Size                  64    128    256    512   1024   1280   1518 
+-------------------------------------------------------------------------
+1.12.1 LearnRate(fps)   446430 253377 135870  70488  35919  28845  24381 
+
+
+-------------------------------------------------------------------------
+       TotalTxFrames    163830 163830 163830 163830 163830 163830 163830 
+       TotalRxFrames    163830 163830 163830 163830 163830 163830 163830 
+       TableSize         16383  16383  16383  16383  16383  16383  16383 
+

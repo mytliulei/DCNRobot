@@ -10,7 +10,7 @@
 #mail       :   liuleic@digitalchina.com
 
 
-package requires IxTclHal
+package require IxTclHal
 
 
 #process client connection
@@ -29,8 +29,11 @@ proc IxiaCmd {chan} {
     } else {
         #eval ixia cmd
         if {$line != ""} {
-            cmdret = evalIxiaCmd($line)
+            set cmdret [evalIxiaCmd $line]
             puts $chan $cmdret
+            if {$cmdret == -10000} {
+                exit 0
+            }
         }
     }
 }
@@ -73,13 +76,13 @@ proc evalIxiaCmd {cmdstr} {
             set ret [GetCapturePacketNum $cmdstr]
         }
         "shutdown_proxy_server" {
-            exit 0
+            set ret [ShutdownProxyserver]
         }
         "set_port_mode_default" {
             set ret [SetPortModeDefault $cmdstr]
         }
         default {
-            set ret None
+            set ret -1000
         }
     }
     return $ret
@@ -111,7 +114,7 @@ proc SetStreamFromHexstr {cmdstr} {
     set srcmac [string trim [join [split [string range $packet 18 35] "$"]]]
     set pattern [string trim [join [split [string range $packet 36 end] "$"]]]
     set portlist [list [list $chasId $port $card]]
-    set packetlen [llength [split $packet "$"]] + 4
+    set packetlen [expr [llength [split $packet "$"]] + 4]
     #ixia config
     stream setDefault
     #streamRateMode
@@ -141,7 +144,7 @@ proc SetStreamFromHexstr {cmdstr} {
     } elseif {$streamMode == 2} {
         stream config -numFrames $numFrames
         stream config -dma advance
-    } elsif {$streamMode == 3} {
+    } elseif {$streamMode == 3} {
         stream config -numFrames $numFrames
         stream config -dma gotoFirst
         stream config -returnToId $ReturnId
@@ -149,7 +152,7 @@ proc SetStreamFromHexstr {cmdstr} {
     stream config -sa $srcmac
     stream config -da $dstmac
     stream config -frameSizeType sizeFixed
-    stream config -frameSize $packetlen
+    stream config -framesize $packetlen
     stream config -frameSizeMIN $packetlen
     stream config -frameSizeMAX $packetlen
     stream config -patternType nonRepeat
@@ -410,6 +413,11 @@ proc GetCapturePacket {cmdstr} {
     set card [lindex $cmdlist 2]
     set fromPacket [lindex $cmdlist 3]
     set toPacket [lindex $cmdlist 4]
+    capture get $chasId $port $card
+    set capnum [capture cget -nPackets]
+    if {$capnum < $toPacket} {
+        set toPacket $capnum
+    }
     captureBuffer get $chasId $port $card $fromPacket $toPacket
     set ret ""
     for {set i $fromPacket} {$i <= $toPacket} {incr i} {
@@ -453,6 +461,12 @@ proc GetIxiaChassID {ip} {
     chassis get $ip
     set chasid [chassis cget -id]
     return $chasid
+}
+
+proc ShutdownProxyserver {} {
+    global ixia_ip
+    ixDisconnectFromChassis $ixia_ip
+    return -10000
 }
 
 set bind_addr 0.0.0.0

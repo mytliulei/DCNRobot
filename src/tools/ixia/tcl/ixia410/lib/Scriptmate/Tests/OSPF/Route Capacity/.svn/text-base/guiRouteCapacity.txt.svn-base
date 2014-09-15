@@ -1,0 +1,8 @@
+OSPF Route Capacity test
+========================
+
+This test finds the number of routes that an OSPF DUT can sustain. This test begins with the receive (Rx) port advertising the route prefixes of a simulated OSPF network. The test then sends a single packet to an address in each of the advertised route prefixes. 
+
+If the DUT forwards all the transmitted packets within the loss tolerance, the test increases the number of advertised route prefixes and repeats. The test continues until the DUT fails to handle the advertised number of route prefixes.
+
+If you specified more than one trial, the test starts the next trial using the same frame size. After the trials for that frame size are complete, the test either ends or, if you specified more than one frame size, restarts with the next larger frame size.

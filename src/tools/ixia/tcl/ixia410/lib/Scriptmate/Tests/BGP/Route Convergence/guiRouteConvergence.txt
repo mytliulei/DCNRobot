@@ -1,0 +1,14 @@
+BGP Route Convergence test
+==========================
+
+This tests the ability of a DUT to switch between preferred and less-preferred routes when the preferred routes are withdrawn and re-advertised.
+
+The test establishes a BGP session and then polls the DUT once per second for an acknowledgement that the DUT has established its own BGP session. The test then advertises the route prefixes of the simulated BGP network. 
+
+After the test determines that the receive ports have retained all the routes, the test transmits one packet to each route. The DUT should forward all the packets over the route with the shorter AS Path (the preferred route). The test then withdraws the preferred route. The DUT should detect that the preferred route has gone down and switch traffic to the less-preferred route. 
+
+The preferred routes are then re-advertised. The DUT should again detect a change and re-route traffic back to the preferred route.
+
+The test continues until it has transmitted long enough to complete all the specified withdraw-and-advertise cycles. It then gathers statistics on the number of packets transmitted and the number lost. After gathering statistics, it stops its BGP session, waits for DELAY to elapse, and prints the results. 
+
+If you specified more than one trial, the test restarts using the same frame size. After the trials for that frame size are complete, the test either ends or, if you specified more than one frame size, the restarts with the next larger frame size.

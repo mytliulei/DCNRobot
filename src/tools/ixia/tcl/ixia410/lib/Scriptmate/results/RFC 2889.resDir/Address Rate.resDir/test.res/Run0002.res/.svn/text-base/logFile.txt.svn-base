@@ -1,0 +1,216 @@
+>>>>>>> Start Time: Thursday, Feb 28, 2008    03:46:44 PM
+
+
+File being sourced : c:/docume~1/admini~1/locals~1/temp/test.tcl
+
+
+
+  RFC2889 Address Rate test
+  Copyright © 1997 - 2005 by IXIA
+  All Rights Reserved.
+  ............................................
+
+
+ixos 4.10.250.4 EA
+IxRouter 4.10.3.83
+IxScriptMate 5.20.GA
+
+Connecting to Chassis 1: 172.16.1.251 ...
+map add 1 12 1 1 12 2
+map add 1 12 1 1 12 3
+map add 1 12 1 1 12 4
+
+Configuring all ports ...
+Setting Port speeds, modes and addresses...
+logout map {{{1 12 1}} {{1 12 2} {1 12 3} {1 12 4}}}
+logout setDirName C:/Program Files/Ixia/TclScripts/lib/Scriptmate/Results/RFC 2889.resDir/Address Rate.resDir/test.res/Run0002.res
+Putting ports into loopback.
+Getting ports out of loopback.
+
+===== RFC 2889 Address Learning Rate Test, Protocol: MAC =====
+Checking link states on ports ...
+Links on all ports are up.
+logout startRealTime
+logout openProgressMeter
+******* TRIAL 1 - RFC 2889 Address Learning Rate Test *******
+logout marker  -- Trial:1 FS:64 --
+Assigning incrementing addresses on all ports ...
+1.12.1 ====>  MAC: 00 0c 01 00 00 00
+1.12.2 ====>  MAC: 00 0c 01 00 00 01
+1.12.3 ====>  MAC: 00 0c 01 00 15 57
+1.12.4 ====>  MAC: 00 0c 01 00 2a ac
+
+ITERATION 1, framesize: 64, RFC 2889 Address Learning Rate Test --> Sending learn frames at 148810 fps/port
+Configuring learn frames ...
+Resetting Statistics ...
+Sending learning frames to all ports...
+Done after 1 seconds.
+
+Learning frames sent...
+Learning phase complete - sending validation frames
+Configuring 1.12.1 -> 1.12.2, number of addresses: 5462.
+Configuring 1.12.1 -> 1.12.3, number of addresses: 5461.
+Configuring 1.12.1 -> 1.12.4, number of addresses: 5461.
+Transmitting frames for 1 seconds
+Done after 1 seconds.
+
+Waiting for Residual frames to settle down for 2 seconds
+Waited for 1 of 2 seconds
+Waited for 2 of 2 seconds
+Collecting transmit statistics ...
+1.12.1:  Total frames transmitted: 163840
+Collecting statUserDefinedStat1 statistics ...
+Collecting statUserDefinedStat2 statistics ...
+Flooding detected: 10 frames received on 1.12.2
+Flooding detected: 10 frames received on 1.12.3
+Aging out address table for 30 seconds
+
+Putting ports into loopback.
+Getting ports out of loopback.
+
+ITERATION 2, framesize: 64, RFC 2889 Address Learning Rate Test --> Sending learn frames at 74405 fps/port
+Configuring learn frames ...
+Resetting Statistics ...
+Sending learning frames to all ports...
+Done after 1 seconds.
+
+Learning frames sent...
+Learning phase complete - sending validation frames
+Configuring 1.12.1 -> 1.12.2, number of addresses: 5462.
+Configuring 1.12.1 -> 1.12.3, number of addresses: 5461.
+Configuring 1.12.1 -> 1.12.4, number of addresses: 5461.
+Transmitting frames for 1 seconds
+Done after 1 seconds.
+
+Waiting for Residual frames to settle down for 2 seconds
+Waited for 1 of 2 seconds
+Waited for 2 of 2 seconds
+Collecting transmit statistics ...
+1.12.1:  Total frames transmitted: 163840
+Collecting statUserDefinedStat1 statistics ...
+Collecting statUserDefinedStat2 statistics ...
+Flooding detected: 10 frames received on 1.12.2
+Flooding detected: 10 frames received on 1.12.3
+Aging out address table for 30 seconds
+
+Putting ports into loopback.
+Getting ports out of loopback.
+
+ITERATION 3, framesize: 64, RFC 2889 Address Learning Rate Test --> Sending learn frames at 37202 fps/port
+Configuring learn frames ...
+Resetting Statistics ...
+Sending learning frames to all ports...
+Done after 1 seconds.
+
+Learning frames sent...
+Learning phase complete - sending validation frames
+Configuring 1.12.1 -> 1.12.2, number of addresses: 5462.
+Configuring 1.12.1 -> 1.12.3, number of addresses: 5461.
+Configuring 1.12.1 -> 1.12.4, number of addresses: 5461.
+Transmitting frames for 1 seconds
+Done after 1 seconds.
+
+Waiting for Residual frames to settle down for 2 seconds
+Waited for 1 of 2 seconds
+Waited for 2 of 2 seconds
+Collecting transmit statistics ...
+1.12.1:  Total frames transmitted: 163840
+Collecting statUserDefinedStat1 statistics ...
+Collecting statUserDefinedStat2 statistics ...
+Flooding detected: 10 frames received on 1.12.2
+Flooding detected: 10 frames received on 1.12.3
+Aging out address table for 30 seconds
+
+Putting ports into loopback.
+Getting ports out of loopback.
+
+ITERATION 4, framesize: 64, RFC 2889 Address Learning Rate Test --> Sending learn frames at 18601 fps/port
+Configuring learn frames ...
+Resetting Statistics ...
+Sending learning frames to all ports...
+Done after 1 seconds.
+
+Learning frames sent...
+Learning phase complete - sending validation frames
+Configuring 1.12.1 -> 1.12.2, number of addresses: 5462.
+Configuring 1.12.1 -> 1.12.3, number of addresses: 5461.
+Configuring 1.12.1 -> 1.12.4, number of addresses: 5461.
+Transmitting frames for 1 seconds
+Done after 1 seconds.
+
+Waiting for Residual frames to settle down for 2 seconds
+Waited for 1 of 2 seconds
+Waited for 2 of 2 seconds
+Collecting transmit statistics ...
+1.12.1:  Total frames transmitted: 163840
+Collecting statUserDefinedStat1 statistics ...
+Collecting statUserDefinedStat2 statistics ...
+Flooding detected: 10 frames received on 1.12.2
+Flooding detected: 10 frames received on 1.12.3
+Aging out address table for 30 seconds
+
+Putting ports into loopback.
+Getting ports out of loopback.
+
+ITERATION 5, framesize: 64, RFC 2889 Address Learning Rate Test --> Sending learn frames at 9300 fps/port
+Configuring learn frames ...
+Resetting Statistics ...
+Sending learning frames to all ports...
+Done after 1 seconds.
+
+Learning frames sent...
+Learning phase complete - sending validation frames
+Configuring 1.12.1 -> 1.12.2, number of addresses: 5462.
+Configuring 1.12.1 -> 1.12.3, number of addresses: 5461.
+Configuring 1.12.1 -> 1.12.4, number of addresses: 5461.
+Transmitting frames for 1 seconds
+Done after 1 seconds.
+
+Waiting for Residual frames to settle down for 2 seconds
+Waited for 1 of 2 seconds
+Waited for 2 of 2 seconds
+Collecting transmit statistics ...
+1.12.1:  Total frames transmitted: 163840
+Collecting statUserDefinedStat1 statistics ...
+Collecting statUserDefinedStat2 statistics ...
+Flooding detected: 10 frames received on 1.12.2
+Flooding detected: 10 frames received on 1.12.3
+Aging out address table for 30 seconds
+
+Putting ports into loopback.
+Getting ports out of loopback.
+
+ITERATION 6, framesize: 64, RFC 2889 Address Learning Rate Test --> Sending learn frames at 4650 fps/port
+Configuring learn frames ...
+Resetting Statistics ...
+Sending learning frames to all ports...
+logout setProgressMeter 0.5
+logout setProgressMeter 1.0
+Done after 2 seconds.
+
+Learning frames sent...
+Learning phase complete - sending validation frames
+Configuring 1.12.1 -> 1.12.2, number of addresses: 5462.
+Configuring 1.12.1 -> 1.12.3, number of addresses: 5461.
+Configuring 1.12.1 -> 1.12.4, number of addresses: 5461.
+Transmitting frames for 1 seconds
+Done after 1 seconds.
+
+Waiting for Residual frames to settle down for 2 seconds
+Waited for 1 of 2 seconds
+Waited for 2 of 2 seconds
+Collecting transmit statistics ...
+1.12.1:  Total frames transmitted: 163840
+Collecting statUserDefinedStat1 statistics ...
+Collecting statUserDefinedStat2 statistics ...
+Flooding detected: 10 frames received on 1.12.2
+Flooding detected: 10 frames received on 1.12.3
+Aging out address table for 30 seconds
+
+Putting ports into loopback.
+Getting ports out of loopback.
+
+ITERATION 7, framesize: 64, RFC 2889 Address Learning Rate Test --> Sending learn frames at 2325 fps/port
+
+>>>>>>> End Time: Thursday, Feb 28, 2008    03:52:03 PM
+Actual Duration of Test: 00:05:19 seconds

@@ -1,0 +1,8 @@
+Broadband Back to Back test
+===========================
+
+The broadband performance test suite is used to emulate multiple hosts (PCs) connecting to access devices, such as cable modem, DSL modem or wireless modem. An additional Ixia port will  be used to connect the aggregation device (DSLAM, CMTS, base station or other broadband device) that terminates the user traffic. Traffic will then be transmitted to characterize the data plane performance for throughput, latency, sequence error, jitter and data error measurements.
+
+The Back to Back test is designed to measure the maximum back to back frames without packet loss. A binary search with maximum offered load will be applied. 
+
+The number of sent frames will be increased or reduced to find the maximum back-to-back frame count without packet loss

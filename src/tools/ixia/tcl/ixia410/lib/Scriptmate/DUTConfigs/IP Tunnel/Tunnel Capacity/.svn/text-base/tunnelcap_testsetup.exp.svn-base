@@ -1,0 +1,90 @@
+#Copyright (c) Ixia 2003-2005
+#All rights reserved.
+
+
+
+#------------------------------------------------------------------------------ 
+# DESCRIPTION : This script sets up the DUT for IP Tunnel Capacity test.
+#   Two DUT interfaces are configured with the values defined in common script.               
+#               
+#
+# ARGUMENTS   : 
+#        DUT_HOSTNAME - This hostame of the DUT.
+#-------------------------------------------------------------------------------
+
+# Include common functions
+#--------------------------
+set SCRIPT_DIR [file dirname [file dirname $argv0]];
+
+source "$SCRIPT_DIR/iptunnel_common.tcl"
+
+# Validating script arguments
+#----------------------------
+ if {[llength $argv] < 1} {
+  puts \
+    "ERROR: Invalid number of arguments\
+   \nUSAGE: script\
+   \n       DUT_HOSTNAME"
+    exit
+}
+
+# Obtaining script arguments
+#----------------------------
+
+  set DUT_HOSTNAME             [lindex $argv 0]  
+
+
+  
+# Test Specific requirements(e.g. interface mapping)
+#---------------------------------------------------
+
+# Connecting to the DUT
+#------------------------------------------------------
+
+Connect $DUT_HOSTNAME $DUT_USER_PASSWORD
+
+# Configure test specific information
+#-------------------------------------
+    expect {
+        $DUT_PROMPT {
+          send "conf t\n"
+          send "ipv6 unicast-routing\n"
+    
+          send "interface $DUT_INTERFACE_0\n"
+          send "ipv6 enable\n"
+          send "ipv6 address $DIFACE0_IPV6_ADDRESS\n"
+          send "no shut\n"
+    
+          send "interface $DUT_INTERFACE_1\n"
+          send "ip address $DIFACE1_IP_ADDRESS $DIFACE1_SUBNET_MASK\n"
+          send "no shut\n"
+    
+          send "interface $DUT_INTERFACE_TUNNEL_1\n"
+          send "tunnel source $DIFACE1_IP_ADDRESS\n"
+          send "tunnel destination $DIFACETU1_DST\n"
+          send "ipv6 enable\n"
+          send "tunnel mode $DIFACETU1_MODE\n"
+          send "ipv6 address $DIFACETU1_IPV6_ADDRESS\n"
+    
+          send "end\n"
+
+        }
+    }
+
+
+# Exiting router configuration
+# ----------------------------
+
+  send "exit\n"
+  expect $DUT_PROMPT 
+
+# Saving and quitting
+#--------------------
+
+  ExitDut
+
+# End of File
+#-------------  
+
+ 
+

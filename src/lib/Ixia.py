@@ -27,11 +27,10 @@ class Ixia(object):
     '''
     ROBOT_LIBRARY_SCOPE = 'TEST_SUITE'
     ROBOT_LIBRARY_VERSION = get_version()
-    def __init__(self,ixia_ip,listen_port=11917):
+    def __init__(self):
         ''''''
-        self._ixia_tcl_path = os.path.join(os.path.dirname(os.getcwd()),'tools','ixia','tcl')
-        self._proxy_server_path = os.path.join(os.path.dirname(os.getcwd()),'tools','IxiaProxyServer.tcl')
-        self._ixia_ip = ixia_ip
+        self._ixia_tcl_path = os.path.join(os.path.dirname(os.getcwd()),'src','tools','ixia','tcl')
+        self._proxy_server_path = os.path.join(os.path.dirname(os.getcwd()),'src','tools','IxiaProxyServer.tcl')
         self._ixia_version = {
         '172.16.1.252':'5.60',
         '172.16.11.253':'4.10',
@@ -44,7 +43,6 @@ class Ixia(object):
         '5.60':os.path.join(self._ixia_tcl_path,'ixia560','bin'),
         'default':os.path.join(self._ixia_tcl_path,'ixia410','bin')
         }
-        self._proxy_server_port = listen_port
         self._proxy_server_host = '127.0.0.1'
         self._pkt_streamlist_hexstring = []
         self._pkt_kws = self._lib_kws = None
@@ -54,6 +52,12 @@ class Ixia(object):
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
         self._capture_filter = {}
+
+    def init_ixia(self,ixia_ip,listen_port=11917):
+        '''
+        '''
+        self._ixia_ip = ixia_ip
+        self._proxy_server_port = listen_port
         self._start_proxy_server()
         self._start_ixia_client()
 

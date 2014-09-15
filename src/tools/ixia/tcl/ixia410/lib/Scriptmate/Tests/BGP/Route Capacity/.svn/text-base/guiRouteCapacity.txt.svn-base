@@ -1,0 +1,11 @@
+BGP Route Capacity test
+=======================
+
+This test determines how many routes the DUT can store in its routing table.
+
+The test advertises the route prefixes of a simulated BGP network. The test then transmits one packet to each route in the simulated network. After transmitting all the frames, the test collects statistics on how many of the transmitted packets the DUT forwarded to the receive port and calculates the number of packets lost by the DUT. 
+
+If the DUT forwarded all the transmitted packets within tolerance, then the test increases the number of advertised route prefixes and repeats. Each time the test repeats, it allows the DUT additional time to absorb the routes before it begins transmitting.
+
+The test continues until the DUT fails to handle the advertised number of route prefixes. If you specified more than one trial, the test restarts using the same frame size. After the trials for that frame size are complete, the test either ends or, if you specified more than one frame size, the restarts with the next larger frame size.
+

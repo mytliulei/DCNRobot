@@ -243,7 +243,7 @@ Get Debug Output Until Expect
     Telnet.Set Timeout    ${telneTimeout}
     ${output}=    Set Variable    ${EMPTY}
     :FOR    ${index}    IN RANGE    0    ${timeout}
-    \    ${ioutput}=    Telnet.Read Lazy
+    \    ${ioutput}=    Telnet.My Read Lazy
     \    ${output}=    Evaluate    '''${ioutput}'''+'''${output}'''
     \    ${matchFlag}=    Tools.Is Match From String    ${output}    ${expect}
     \    Run Keyword If    ${matchFlag}    Exit For Loop
@@ -292,7 +292,7 @@ Get Debug Output Until Timeout
     ${telneTimeout}=    Evaluate    ${timeout} + 60
     Telnet.Set Timeout    ${telneTimeout}
     Sleep    ${timeout}
-    ${output}=    Telnet.Read Lazy
+    ${output}=    Telnet.My Read Lazy
     Telnet.Set Timeout    ${sw_timeout}
     Log    ${output}
     [Return]    ${output}
