@@ -317,7 +317,7 @@ class MyTelnet(object):
         if self._conn_kws is None:
             conn = self._get_connection()
             excluded = [name for name in dir(telnetlib.Telnet())
-                        if name not in ['write', 'read', 'read_until', 'read_very_lazy', 'read_lazy']]
+                        if name not in ['write', 'read', 'read_until']]
             self._conn_kws = self._get_keywords(conn, excluded)
         return self._conn_kws
 
@@ -844,14 +844,14 @@ class MyTelnetConnection(telnetlib.Telnet):
         self._log(output, loglevel)
         return output
 
-    def read_very_lazy(self,loglevel=None):
+    def my_read_very_lazy(self,loglevel=None):
         """Reads everything that is already in the cooked queue (very lazy). It will return right now even if output is null
 
         Read output is both returned and logged. See `Logging` section for more
         information about log levels.
         """
         self._verify_connection()
-        output = super(MyTelnetConnection,self).read_very_lazy()
+        output = telnetlib.Telnet.read_very_lazy(self)
         if self._terminal_emulator:
             self._terminal_emulator.feed(output)
             output = self._terminal_emulator.read()
@@ -860,14 +860,14 @@ class MyTelnetConnection(telnetlib.Telnet):
         self._log(output, loglevel)
         return output
 
-    def read_lazy(self,loglevel=None):
+    def my_read_lazy(self,loglevel=None):
         """Reads everything that is already in the queues (lazy). It will process data and return right now even if output is null
 
         Read output is both returned and logged. See `Logging` section for more
         information about log levels.
         """
         self._verify_connection()
-        output = super(MyTelnetConnection,self).read_lazy()
+        output = telnetlib.Telnet.read_lazy(self)
         if self._terminal_emulator:
             self._terminal_emulator.feed(output)
             output = self._terminal_emulator.read()
