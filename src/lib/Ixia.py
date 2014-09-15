@@ -39,10 +39,10 @@ class Ixia(object):
         'default':'4.10'
         }
         self._tcl_path = {
-        '4.10':os.path.join(self._ixia_tcl_path,'410','bin'),
-        '5.50':os.path.join(self._ixia_tcl_path,'550','bin'),
-        '5.60':os.path.join(self._ixia_tcl_path,'560','bin'),
-        'default':os.path.join(self._ixia_tcl_path,'410','bin')
+        '4.10':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
+        '5.50':os.path.join(self._ixia_tcl_path,'ixia550','bin'),
+        '5.60':os.path.join(self._ixia_tcl_path,'ixia560','bin'),
+        'default':os.path.join(self._ixia_tcl_path,'ixia410','bin')
         }
         self._proxy_server_port = listen_port
         self._proxy_server_host = '127.0.0.1'
@@ -59,8 +59,7 @@ class Ixia(object):
 
     def __del__(self):
         ''''''
-        self._close_ixia_client()
-        self._close_proxy_server()
+        self.shutdown_proxy_server()
 
     def get_keyword_names(self):
         return self._get_library_keywords() + self._get_pkt_keywords()
@@ -94,7 +93,7 @@ class Ixia(object):
         # handlers when it imports the library.
         return getattr(self._pkt_class, name)
 
-    def get_stream_from_pcapfile(self,filename):
+    def _get_stream_from_pcapfile(self,filename):
         '''read pcap file and return bytes stream'''
         if not os.path.isfile(filename):
             logger.info('%s is not a file' % filename)
@@ -141,12 +140,18 @@ class Ixia(object):
     def _close_proxy_server(self):
         '''
         '''
+        shut = False
         if self._proxy_server_process:
             try:
-                self._proxy_server_process.terminate()
+                cmd = 'shutdown_proxy_server\n'
+                self._ixia_client_handle.sendall(cmd)
+                ret = self._read_ret()
+                if ret.strip() == '-10000':
+                    shut = True
             except Exception:
                 pass
             self._proxy_server_process = None
+            return shut
 
     def _is_proxyserver_live(self):
         '''
@@ -244,7 +249,7 @@ class Ixia(object):
         ret = self._read_ret()
         return ret.strip()
 
-    def check_transmit_done(self,chasId,port,card):
+    def _check_transmit_done(self,chasId,port,card):
         '''
         '''
         cmd = 'check_transmit_done %s %s %s\n' % (chasId,port,card)
@@ -283,7 +288,9 @@ class Ixia(object):
     def shutdown_proxy_server(self):
         '''
         '''
-        self._close_proxy_server()
+        shut = self._close_proxy_server()
+        self._close_ixia_client()
+        return shut
 
     def _get_capture_packet(self,chasId,port,card,packet_from,packet_to):
         '''
