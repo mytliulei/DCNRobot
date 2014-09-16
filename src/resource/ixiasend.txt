@@ -1,0 +1,151 @@
+*** Settings ***
+Library           ../lib/Ixia.py
+
+*** Keywords ***
+Build Packet
+    [Arguments]    ${length}=${128}    ${packetstr}=${None}
+    ${rc}=    Ixia.Build Packet    ${length}    ${packetstr}
+    [Return]    ${rc}
+
+Build Ether
+    [Arguments]    ${dst}=ff:ff:ff:ff:ff:ff    ${src}=00:00:00:00:00:00    ${typeid}=${None}
+    [Documentation]    build Ethernet field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - dst \ \ \ : Dest Mac \ \ \ = ff:ff:ff:ff:ff:ff
+    ...    \ \ \ \ \ \ - src \ \ \ : Source Mac \ = 00:00:00:00:00:00
+    ...    \ \ \ \ \ - typeid : type \ \ \ \ \ \ \ = None
+    ...
+    ...    \ \ \ return:
+    ...    \ \ packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Ether | dst=00:00:00:00:00:01 | src=00:00:00:00:00:02 |
+    ...    | Build Ether | src=00:00:00:00:00:02 |
+    ...    | Build Ether | dst=00:00:00:00:00:02 |
+    ${plen}=    Ixia.Build Ether    ${dst}    ${src}    ${typeid}
+    [Return]    ${plen}
+
+Build Arp
+    [Arguments]    ${hwtype}=${0x1}    ${ptype}=${0x800}    ${hwlen}=${6}    ${plen}=${4}    ${op}=${1}    ${hwsrc}=00:00:00:00:00:00
+    ...    ${psrc}=0.0.0.0    ${hwdst}=00:00:00:00:00:00    ${pdst}=0.0.0.0
+    [Documentation]    build arp field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - hwtype = 0x1
+    ...    \ \ \ \ \ \ - ptype \ = 0x800
+    ...    \ \ \ \ \ - hwlen \ = 6
+    ...    \ \ \ \ - plen \ \ = 4
+    ...    \ \ \ - op \ \ \ \ = 1
+    ...    \ \ - hwsrc \ = 00:00:00:00:00:00
+    ...    \ - psrc \ \ = 0.0.0.0
+    ...    - hwdst \ = 00:00:00:00:00:00
+    ...    - pdst \ \ = 0.0.0.0
+    ...
+    ...    return:
+    ...    packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Arp | hwsrc=00:00:00:00:00:01 | psrc=10.1.1.1 | hwdst=10.1.1.254 |
+    ...    | Build Arp | op=${2} | hwsrc=00:00:00:00:00:02 | psrc=10.1.1.254 | pdst=10.1.1.1 |
+    ${packetlen}=    Ixia.Build Arp    ${hwtype}    ${ptype}    ${hwlen}    ${op}    ${hwsrc}
+    ...    ${psrc}    ${hwdst}    ${pdst}    ${plen}
+    [Return]    ${packetlen}
+
+Build Ip
+    [Arguments]    ${version}=${4}    ${ihl}=${None}    ${tos}=${0x0}    ${iplen}=${None}    ${iden}=${0}    ${flags}=${0}
+    ...    ${frag}=${0}    ${ttl}=${64}    ${proto}=${0}    ${chksum}=${None}    ${src}=0.0.0.0    ${dst}=0.0.0.0
+    ...    ${options}=${None}
+    [Documentation]    build ip field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - version = 4
+    ...    \ \ \ \ \ \ - ihl \ \ \ \ = None
+    ...    \ \ \ \ \ - tos \ \ \ \ = 0x0
+    ...    \ \ \ \ - iplen \ \ = None
+    ...    \ \ \ - iden \ \ \ = 0
+    ...    \ \ - flags \ \ = 0
+    ...    \ - frag \ \ \ = 0
+    ...    - ttl \ \ \ \ = 64
+    ...    - proto \ \ = 0
+    ...    - chksum \ = None
+    ...    - src \ \ \ \ = 0.0.0.0
+    ...    - dst \ \ \ \ = 0.0.0.0
+    ...    - options = None \ #packets list
+    ...
+    ...    return:
+    ...    packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Ip | src=10.1.1.1 | dst=10.1.1.254 |
+    ${packetlen}=    Ixia.Build Ip    ${version}    ${ihl}    ${tos}    ${iplen}    ${iden}
+    ...    ${flags}    ${frag}    ${ttl}    ${proto}    ${chksum}    ${src}
+    ...    ${dst}    ${options}
+    [Return]    ${packetlen}
+
+Build Dot1Q
+    [Arguments]    ${prio}=${0}    ${cfi}=${0}    ${vlan}=${1}    ${typeid}=${None}
+    [Documentation]    build 802.1Q field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - prio \ \ \ = 0
+    ...    \ \ \ \ \ \ - cfi \ \ \ \ \ = 0
+    ...    \ \ \ \ \ - vlan \ \ \ = 1
+    ...    \ \ \ \ - typeid \ = None
+    ...
+    ...    \ \ return:
+    ...    \ packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Dot1q | prio=${7} | vlan=${10} |
+    ${packetlen}=    Ixia.Build Dot1q    ${prio}    ${cfi}    ${vlan}    ${typeid}
+    [Return]    ${packetlen}
+
+Build Payload
+    [Arguments]    ${payload}
+    [Documentation]    build payload field packet
+    ...
+    ...    \ \ \ \ \ \ \ \ args:
+    ...    \ \ \ \ \ \ \ - payload \ = None; \ filled automatically using \x00; if you fill manually,please assinged using hexstring,and length para is invlaid
+    ...
+    ...    \ \ \ \ \ return:
+    ...    \ \ \ \ packet field length
+    ...
+    ...    \ \ exapmle:
+    ...    \ | Build Payload | 000102030405 |
+    ${packetlen}=    Ixia.Build Payload    ${payload}
+    [Return]    ${packetlen}
+
+Connect To Ixia
+    [Arguments]    ${address}
+    ${rc}=    Ixia.Init Ixia    ${address}
+    Should Be True    ${rc}
+    [Return]    ${rc}
+
+Start Transmit
+    [Arguments]    ${chasId}    ${card}    ${port}
+    ${rc}=    Ixia.Start Transmit    ${chasId}    ${card}    ${port}
+    [Return]    ${rc}
+
+Stop Transmit
+    [Arguments]    ${chasId}    ${card}    ${port}
+    ${rc}=    Ixia.Stop Transmit    ${chasId}    ${card}    ${port}
+    [Return]    ${rc}
+
+Get Statics
+    [Arguments]    ${chasId}    ${card}    ${port}    @{stats}
+    ${rc}=    Ixia.Get Statistics    ${chasId}    ${card}    ${port}    @{stats}
+    [Return]    ${rc}
+
+Clear Statics
+    [Arguments]    ${chasId}    ${card}    ${port}
+    ${rc}=    Ixia.Clear Statics    ${chasId}    ${card}    ${port}
+    [Return]    ${rc}
+
+Build Stream
+    [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}    ${streamRate}    ${streamRateMode}
+    ...    ${streamMode}    ${numFrames}=100    ${returnToId}=1
+    ${rc}=    Ixia.Build Stream    ${chasId}    ${card}    ${port}    ${streamId}    ${streamRate}
+    ...    ${streamRateMode}    ${streamMode}    ${numFrames}    ${returnToId}
+    Should Be Equal As Integers    ${rc}    0
+    [Return]    ${rc}

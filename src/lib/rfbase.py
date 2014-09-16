@@ -36,7 +36,7 @@ class PacketBase(object):
         with open(filename,'rb') as handle:
             return handle.read()
 
-    def get_packet_list(self,ixiaFlag=0):
+    def get_packet_list(self,ixiaFlag=False):
         if ixiaFlag:
             ixia_packetStr = ''
             if self._packetList:
@@ -379,7 +379,7 @@ class PacketBase(object):
             if filllen < 0:
                 logger.info('packet length is %i, greater than given para' % ptklen)
                 return -1
-            elif fillen == 0:
+            elif filllen == 0:
                 return p
             fillstr = payload_str * filllen
         cmd = "self._verify_raw('%s')" % fillstr
@@ -401,7 +401,7 @@ class PacketBase(object):
         try:
             exec('p=%s' % cmd)
         except Exception,ex:
-            return -1
+            return Raw()
         else:
-            return len(p)
+            return p
 

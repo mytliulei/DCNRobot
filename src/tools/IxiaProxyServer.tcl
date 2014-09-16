@@ -162,6 +162,7 @@ proc SetStreamFromHexstr {cmdstr} {
     protocol setDefault
     stream set $chasId $port $card $streamId
     ixWriteConfigToHardware portlist -noProtocolServer
+    return 0
 }
 
 #set ixia port mode default
