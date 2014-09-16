@@ -3,6 +3,7 @@ Library           Collections
 Library           String
 Library           ../lib/Tools.py
 Library           ../lib/MyTelnet.py    WITH NAME    Telnet
+Library           OperatingSystem
 
 *** Variables ***
 ${wifi_ac_prompt}    (?m)^[-a-zA-Z0-9_]{1,30}(\\(.*\\))?#|^\\[Boot\\]:|^BCM\.[0-9]>|^->|^--More--|Exit from bcm shell mode|^Host IP Address:|^Server IP Address:
@@ -354,3 +355,21 @@ Get Debug Output Until Timeout
     Telnet.Set Timeout    ${wifi_ac_timeout}
     Log    ${output}
     [Return]    ${output}
+
+Get Debug
+    [Arguments]    ${alias}
+    [Documentation]    获取debug信息,该关键字会读取console的内容并立刻返回
+    ...
+    ...    参数：
+    ...    - alias：设备console别名
+    ...
+    ...    返回：debug输出信息
+    ...
+    ...    用法：
+    ...    - 先使用关键字Start Debug
+    ...    - 然后可以进行其他操作
+    ...    - Get Debug，获取第2步操作过程中的debug信息
+    ...    - 最后关闭debug： Stop Debug
+    Telnet.Switch Connection    ${alias}
+    ${output}=    Telnet.My Read Lazy
+    Log    ${output}

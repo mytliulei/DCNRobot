@@ -242,7 +242,7 @@ Get Debug Output Until Expect
     ${telneTimeout}=    Evaluate    ${timeout} + 60
     Telnet.Set Timeout    ${telneTimeout}
     ${output}=    Set Variable    ${EMPTY}
-    :FOR    ${index}    IN RANGE    0    ${timeout}
+    : FOR    ${index}    IN RANGE    0    ${timeout}
     \    ${ioutput}=    Telnet.My Read Lazy
     \    ${output}=    Evaluate    '''${ioutput}'''+'''${output}'''
     \    ${matchFlag}=    Tools.Is Match From String    ${output}    ${expect}
@@ -296,3 +296,21 @@ Get Debug Output Until Timeout
     Telnet.Set Timeout    ${sw_timeout}
     Log    ${output}
     [Return]    ${output}
+
+Get Debug
+    [Arguments]    ${alias}
+    [Documentation]    获取debug信息,该关键字会读取console的内容并立刻返回
+    ...
+    ...    参数：
+    ...    - alias：设备console别名
+    ...
+    ...    返回：debug输出信息
+    ...
+    ...    用法：
+    ...    - 先使用关键字Start Debug
+    ...    - 然后可以进行其他操作
+    ...    - Get Debug，获取第2步操作过程中的debug信息
+    ...    - 最后关闭debug： Stop Debug
+    Telnet.Switch Connection    ${alias}
+    ${output}=    Telnet.My Read Lazy
+    Log    ${output}
