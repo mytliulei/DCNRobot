@@ -239,18 +239,11 @@ Get Debug Output Until Expect
     ...    - 然后Get Debug Output Until Expect
     ...    - 最后关闭debug： Stop Debug
     Telnet.Switch Connection    ${alias}
-    ${telneTimeout}=    Evaluate    ${timeout} + 60
-    Telnet.Set Timeout    ${telneTimeout}
-    ${output}=    Set Variable    ${EMPTY}
-    : FOR    ${index}    IN RANGE    0    ${timeout}
-    \    ${ioutput}=    Telnet.My Read Lazy
-    \    ${output}=    Evaluate    '''${ioutput}'''+'''${output}'''
-    \    ${matchFlag}=    Tools.Is Match From String    ${output}    ${expect}
-    \    Run Keyword If    ${matchFlag}    Exit For Loop
-    \    Sleep    1
+    Telnet.Set Timeout    ${timeout}
+    @{res}=    Telnet.Debug Read Until    ${expect}
     Telnet.Set Timeout    ${sw_timeout}
-    Log    ${output}
-    [Return]    ${matchFlag}    ${output}
+    Log    @{res}
+    [Return]    @{res}
 
 Stop Debug
     [Arguments]    ${alias}    ${cmd}=\x0e
@@ -289,11 +282,8 @@ Get Debug Output Until Timeout
     ...    - 然后Get Debug Output Until Timeout
     ...    - 最后关闭debug： Stop Debug
     Telnet.Switch Connection    ${alias}
-    ${telneTimeout}=    Evaluate    ${timeout} + 60
-    Telnet.Set Timeout    ${telneTimeout}
     Sleep    ${timeout}
-    ${output}=    Telnet.My Read Lazy
-    Telnet.Set Timeout    ${sw_timeout}
+    ${output}=    Telnet.My Read Eager
     Log    ${output}
     [Return]    ${output}
 
@@ -312,5 +302,5 @@ Get Debug
     ...    - Get Debug，获取第2步操作过程中的debug信息
     ...    - 最后关闭debug： Stop Debug
     Telnet.Switch Connection    ${alias}
-    ${output}=    Telnet.My Read Lazy
+    ${output}=    Telnet.My Read Eager
     Log    ${output}

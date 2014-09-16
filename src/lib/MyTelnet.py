@@ -841,6 +841,8 @@ class MyTelnetConnection(telnetlib.Telnet):
             output = self._terminal_emulator.read()
         else:
             output = self._decode(output)
+        if self._monitor:
+            self._cp_rb += output
         self._log(output, loglevel)
         return output
 
@@ -857,6 +859,26 @@ class MyTelnetConnection(telnetlib.Telnet):
             output = self._terminal_emulator.read()
         else:
             output = self._decode(output)
+        if self._monitor:
+            self._cp_rb += output
+        self._log(output, loglevel)
+        return output
+
+    def my_read_eager(self,loglevel=None):
+        """Reads everything that is already in the queues (lazy). It will process data and return right now even if output is null
+
+        Read output is both returned and logged. See `Logging` section for more
+        information about log levels.
+        """
+        self._verify_connection()
+        output = telnetlib.Telnet.read_eager(self)
+        if self._terminal_emulator:
+            self._terminal_emulator.feed(output)
+            output = self._terminal_emulator.read()
+        else:
+            output = self._decode(output)
+        if self._monitor:
+            self._cp_rb += output
         self._log(output, loglevel)
         return output
 
@@ -873,6 +895,8 @@ class MyTelnetConnection(telnetlib.Telnet):
             output = self._terminal_emulator.read()
         else:
             output = self._decode(output)
+        if self._monitor:
+            self._cp_rb += output
         self._log(output, loglevel)
         return output
 
@@ -891,6 +915,20 @@ class MyTelnetConnection(telnetlib.Telnet):
         if not success:
             raise NoMatchError(expected, self._timeout, output)
         return output
+
+    def debug_read_until(self, expected, loglevel=None):
+        """Reads output until `expected` text is encountered.
+
+        Text up to and including the match is returned and logged. If no match
+        is found, this keyword fails. How much to wait for the output depends
+        on the [#Configuration|configured timeout].
+
+        See `Logging` section for more information about log levels. Use
+        `Read Until Regexp` if more complex matching is needed.
+        """
+        success, output = self._read_until(expected)
+        self._log(output, loglevel)
+        return success,output
 
     def _read_until(self, expected):
         self._verify_connection()
