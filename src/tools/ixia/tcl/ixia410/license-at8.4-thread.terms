@@ -1,0 +1,128 @@
+ActiveTcl Community License v2.1
+
+Please note: If you plan to redistribute ActiveTcl you will need a
+different license. For more information please visit
+    http://www.activestate.com/activetcl_oem
+
+Preamble:
+
+This license establishes the terms under which the Package may be
+copied, modified, distributed and/or redistributed.  The intent is
+that ActiveState Software Inc. ("ActiveState") maintain control over
+the development and distribution of the Package, while allowing the
+users of the Package to use the Package in a variety of ways. You are
+always permitted to make arrangements wholly outside of this license
+directly with ActiveState.  If the terms of this license do not permit
+the full use that you propose to make of the Package or if you require
+clarification regarding your particular intended use of the Package,
+You should contact sales@activestate.com in order to seek
+clarification or to request a different licensing arrangement. Support
+for this Package is available from ActiveState under a separate
+agreement.  Please contact sales@activestate.com for more information.
+
+The Package contains software copyrighted by the Regents of the
+University of California, Sun Microsystems, Inc., Scriptics
+Corporation, and other parties. The following terms apply to all files
+associated with such software unless explicitly disclaimed in
+individual files.
+
+The authors hereby grant permission to use, copy, modify, distribute,
+and license this software and its documentation for any purpose,
+provided that existing copyright notices are retained in all copies
+and that this notice is included verbatim in any distributions. No
+written agreement, license, or royalty fee is required for any of the
+authorized uses. Modifications to this software may be copyrighted by
+their authors and need not follow the licensing terms described here,
+provided that the new terms are clearly indicated on the first page of
+each file where they apply.
+
+IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
+FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
+ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
+DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.  THE AUTHORS AND DISTRIBUTORS SPECIFICALLY
+DISCLAIM ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND
+THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
+MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
+GOVERNMENT USE: If you are acquiring this software on behalf of the
+U.S. government, the Government shall have only "Restricted Rights" in
+the software and related documentation as defined in the Federal
+Acquisition Regulations (FARs) in Clause 52.227.19 (c) (2). If you are
+acquiring the software on behalf of the Department of Defense, the
+software shall be classified as "Commercial Computer Software" and the
+Government shall have only "Restricted Rights" as defined in Clause
+252.227-7013 (c) (1) of DFARs. Notwithstanding the foregoing, the
+authors grant the U.S. Government and others acting in its behalf
+permission to use and distribute the software in accordance with the
+terms specified in this license.
+
+Definitions:
+
+"ActiveState" refers to ActiveState Software Inc., the copyright
+holder of the Package.
+
+"Package" refers to those ActiveTcl files, including, but not limited
+to, source code, binary executables, documentation, images, and
+scripts, which are distributed by ActiveState, and derivatives of that
+collection and/or those files.
+
+"You" and "your" means any person who copies, distributes, or modifies
+the Package.
+
+Terms:
+
+1. You may use this Package for commercial or non-commercial purposes
+   without charge.
+
+2. You may make and give away verbatim copies of this Package for
+   personal use, or for use within your organization, provided that
+   you duplicate all of the original copyright notices and associated
+   disclaimers. You may not distribute copies of this Package, or
+   copies of packages derived from this Package, or cause by Your
+   actions copies of this Package to be distributed, to others outside
+   your organization without specific prior written permission from
+   ActiveState (although you are encouraged to direct them to sources
+   from which they may obtain it for themselves). Subject to clause 4
+   below, You may combine and distribute the Package with Your package
+   only in accordance with the terms of a separate ActiveState agreement.
+
+3. You may apply bug fixes, portability fixes, and other modifications
+   made available from ActiveState. A Package modified in such a way
+   shall still be covered by the terms of this license.
+
+4. The license also allows You to redistribute parts of the Package as
+   part of an application generated by wrapping tools. However, this
+   License does not allow You to (a) redistribute the Package as a
+   whole, or (b) use its parts to create a language distribution.
+
+5. ActiveState's name and trademarks may not be used to endorse or
+   promote packages derived from this Package without specific prior
+   written permission from ActiveState.
+
+6. THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+   WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES
+   OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+7. This Package may be subject to export controls imposed by
+   applicable laws and regulations, which may prohibit or restrict the
+   distribution, exportation and re-exportation of the Package.  You
+   will comply with all applicable export control laws, including such
+   laws of the U.S., Canada and the European Community, in effect from
+   time to time, including without limitation the Canadian Export and
+   Import Permits Act, the Canadian United Nations Act, and the
+   U.S. Foreign Corrupt Practices Act and with all export laws and
+   restrictions and regulations of the United States Department of
+   Commerce or other United States, European Community or other
+   foreign agency or authority, and will not distribute, export or
+   re-export, or allow the distribution, export or re-export, of the
+   Package or any copy or adaptation of direct product thereof, or any
+   underlying technology, except in full compliance with any and all
+   such applicable laws, restrictions and regulations.  You represent
+   and warrant that you are not located in, under the control of, or a
+   national or resident of, any restricted country (currently
+   including Myanmar [Burma], Belarus, Cuba, Libya, North Korea, Iran,
+   Iraq, Sudan, Syria, and Afghanistan) or of any designated entity or
+   person.
