@@ -308,6 +308,19 @@ proc GetStatistics {cmdstr} {
                 set statnum [stat cget -bitsReceived]
                 lappend ret $statnum
             }
+            "updown" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -link]
+                if {statnum != 1} {
+                    set statnum 0
+                }
+                lappend ret $statnum
+            }
+            "txstate" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -transmitState]
+                lappend ret $statnum
+            }
         }
     }
     set retstr [join $ret]
