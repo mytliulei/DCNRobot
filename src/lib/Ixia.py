@@ -52,15 +52,21 @@ class Ixia(object):
         self._proxy_server_retcode = None
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
+        self.initFlag = False
 
     def init_ixia(self,ixia_ip,listen_port=11917):
         '''
         '''
+        if self.initFlag:
+            return True,True
         self._ixia_ip = ixia_ip
         self._proxy_server_port = listen_port
         sRet = self._start_proxy_server()
         cRet = self._start_ixia_client()
-        return sRet and cRet
+        ret = sRet and cRet
+        if ret:
+            self.initFlag = True
+        return ret
 
     def __del__(self):
         ''''''
