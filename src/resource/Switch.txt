@@ -242,7 +242,7 @@ Get Debug Output Until Expect
     Telnet.Set Timeout    ${timeout}
     @{res}=    Telnet.Debug Read Until    ${expect}
     Telnet.Set Timeout    ${sw_timeout}
-    Log    @{res}
+    Log    ${res}
     [Return]    @{res}
 
 Stop Debug
