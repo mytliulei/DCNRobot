@@ -52,7 +52,6 @@ class Ixia(object):
         self._proxy_server_retcode = None
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
-        self._capture_filter = {}
 
     def init_ixia(self,ixia_ip,listen_port=11917):
         '''
@@ -215,12 +214,11 @@ class Ixia(object):
         ret = self._read_ret_select()
         return ret.strip()
 
-    def start_capture(self,chasId,port,card,cap_filter=None):
+    def start_capture(self,chasId,port,card):
         '''
         '''
         capture_index = '%s %s' % (port,card)
         self._capture_packet_buffer[capture_index] = []
-        self._capture_filter[capture_index] = cap_filter
         cmd = 'start_capture %s %s %s\n' % (chasId,port,card)
         try:
             self._ixia_client_handle.sendall(cmd)
@@ -254,16 +252,23 @@ class Ixia(object):
         ret = self._read_ret_select()
         return ret.strip()
 
-    def _check_transmit_done(self,chasId,port,card):
+    def wait_for_transmit_done(self,chasId,port,card,timeout=180):
         '''
         '''
-        cmd = 'check_transmit_done %s %s %s\n' % (chasId,port,card)
-        try:
-            self._ixia_client_handle.sendall(cmd)
-        except Exception:
-            self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        cmd = 'get_statistics %s %s %s txstate\n' % (chasId,port,card)
+        ret = '1'
+        time_start = time.time()
+        elapsed = time.time() - time_start
+        while elapsed <= timeout:
+            try:
+                self._ixia_client_handle.sendall(cmd)
+            except Exception:
+                self._close_ixia_client()
+                raise AssertionError('write cmd to proxy server error')
+            ret = self._read_ret_select()
+            if ret.strip() == '0':
+                break
+            elapsed = time.time() - time_start
         return ret.strip()
 
     def get_capture_packet_num(self,chasId,port,card):
@@ -316,16 +321,44 @@ class Ixia(object):
         packetStr = self._get_capture_packet(chasId,port,card,packet_from,packet_to)
         packetStrList = packetStr.split('$')
         packetList = []
+        i = 0
         for pStr in packetStrList:
             pktStr = ''.join(pStr.split())
+            if len(pktStr) % 2 == 1:
+                raise AssertionError('get capture packet error:pkt str is not even')
             chr_ipstr_list = [
                 chr(int(pktStr[i:i+2],16)) for i in range(0,len(pktStr)-1,2)
             ]
             chr_ipstr = ''.join(chr_ipstr_list)
             ptk = Ether(chr_ipstr)
-            #self._capture_filter[capture_index]
             packetList.append(ptk)
+            i += 1
         self._capture_packet_buffer[capture_index] = packetList
+        return i
+
+    def filter_capture_packet(self,,chasId,port,card,capFilter):
+        '''
+        '''
+        capture_index = '%s %s' % (port,card)
+        if capture_index not in self._capture_packet_buffer.keys():
+            return 0
+        if not self._capture_packet_buffer[capture_index]:
+            return 0
+        if type(capFilter) is not str:
+            raise AssertionError('capFilter must be a string')
+        import pcapy
+        try:
+            matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
+        except Exception:
+            raise AssertionError('filter express error')
+        #filter packet 
+        pktFiltered = []
+        i = 0
+        for ipkt in self._capture_packet_buffer[capture_index]:
+            if matchPkt.filter(str(ipkt)) > 0:
+                pktFiltered.append(ipkt)
+                i += 1
+        return i,pktFiltered
 
     def _read_ret(self):
         '''
@@ -361,6 +394,8 @@ class Ixia(object):
         args:
         - statisType: txpps,txBps,txbps,txpackets,txbytes,txbits
                       rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
+                      updown: 0:down,1:up;
+                      txstate: 0:stop,1:start;
         '''
         cmd = 'get_statistics %s %s %s %s' % (chasId,port,card,statisType)
         if args:
