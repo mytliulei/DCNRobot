@@ -164,7 +164,10 @@ class Ixia(object):
             try:
                 cmd = 'shutdown_proxy_server\n'
                 self._ixia_client_handle.sendall(cmd)
-                ret = self._read_ret_select()
+                readret = self._read_ret_select()
+                if not readret[0]:
+                    raise AssertionError('ixia proxy server error: %s' % readret[1])
+                ret = readret[1]
                 if ret.strip() == '-10000':
                     shut = True
             except Exception:
@@ -219,7 +222,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def stop_transmit(self,chasId,port,card):
@@ -231,7 +237,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def start_capture(self,chasId,port,card):
@@ -245,7 +254,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def stop_capture(self,chasId,port,card):
@@ -257,7 +269,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def clear_statics(self,chasId,port,card):
@@ -269,7 +284,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def wait_for_transmit_done(self,chasId,port,card,timeout=180):
@@ -285,7 +303,10 @@ class Ixia(object):
             except Exception:
                 self._close_ixia_client()
                 raise AssertionError('write cmd to proxy server error')
-            ret = self._read_ret_select()
+            readret = self._read_ret_select()
+            if not readret[0]:
+                raise AssertionError('ixia proxy server error: %s' % readret[1])
+            ret = readret[1]
             if ret.strip() == '0':
                 break
             elapsed = time.time() - time_start
@@ -300,7 +321,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def set_port_mode_default(self,chasId,port,card):
@@ -312,7 +336,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def shutdown_proxy_server(self):
@@ -331,7 +358,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def get_capture_packet(self,chasId,port,card,packet_from=1,packet_to=1000):
@@ -412,7 +442,10 @@ class Ixia(object):
     #     except Exception:
     #         self._close_ixia_client()
     #         raise AssertionError('write cmd to proxy server error')
-    #     ret = self._read_ret_select()
+    #     readret = self._read_ret_select()
+    #     if not readret[0]:
+    #         raise AssertionError('ixia proxy server error: %s' % readret[1])
+    #     ret = readret[1]
     #     return ret.strip()
 
     def set_stream_packet(self,chasId,port,card,streamId):
@@ -426,7 +459,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def set_stream_control(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
@@ -438,7 +474,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def set_stream_enable(self,chasId,port,card,streamId,flag):
@@ -452,7 +491,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         return ret.strip()
 
     def get_statistics(self,chasId,port,card,statisType,*args):
@@ -473,7 +515,10 @@ class Ixia(object):
         except Exception:
             self._close_ixia_client()
             raise AssertionError('write cmd to proxy server error')
-        ret = self._read_ret_select()
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
         retList = ret.strip().split()
         return retList[0] if len(retList) == 1 else retList
 
@@ -500,6 +545,39 @@ class Ixia(object):
             c = self._ixia_client_handle.recv(100)
             buff += c
             if expectRe.search(c):
+                break
+        buff = expectRe.sub('',buff)
+        try:
+            ret_code = int(buff)
+        except Exception:
+            pass
+        else:
+            if -999<= ret_code < -900:
+                errbuffer = self._read_err_select()
+                return False,errbuffer
+            else:
+                pass
+        return True,buff
+
+    def _read_err_select(self,timeout=180):
+        '''
+        '''
+        import select
+        expectRe = re.compile(r'ixia proxy error buffer end.*',re.DOTALL)
+        buff = ''
+        time_start = time.time()
+        while True:
+            if timeout is not None:
+                elapsed = time.time() - time_start
+                if elapsed >= timeout:
+                    break
+                s_args = ([self._fileno()], [], [], timeout-elapsed)
+                r, w, x = select.select(*s_args)
+                if not r:
+                    break
+            c = self._ixia_client_handle.recv(100)
+            buff += c
+            if expectRe.search(buff):
                 break
         buff = expectRe.sub('',buff)
         return buff

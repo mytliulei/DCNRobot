@@ -29,8 +29,9 @@ proc IxiaCmd {chan} {
     } else {
         #eval ixia cmd
         if {$line != ""} {
-            set cmdret [evalIxiaCmd $line]
+            set cmdret [evalIxiaCmd $line $chan]
             puts $chan $cmdret
+            flush $chan
             if {$cmdret == -10000} {
                 exit 0
             }
@@ -40,11 +41,12 @@ proc IxiaCmd {chan} {
 
 #generat ixia cmd string
 #error code -900 - -999
-proc evalIxiaCmd {cmdstr} {
+proc evalIxiaCmd {cmdstr chan} {
     set cmdstr [string trim $cmdstr]
     set cmdlist [split $cmdstr]
     set cmdname [lindex $cmdlist 0]
     set cmdstr [join [lrange $cmdlist 1 end]]
+    set result ""
     switch -exact $cmdname {
         "set_stream_from_hexstr" {
             if {[catch {set ret [SetStreamFromHexstr $cmdstr]} result]} {
@@ -119,6 +121,12 @@ proc evalIxiaCmd {cmdstr} {
         default {
             set ret -900
         }
+    }
+    if {$ret < -900 && $ret >= -999} {
+        puts $chan $ret
+        flush $chan
+        append result "ixia proxy error buffer end"
+        set ret $result
     }
     return $ret
 }
