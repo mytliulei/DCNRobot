@@ -33,16 +33,28 @@ class Ixia(object):
         self._ixia_tcl_path = os.path.join(os.path.dirname(os.getcwd()),'src','tools','ixia','tcl')
         self._proxy_server_path = os.path.join(os.path.dirname(os.getcwd()),'src','tools','IxiaProxyServer.tcl')
         self._ixia_version = {
-        '172.16.1.252':'5.60',
-        '172.16.11.253':'4.10',
-        '172.16.1.247':'5.50',
-        'default':'4.10'
+            '172.16.1.252':'5.60',
+            '172.16.11.253':'4.10',
+            '172.16.1.247':'5.50',
+            'default':'4.10',
         }
         self._tcl_path = {
-        '4.10':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
-        '5.50':os.path.join(self._ixia_tcl_path,'ixia550','bin'),
-        '5.60':os.path.join(self._ixia_tcl_path,'ixia560','bin'),
-        'default':os.path.join(self._ixia_tcl_path,'ixia410','bin')
+            '4.10':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
+            '5.50':os.path.join(self._ixia_tcl_path,'ixia550','bin'),
+            '5.60':os.path.join(self._ixia_tcl_path,'ixia560','bin'),
+            'default':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
+        }
+        self._proxy_bind_port = {
+            '4.10':11917,
+            '5.50':11916,
+            '5.60':11915,
+            'default':11917,
+        }
+        self._initFlag = {
+            '4.10':False,
+            '5.50':False,
+            '5.60':False,
+            'default':False
         }
         self._proxy_server_host = '127.0.0.1'
         self._pkt_streamlist_hexstring = []
@@ -52,20 +64,22 @@ class Ixia(object):
         self._proxy_server_retcode = None
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
-        self.initFlag = False
 
-    def init_ixia(self,ixia_ip,listen_port=11917):
+    def init_ixia(self,ixia_ip):
         '''
         '''
-        if self.initFlag:
+        if ixia_ip in self._ixia_version.keys():
+            version = self._ixia_version[ixia_ip]
+        else:
+            version = self._ixia_version['default']
+        if self._initFlag[version]:
             return True,True
-        self._ixia_ip = ixia_ip
-        self._proxy_server_port = listen_port
-        sRet = self._start_proxy_server()
-        cRet = self._start_ixia_client()
+        proxy_server_port = self._proxy_bind_port[version]
+        sRet = self._start_proxy_server(ixia_ip,proxy_server_port)
+        cRet = self._start_ixia_client(proxy_server_port)
         ret = sRet and cRet
         if ret:
-            self.initFlag = True
+            self._initFlag[version] = True
         return ret
 
     def __del__(self):
@@ -112,11 +126,11 @@ class Ixia(object):
         with open(filename,'rb') as handle:
             return handle.read()
 
-    def _start_proxy_server(self):
+    def _start_proxy_server(self,_ixia_ip,_proxy_server_port):
         '''
         '''
-        if self._ixia_ip in self._ixia_version.keys():
-            version = self._ixia_version[self._ixia_ip]
+        if _ixia_ip in self._ixia_version.keys():
+            version = self._ixia_version[_ixia_ip]
         else:
             version = self._ixia_version['default']
         cmdpath = os.path.join(self._tcl_path[version],'tclsh.exe')
@@ -127,7 +141,7 @@ class Ixia(object):
         #process \s in path
         proxy_file_sub = re.compile(r'\\([^\\]*\s+[^\\]*)\\')
         proxy_file = proxy_file_sub.sub(r'\\"\1"\\',self._proxy_server_path)
-        cmd = '%s %s ixiaip %s bindport %s ixiaversion %s' % (cmdpath,proxy_file,self._ixia_ip,self._proxy_server_port,version)
+        cmd = '%s %s ixiaip %s bindport %s ixiaversion %s' % (cmdpath,proxy_file,_ixia_ip,_proxy_server_port,version)
         p=subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
         self._proxy_server_process = p
         searchre = re.compile(r'ConnectToIxia success')
@@ -169,7 +183,7 @@ class Ixia(object):
         else:
             return False
 
-    def _start_ixia_client(self):
+    def _start_ixia_client(self,_proxy_server_port):
         '''
         '''
         if not self._is_proxyserver_live():
@@ -180,7 +194,7 @@ class Ixia(object):
             except Exception:
                 self._ixia_client_handle = None
         try:
-            self._ixia_client_handle = socket.create_connection((self._proxy_server_host, self._proxy_server_port))
+            self._ixia_client_handle = socket.create_connection((self._proxy_server_host, _proxy_server_port))
         except Exception:
             self._ixia_client_handle = None
             return False
@@ -223,7 +237,7 @@ class Ixia(object):
     def start_capture(self,chasId,port,card):
         '''
         '''
-        capture_index = '%s %s' % (port,card)
+        capture_index = '%s %s %s' % (chasId,port,card)
         self._capture_packet_buffer[capture_index] = []
         cmd = 'start_capture %s %s %s\n' % (chasId,port,card)
         try:
@@ -323,9 +337,15 @@ class Ixia(object):
     def get_capture_packet(self,chasId,port,card,packet_from=1,packet_to=1000):
         '''
         '''
-        capture_index = '%s %s' % (port,card)
+        capture_index = '%s %s %s' % (chasId,port,card)
         packetStr = self._get_capture_packet(chasId,port,card,packet_from,packet_to)
         packetStrList = packetStr.split('$')
+        try:
+            err_code = int(packetStr)
+        except Exception:
+            pass
+        else:
+            return err_code
         packetList = []
         n = 0
         for pStr in packetStrList:
@@ -345,13 +365,13 @@ class Ixia(object):
     def filter_capture_packet(self,chasId,port,card,capFilter):
         '''
         '''
-        capture_index = '%s %s' % (port,card)
+        capture_index = '%s %s %s' % (chasId,port,card)
         if capture_index not in self._capture_packet_buffer.keys():
             return 0
         if not self._capture_packet_buffer[capture_index]:
             return 0
-        #if type(capFilter) is not str:
-        #    raise AssertionError('capFilter must be a string')
+        if not issubclass(type(capFilter),basestring):
+            raise AssertionError('capFilter must be a string')
         import pcapy
         try:
             matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
@@ -381,12 +401,52 @@ class Ixia(object):
             self._close_ixia_client()
             raise AssertionError('read return from proxy server error')
 
-    def build_stream(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
+    # def build_stream(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
+    #     '''
+    #     '''
+    #     streamStr = self._pkt_class.get_packet_list(ixiaFlag=True)
+    #     self._pkt_class.empty_packet_list()
+    #     cmd = 'set_stream_from_hexstr %s %s %s %s %s %s %s %s %s %s\n' % (chasId,port,card,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId,streamStr)
+    #     try:
+    #         self._ixia_client_handle.sendall(cmd)
+    #     except Exception:
+    #         self._close_ixia_client()
+    #         raise AssertionError('write cmd to proxy server error')
+    #     ret = self._read_ret_select()
+    #     return ret.strip()
+
+    def set_stream_packet(self,chasId,port,card,streamId):
         '''
         '''
         streamStr = self._pkt_class.get_packet_list(ixiaFlag=True)
         self._pkt_class.empty_packet_list()
-        cmd = 'set_stream_from_hexstr %s %s %s %s %s %s %s %s %s %s\n' % (chasId,port,card,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId,streamStr)
+        cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,port,card,streamId,streamStr)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        ret = self._read_ret_select()
+        return ret.strip()
+
+    def set_stream_control(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
+        '''
+        '''
+        cmd = 'set_stream_control %s %s %s %s %s %s %s %s %s\n' % (chasId,port,card,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        ret = self._read_ret_select()
+        return ret.strip()
+
+    def set_stream_enable(self,chasId,port,card,streamId,flag):
+        '''
+        1: enable
+        0: disable
+        '''
+        cmd = 'set_stream_enable %s %s %s %s %s\n' % (chasId,port,card,streamId,flag)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
