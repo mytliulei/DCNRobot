@@ -320,14 +320,14 @@ class Ixia(object):
         ret = self._read_ret_select()
         return ret.strip()
 
-    def get_capture_packet(self,chasId,port,card,packet_from,packet_to):
+    def get_capture_packet(self,chasId,port,card,packet_from=1,packet_to=1000):
         '''
         '''
         capture_index = '%s %s' % (port,card)
         packetStr = self._get_capture_packet(chasId,port,card,packet_from,packet_to)
         packetStrList = packetStr.split('$')
         packetList = []
-        i = 0
+        n = 0
         for pStr in packetStrList:
             pktStr = ''.join(pStr.split())
             if len(pktStr) % 2 == 1:
@@ -338,11 +338,11 @@ class Ixia(object):
             chr_ipstr = ''.join(chr_ipstr_list)
             ptk = Ether(chr_ipstr)
             packetList.append(ptk)
-            i += 1
+            n += 1
         self._capture_packet_buffer[capture_index] = packetList
-        return i
+        return n
 
-    def filter_capture_packet(self,,chasId,port,card,capFilter):
+    def filter_capture_packet(self,chasId,port,card,capFilter):
         '''
         '''
         capture_index = '%s %s' % (port,card)
@@ -350,8 +350,8 @@ class Ixia(object):
             return 0
         if not self._capture_packet_buffer[capture_index]:
             return 0
-        if type(capFilter) is not str:
-            raise AssertionError('capFilter must be a string')
+        #if type(capFilter) is not str:
+        #    raise AssertionError('capFilter must be a string')
         import pcapy
         try:
             matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
