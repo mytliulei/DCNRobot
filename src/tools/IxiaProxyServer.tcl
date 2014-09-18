@@ -39,6 +39,7 @@ proc IxiaCmd {chan} {
 }
 
 #generat ixia cmd string
+#error code -900 - -999
 proc evalIxiaCmd {cmdstr} {
     set cmdstr [string trim $cmdstr]
     set cmdlist [split $cmdstr]
@@ -46,43 +47,77 @@ proc evalIxiaCmd {cmdstr} {
     set cmdstr [join [lrange $cmdlist 1 end]]
     switch -exact $cmdname {
         "set_stream_from_hexstr" {
-            set ret [SetStreamFromHexstr $cmdstr]
+            if {[catch {set ret [SetStreamFromHexstr $cmdstr]} result]} {
+                set ret -999
+            }
         }
         "start_transmit" {
-            set ret [StartTransmit $cmdstr]
+            if {[catch {set ret [StartTransmit $cmdstr]} result]} {
+                set ret -998
+            }
         }
         "stop_transmit" {
-            set ret [StopTransmit $cmdstr]
+            if {[catch {set ret [StopTransmit $cmdstr]} result]} {
+                set ret -997
+            }
         }
         "get_statistics" {
-            set ret [GetStatistics $cmdstr]
+            if {[catch {set ret [GetStatistics $cmdstr]} result]} {
+                set ret -996
+            }
         }
         "start_capture" {
-            set ret [StartCapture $cmdstr]
+            if {[catch {set ret [StartCapture $cmdstr]} result]} {
+                set ret -995
+            }
         }
         "stop_capture" {
-            set ret [StopCapture $cmdstr]
+            if {[catch {set ret [StopCapture $cmdstr]} result]} {
+                set ret -994
+            }
         }
         "check_transmit_done" {
-            set ret [CheckTransmitDone $cmdstr]
+            if {[catch {set ret [CheckTransmitDone $cmdstr]} result]} {
+                set ret -993
+            }
         }
         "clear_statics" {
-            set ret [ClearStatistics $cmdstr]
+            if {[catch {set ret [ClearStatistics $cmdstr]} result]} {
+                set ret -992
+            }
         }
         "get_capture_packet" {
-            set ret [GetCapturePacket $cmdstr]
+            if {[catch {set ret [GetCapturePacket $cmdstr]} result]} {
+                set ret -991
+            }
         }
         "get_capture_packet_num"  {
-            set ret [GetCapturePacketNum $cmdstr]
+            if {[catch {set ret [GetCapturePacketNum $cmdstr]} result]} {
+                set ret -990
+            }
         }
         "shutdown_proxy_server" {
-            set ret [ShutdownProxyserver]
+            if {[catch {set ret [ShutdownProxyserver]} result]} {
+                set ret -989
+            }
         }
         "set_port_mode_default" {
-            set ret [SetPortModeDefault $cmdstr]
+            if {[catch {set ret [SetPortModeDefault $cmdstr]} result]} {
+                set ret -988
+            }
+        }
+        "set_stream_control" {
+            if {[catch {set ret [SetStreamControl $cmdstr]} result]} {
+                set ret -987
+            }
+        }
+        "set_stream_enable" {
+            if {[catch {set ret [SetStreamEnable $cmdstr]} result]} {
+                set ret -986
+            }
         }
         default {
-            set ret -1000
+            set ret -900
         }
     }
     return $ret
@@ -93,7 +128,7 @@ proc evalIxiaCmd {cmdstr} {
 proc SetStreamFromHexstr {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
-    if {$cmdlen <= 9} {
+    if {$cmdlen <= 4} {
         return -100
     }
     global ixia_ip
@@ -105,51 +140,51 @@ proc SetStreamFromHexstr {cmdstr} {
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
     set streamId [lindex $cmdlist 3]
-    set streamRateMode [lindex $cmdlist 4]
-    set streamRate [lindex $cmdlist 5]
-    set streamMode [lindex $cmdlist 6]
-    set numFrames [lindex $cmdlist 7]
-    set ReturnId [lindex $cmdlist 8]
-    set packet [lindex $cmdlist 9]
-    set dstmac [string trim [join [split [string range $packet 0 17] "$"]]]
-    set srcmac [string trim [join [split [string range $packet 18 35] "$"]]]
-    set pattern [string trim [join [split [string range $packet 36 end] "$"]]]
+    # set streamRateMode [lindex $cmdlist 4]
+    # set streamRate [lindex $cmdlist 5]
+    # set streamMode [lindex $cmdlist 6]
+    # set numFrames [lindex $cmdlist 7]
+    # set ReturnId [lindex $cmdlist 8]
+    set packet [lindex $cmdlist 4]
+    set dstmac [string trim [join [split [string range $packet 0 17] "#"]]]
+    set srcmac [string trim [join [split [string range $packet 18 35] "#"]]]
+    set pattern [string trim [join [split [string range $packet 36 end] "#"]]]
     set portlist [list [list $chasId $port $card]]
-    set packetlen [expr [llength [split $packet "$"]] + 4]
+    set packetlen [expr [llength [split $packet "#"]] + 4]
     #ixia config
     stream setDefault
-    #streamRateMode
-    # 0: usePercentRate
-    # 1: streamRateModeFps
-    # 2: streamRateModeBps
-    if {$streamRateMode == 0} {
-        stream config -rateMode usePercentRate
-        stream config -percentPacketRate $streamRate
-    } elseif {$streamRateMode == 1} {
-        stream config -rateMode streamRateModeFps
-        stream config -fpsRate $streamRate
-    } elseif {$streamRateMode == 2} {
-        stream config -rateMode streamRateModeBps
-        stream config -bpsRate $streamRate
-    }
-    #stream Mode
-    # 0: continuous
-    # 1: end
-    # 2: advance
-    # 3: return to ID
-    if {$streamMode == 0} {
-        stream config -dma contPacket
-    } elseif {$streamMode == 1} {
-        stream config -numFrames $numFrames
-        stream config -dma stopStream
-    } elseif {$streamMode == 2} {
-        stream config -numFrames $numFrames
-        stream config -dma advance
-    } elseif {$streamMode == 3} {
-        stream config -numFrames $numFrames
-        stream config -dma gotoFirst
-        stream config -returnToId $ReturnId
-    }
+    # #streamRateMode
+    # # 0: usePercentRate
+    # # 1: streamRateModeFps
+    # # 2: streamRateModeBps
+    # if {$streamRateMode == 0} {
+    #     stream config -rateMode usePercentRate
+    #     stream config -percentPacketRate $streamRate
+    # } elseif {$streamRateMode == 1} {
+    #     stream config -rateMode streamRateModeFps
+    #     stream config -fpsRate $streamRate
+    # } elseif {$streamRateMode == 2} {
+    #     stream config -rateMode streamRateModeBps
+    #     stream config -bpsRate $streamRate
+    # }
+    # #stream Mode
+    # # 0: continuous
+    # # 1: end
+    # # 2: advance
+    # # 3: return to ID
+    # if {$streamMode == 0} {
+    #     stream config -dma contPacket
+    # } elseif {$streamMode == 1} {
+    #     stream config -numFrames $numFrames
+    #     stream config -dma stopStream
+    # } elseif {$streamMode == 2} {
+    #     stream config -numFrames $numFrames
+    #     stream config -dma advance
+    # } elseif {$streamMode == 3} {
+    #     stream config -numFrames $numFrames
+    #     stream config -dma gotoFirst
+    #     stream config -returnToId $ReturnId
+    # }
     stream config -sa $srcmac
     stream config -da $dstmac
     stream config -frameSizeType sizeFixed
@@ -486,6 +521,98 @@ proc GetCapturePacketNum {cmdstr} {
     capture get $chasId $port $card
     set ret [capture cget -nPackets]
     return $ret
+}
+
+#set_stream_control
+#err code : 2000-2099
+proc SetStreamControl {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 8} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set streamId [lindex $cmdlist 3]
+    set streamRateMode [lindex $cmdlist 4]
+    set streamRate [lindex $cmdlist 5]
+    set streamMode [lindex $cmdlist 6]
+    set numFrames [lindex $cmdlist 7]
+    set ReturnId [lindex $cmdlist 8]
+
+    #stream setDefault
+    #streamRateMode
+    # 0: usePercentRate
+    # 1: streamRateModeFps
+    # 2: streamRateModeBps
+    if {$streamRateMode == 0} {
+        stream config -rateMode usePercentRate
+        stream config -percentPacketRate $streamRate
+    } elseif {$streamRateMode == 1} {
+        stream config -rateMode streamRateModeFps
+        stream config -fpsRate $streamRate
+    } elseif {$streamRateMode == 2} {
+        stream config -rateMode streamRateModeBps
+        stream config -bpsRate $streamRate
+    }
+    #stream Mode
+    # 0: continuous
+    # 1: end
+    # 2: advance
+    # 3: return to ID
+    if {$streamMode == 0} {
+        stream config -dma contPacket
+    } elseif {$streamMode == 1} {
+        stream config -numFrames $numFrames
+        stream config -dma stopStream
+    } elseif {$streamMode == 2} {
+        stream config -numFrames $numFrames
+        stream config -dma advance
+    } elseif {$streamMode == 3} {
+        stream config -numFrames $numFrames
+        stream config -dma gotoFirst
+        stream config -returnToId $ReturnId
+    }
+    stream set $chasId $port $card $streamId
+    set portlist [list [list $chasId $port $card]]
+    ixWriteConfigToHardware portlist
+    return 0
+}
+
+#set_stream_enable
+#err code : 2100-2199
+proc SetStreamEnable {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 4} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set streamId [lindex $cmdlist 3]
+    set enable [lindex $cmdlist 4]
+    set portlist [list [list $chasId $port $card]]
+    #stream setDefault
+    if {$enable == 1} {
+        stream config -enable true
+    } else {
+        stream config -enable false
+    }
+    stream set $chasId $port $card $streamId
+    ixWriteConfigToHardware portlist
+    return 0
 }
 
 #connect to ixia

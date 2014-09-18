@@ -142,10 +142,48 @@ Clear Statics
     ${rc}=    Ixia.Clear Statics    ${chasId}    ${card}    ${port}
     [Return]    ${rc}
 
-Build Stream
+Set Stream Packet
+    [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}
+    ${rc}=    Ixia.Set Stream Packet    ${chasId}    ${card}    ${port}    ${streamId}
+    Should Be Equal As Integers    ${rc}    0
+    [Return]    ${rc}
+
+Start Capture
+    [Arguments]    ${chasId}    ${card}    ${port}
+    ${rc}=    Ixia.Start Capture    ${chasId}    ${card}    ${port}
+    [Return]    ${rc}
+
+Stop Capture
+    [Arguments]    ${chasId}    ${card}    ${port}
+    ${rc}=    Ixia.Stop Capture    ${chasId}    ${card}    ${port}
+    [Return]    ${rc}
+
+Get Capture Packet
+    [Arguments]    ${chasId}    ${card}    ${port}    ${from}=${1}    ${to}=${1000}
+    ${rc}=    Ixia.Get Capture Packet    ${chasId}    ${card}    ${port}    ${from}    ${to}
+    Should Be True    ${rc} >= 0
+    [Return]    ${rc}
+
+Get Capture Packet Num
+    [Arguments]    ${chasId}    ${card}    ${port}
+    ${rc}=    Ixia.Get Capture Packet Num    ${chasId}    ${card}    ${port}
+    [Return]    ${rc}
+
+Filter Capture Packet
+    [Arguments]    ${chasId}    ${card}    ${port}    ${fliter}
+    @{filterres}=    Ixia.Filter Capture Packet    ${chasId}    ${card}    ${port}    ${fliter}
+    [Return]    @{filterres}
+
+Set Stream Control
     [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}    ${streamRate}    ${streamRateMode}
-    ...    ${streamMode}    ${numFrames}=100    ${returnToId}=1
-    ${rc}=    Ixia.Build Stream    ${chasId}    ${card}    ${port}    ${streamId}    ${streamRate}
-    ...    ${streamRateMode}    ${streamMode}    ${numFrames}    ${returnToId}
+    ...    ${streamMode}    ${numPackets}=100    ${returnToId}=1
+    ${rc}=    Ixia.Set Stream Control    ${chasId}    ${card}    ${port}    ${streamId}    ${streamRate}
+    ...    ${streamRateMode}    ${streamMode}    ${numPackets}    ${returnToId}
+    Should Be Equal As Integers    ${rc}    0
+    [Return]    ${rc}
+
+Set Stream Enable
+    [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}    ${flag}
+    ${rc}=    Ixia.Set Stream Enable    ${chasId}    ${card}    ${port}    ${streamId}    ${flag}
     Should Be Equal As Integers    ${rc}    0
     [Return]    ${rc}

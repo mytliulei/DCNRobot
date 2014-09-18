@@ -27,6 +27,7 @@ class PacketBase(object):
         self._pkt_streamlist_hexstring = []
         self._packetList = []
         self._packetField = []
+        self._ixia_flag = False
 
     def _get_stream_from_pcapfile(self,filename):
         '''read pcap file and return bytes stream'''
@@ -43,7 +44,7 @@ class PacketBase(object):
                 cmd = 'p=' + self._packetList[0]
                 exec(cmd)
                 ipstr = hexstr(str(p),0,1)
-                ixia_packetStr = '$'.join(ipstr.split())
+                ixia_packetStr = '#'.join(ipstr.split())
             return ixia_packetStr
         else:
             return self._packetList
@@ -89,7 +90,7 @@ class PacketBase(object):
         dst = ':'.join(dstlist)
         srclist = src.split('-')
         src = ':'.join(srclist)
-        if type(typeid) is str:
+        if issubclass(type(typeid),basestring):
             if typeid.startswith('0x'):
                 typeid = int(typeid,16)
             else:
@@ -132,27 +133,27 @@ class PacketBase(object):
         hwsrc = ':'.join(hwsrclist)
         hwdstlist = hwdst.split('-')
         hwdst = ':'.join(hwdstlist)
-        if type(hwtype) is str:
+        if issubclass(type(hwtype),basestring):
             if hwtype.startswith('0x'):
                 hwtype = int(hwtype,16)
             else:
                 hwtype = int(hwtype)
-        if type(ptype) is str:
+        if issubclass(type(ptype),basestring):
             if ptype.startswith('0x'):
                 ptype = int(ptype,16)
             else:
                 ptype = int(ptype)
-        if type(hwlen) is str:
+        if issubclass(type(hwlen),basestring):
             if hwlen.startswith('0x'):
                 hwlen = int(hwlen,16)
             else:
                 hwlen = int(hwlen)
-        if type(plen) is str:
+        if issubclass(type(plen),basestring):
             if plen.startswith('0x'):
                 plen = int(plen,16)
             else:
                 plen = int(plen)
-        if type(op) is str:
+        if issubclass(type(op),basestring):
             if op.startswith('0x'):
                 op = int(op,16)
             else:
@@ -191,61 +192,61 @@ class PacketBase(object):
            exapmle:
            | Build Ip | src=10.1.1.1 | dst=10.1.1.254 |
         '''
-        if type(version) is str:
+        if issubclass(type(version),basestring):
             if version.startswith('0x'):
                 version = int(version,16)
             else:
                 version = int(version)
-        if type(tos) is str:
+        if issubclass(type(tos),basestring):
             if tos.startswith('0x'):
                 tos = int(tos,16)
             else:
                 tos = int(tos)
-        if type(iden) is str:
+        if issubclass(type(iden),basestring):
             if iden.startswith('0x'):
                 iden = int(iden,16)
             else:
                 iden = int(iden)
-        if type(flags) is str:
+        if issubclass(type(flags),basestring):
             if flags.startswith('0x'):
                 flags = int(flags,16)
             else:
                 flags = int(flags)
-        if type(frag) is str:
+        if issubclass(type(frag),basestring):
             if frag.startswith('0x'):
                 frag = int(frag,16)
             else:
                 frag = int(frag)
-        if type(ttl) is str:
+        if issubclass(type(ttl),basestring):
             if ttl.startswith('0x'):
                 ttl = int(ttl,16)
             else:
                 ttl = int(ttl)
-        if type(proto) is str:
+        if issubclass(type(proto),basestring):
             if proto.startswith('0x'):
                 proto = int(proto,16)
             else:
                 proto = int(proto)
         if ihl:
-            if type(ihl) is str:
+            if issubclass(type(ihl),basestring):
                 if ihl.startswith('0x'):
                     ihl = int(ihl,16)
                 else:
                     ihl = int(ihl)
         if chksum:
-            if type(chksum) is str:
+            if issubclass(type(chksum),basestring):
                 if chksum.startswith('0x'):
                     chksum = int(chksum,16)
                 else:
                     chksum = int(chksum)
         if iplen:
-            if type(iplen) is str:
+            if issubclass(type(iplen),basestring):
                 if iplen.startswith('0x'):
                     iplen = int(iplen,16)
                 else:
                     iplen = int(iplen)
         if options:
-            if type(options) is str:
+            if issubclass(type(options),basestring):
                 if options.startswith('0x'):
                     options = int(options,16)
                 else:
@@ -278,22 +279,22 @@ class PacketBase(object):
            exapmle:
            | Build Dot1q | prio=${7} | vlan=${10} |
         '''
-        if type(prio) is str:
+        if issubclass(type(prio),basestring):
             if prio.startswith('0x'):
                 prio = int(prio,16)
             else:
                 prio = int(prio)
-        if type(cfi) is str:
+        if issubclass(type(cfi),basestring):
             if cfi.startswith('0x'):
                 cfi = int(cfi,16)
             else:
                 cfi = int(cfi)
-        if type(vlan) is str:
+        if issubclass(type(vlan),basestring):
             if vlan.startswith('0x'):
                 vlan = int(vlan,16)
             else:
                 vlan = int(vlan)
-        if type(typeid) is str:
+        if issubclass(type(typeid),basestring):
             if typeid.startswith('0x'):
                 typeid = int(typeid,16)
             else:
@@ -355,7 +356,7 @@ class PacketBase(object):
            | Build Payload | ${256} |
            | Build Payload | payload=000102030405 |
         '''
-        if type(length) is str:
+        if issubclass(type(length),basestring):
             if length.startswith('0x'):
                 length = int(length,16)
             else:
