@@ -89,6 +89,7 @@ proc evalIxiaCmd {cmdstr} {
 }
 
 #set ixia stream from hexstring
+#err code : 1200-1299
 proc SetStreamFromHexstr {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -166,6 +167,7 @@ proc SetStreamFromHexstr {cmdstr} {
 }
 
 #set ixia port mode default
+#err code : 1300-1399
 proc SetPortModeDefault {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -208,6 +210,7 @@ proc StartTransmit {cmdstr} {
 }
 
 #stop ixia stream
+#err code : 1400-1499
 proc StopTransmit {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -229,6 +232,7 @@ proc StopTransmit {cmdstr} {
 }
 
 #get ixia statistics
+#err code : 1500-1599
 proc GetStatistics {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -328,6 +332,7 @@ proc GetStatistics {cmdstr} {
 }
 
 #clear ixia statistics
+#err code : 1600-1699
 proc ClearStatistics {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -349,6 +354,7 @@ proc ClearStatistics {cmdstr} {
 }
 
 #start capture
+#err code : 1700-1799
 proc StartCapture {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -370,6 +376,7 @@ proc StartCapture {cmdstr} {
 }
 
 #start capture
+#err code : 1800-1899
 proc StopCapture {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -411,6 +418,7 @@ proc CheckTransmitDone {cmdstr} {
 }
 
 #get capture packet
+#err code : 1100-1199
 proc GetCapturePacket {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -427,23 +435,39 @@ proc GetCapturePacket {cmdstr} {
     set card [lindex $cmdlist 2]
     set fromPacket [lindex $cmdlist 3]
     set toPacket [lindex $cmdlist 4]
-    capture get $chasId $port $card
+    if {$fromPacket < 1} {
+        return -1103
+    }
+    set capres [capture get $chasId $port $card]
+    if {$capres != 0} {
+        return -1101
+    }
     set capnum [capture cget -nPackets]
     if {$capnum < $toPacket} {
         set toPacket $capnum
     }
-    captureBuffer get $chasId $port $card $fromPacket $toPacket
+    if {$fromPacket > $toPacket} {
+        return -1102
+    }
+    set capres [captureBuffer get $chasId $port $card $fromPacket $toPacket]
+    if {$capres != 0} {
+        return -1104
+    }
     set ret ""
     for {set i $fromPacket} {$i <= $toPacket} {incr i} {
-        captureBuffer getframe $i
-        set data [captureBuffer cget -frame]
-        lappend ret $data
+        set ires [captureBuffer getframe $i]
+        if {$ires == 0} {
+            set data [captureBuffer cget -frame]
+            set data [string range $data 0 end-12]
+            lappend ret $data
+        }
     }
     set retstr [join $ret "$"]
     return $retstr
 }
 
 #get capture packet Num
+#err code : 1900-1999
 proc GetCapturePacketNum {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
