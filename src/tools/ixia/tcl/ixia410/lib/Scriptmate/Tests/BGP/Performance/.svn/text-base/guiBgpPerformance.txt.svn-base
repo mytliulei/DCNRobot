@@ -1,8 +1,0 @@
-BGP Performance test
-========================
-
-The BGP Performance test will setup user defined routes and topology, then measure no-drop throughput and latency between advertised port. This test will characterize the performance of DUT by emulating the pre-defined numbers of BGP routing sessions and routes. The data plane test will then follow to determine the throughput and latency. The test can be repeated manually to vary the size of emulated topology. The combined performance of control plane and data plane can then be evaluated.
-
-EBGP or IBGP can be configured.
-
-

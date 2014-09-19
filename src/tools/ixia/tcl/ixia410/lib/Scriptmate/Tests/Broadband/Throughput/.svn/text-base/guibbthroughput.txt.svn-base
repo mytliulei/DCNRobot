@@ -1,6 +1,0 @@
-Broadband Throughput test
-=========================
-
-The broadband performance test suite is used to emulate multiple hosts (PCs) connecting to access devices, such as cable modem, DSL modem or wireless modem. An additional Ixia port will be used to connect the aggregation device (DSLAM, CMTS, base station or other broadband device) that terminates the user traffic. Traffic will then be transmitted to characterize the data plane performance for throughput, latency, sequence error, jitter and data error measurements.
-
-The Throughput test is designed to measure maximum throughput as either line rate or data rate.  In addition, packet latency and data integrity checking can be measured.

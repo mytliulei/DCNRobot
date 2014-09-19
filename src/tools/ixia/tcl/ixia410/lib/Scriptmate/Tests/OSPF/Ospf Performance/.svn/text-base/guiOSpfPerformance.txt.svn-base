@@ -1,7 +1,0 @@
-OSPF Performance test
-========================
-
-The OSPF performance test will setup user defined routes and topology, then measure no-drop throughput and latency between advertised ports. The test is designed to support both OSPFv2 and OSPFv3 protocols.
-
-This test characterizes the performance of the DUT by emulating the pre-defined numbers of OSPF neighbors and routes. The data plane test will then follow to determine the throughput and latency. The test can be repeated manually to vary the size of emulated topology. The combined performance of control plane and data plane can then be evaluated.
-
