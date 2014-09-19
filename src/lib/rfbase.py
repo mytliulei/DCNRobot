@@ -28,6 +28,7 @@ class PacketBase(object):
         self._packetList = []
         self._packetField = []
         self._ixia_flag = False
+        self._ixia_packetField = []
 
     def _get_stream_from_pcapfile(self,filename):
         '''read pcap file and return bytes stream'''
@@ -70,7 +71,7 @@ class PacketBase(object):
         self._packetField = []
         return 0
 
-    def build_ether(self,dst='ff:ff:ff:ff:ff:ff',src='00:00:00:00:00:00',typeid=None):
+    def build_ether(self,dst='ff:ff:ff:ff:ff:ff',src='00:00:00:00:00:00',typeid=None,**kwargs):
         '''build Ethernet field packet
 
            args:
@@ -106,7 +107,43 @@ class PacketBase(object):
             return -1
         else:
             self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_ether_ixia(dst,src,typeid,kwargs)
             return len(p)
+
+    def _build_ether_ixia(self,dst,src,typeid,**kwargs):
+        '''
+        '''
+        cmdlist = []
+        dstlist = dst.split(':')
+        dst = ' '.join(dstlist)
+        srclist = src.split(':')
+        src = ' '.join(srclist)
+        #src mac config
+        cmdlist.append('stream config -sa "%s"' % src)
+        if saRepeateCounter in kwargs.keys():
+            cmdlist.append('stream config -saRepeateCounter %s' % kwargs[saRepeateCounter])
+        if saStep in kwargs.keys():
+            cmdlist.append('stream config -saStep %s' % kwargs[saStep])
+        if saMaskValue in kwargs.keys():
+            cmdlist.append('stream config -saMaskValue "%s"' % kwargs[saMaskValue])
+        if saMaskSelect in kwargs.keys():
+            cmdlist.append('stream config -saMaskSelect "%s"' % kwargs[saMaskSelect])
+        #dst mac config
+        cmdlist.append('stream config -da "%s"' % dst)
+        if daRepeateCounter in kwargs.keys():
+            cmdlist.append('stream config -daRepeateCounter %s' % kwargs[daRepeateCounter])
+        if daStep in kwargs.keys():
+            cmdlist.append('stream config -daStep %s' % kwargs[daStep])
+        if daMaskValue in kwargs.keys():
+            cmdlist.append('stream config -daMaskValue "%s"' % kwargs[daMaskValue])
+        if daMaskSelect in kwargs.keys():
+            cmdlist.append('stream config -daMaskSelect "%s"' % kwargs[daMaskSelect])
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        return True
+
+
 
     def build_arp(self,hwtype=0x1,ptype=0x800,hwlen=6,plen=4,op=1,hwsrc='00:00:00:00:00:00',psrc='0.0.0.0',hwdst='00:00:00:00:00:00',pdst='0.0.0.0'):
         '''build arp field packet
@@ -263,7 +300,7 @@ class PacketBase(object):
             self._packetField.append(cmd)
             return len(p)
 
-    def build_dot1q(self,prio=0,cfi=0,vlan=1,typeid=None):
+    def build_dot1q(self,prio=0,cfi=0,vlan=1,typeid=None,**kwargs):
         '''
            build 802.1Q field packet
 
@@ -310,7 +347,21 @@ class PacketBase(object):
             return -1
         else:
             self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_vlan_ixia(prio,cfi,vlan,typeid,kwargs)
             return len(p)
+
+    def _build_vlan_ixia(self,prio,cfi,vlan,typeid,**kwargs):
+        '''
+        '''
+        cmdlist = []
+        cmdlist.append('vlan setDefault')
+        cmdlist.append('vlan config -vlanID %s' % vlan)
+        cmdlist.append('vlan config -userPriority %s' % prio)
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        return True
+
 
     def build_payload(self,payload):
         '''

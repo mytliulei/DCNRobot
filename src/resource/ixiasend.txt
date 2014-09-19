@@ -188,3 +188,8 @@ Set Stream Enable
     ${rc}=    Ixia.Set Stream Enable    ${chasId}    ${card}    ${port}    ${streamId}    ${flag}
     Should Be Equal As Integers    ${rc}    0
     [Return]    ${rc}
+
+Wait For Transmit Done
+    [Arguments]    ${chasId}    ${port}    ${card}    ${timeout}={180}
+    ${rc}=    Ixia.Wait For Transmit Done    ${chasId}    ${port}    ${card}    ${timeout}
+    [Return]    ${rc}

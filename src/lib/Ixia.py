@@ -396,11 +396,20 @@ class Ixia(object):
         self._capture_packet_buffer[capture_index] = packetList
         return n
 
+    def clear_capture_packet(self,chasId,port,card):
+        '''
+        '''
+        capture_index = '%s %s %s' % (chasId,port,card)
+        self._capture_packet_buffer[capture_index] = None
+        return 0
+
     def filter_capture_packet(self,chasId,port,card,capFilter):
         '''
         '''
         capture_index = '%s %s %s' % (chasId,port,card)
         if capture_index not in self._capture_packet_buffer.keys():
+            return -2,[]
+        if self._capture_packet_buffer[capture_index] is None:
             return -1,[]
         if not self._capture_packet_buffer[capture_index]:
             return 0,[]
