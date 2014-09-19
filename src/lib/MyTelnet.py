@@ -318,6 +318,7 @@ class MyTelnet(object):
             conn = self._get_connection()
             excluded = [name for name in dir(telnetlib.Telnet())
                         if name not in ['write', 'read', 'read_until']]
+            excluded.append('write_monitor_buffer')
             self._conn_kws = self._get_keywords(conn, excluded)
         return self._conn_kws
 
@@ -447,6 +448,16 @@ class MyTelnet(object):
         """
         self._conn = self._cache.close_all()
 
+    def print_to_console_log(self,*msg):
+        '''
+        '''
+        message = '\n'+ '#'*15 + '\n'
+        message += '\n'.join(msg)
+        message += '\n'+ '#'*15 + '\n'
+        for iconn in self._cache:
+            iconn.write_monitor_buffer(message)
+
+
 
 class MyTelnetConnection(telnetlib.Telnet):
 
@@ -483,6 +494,12 @@ class MyTelnetConnection(telnetlib.Telnet):
         old = self._monitor
         self._set_monitor(monitor)
         return old
+
+    def write_monitor_buffer(self,mesg):
+        '''
+        '''
+        if self._monitor:
+            self._cp_rb += mesg
 
     def set_timeout(self, timeout):
         """Sets the timeout used for waiting output in the current connection.
