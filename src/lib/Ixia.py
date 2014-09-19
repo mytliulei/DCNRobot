@@ -371,6 +371,8 @@ class Ixia(object):
         '''
         capture_index = '%s %s %s' % (chasId,port,card)
         packetStr = self._get_capture_packet(chasId,port,card,packet_from,packet_to)
+        if not packetStr:
+            return 0
         packetStrList = packetStr.split('$')
         try:
             err_code = int(packetStr)
@@ -399,9 +401,9 @@ class Ixia(object):
         '''
         capture_index = '%s %s %s' % (chasId,port,card)
         if capture_index not in self._capture_packet_buffer.keys():
-            return 0
+            return -1,[]
         if not self._capture_packet_buffer[capture_index]:
-            return 0
+            return 0,[]
         if not issubclass(type(capFilter),basestring):
             raise AssertionError('capFilter must be a string')
         import pcapy
@@ -565,7 +567,7 @@ class Ixia(object):
         '''
         '''
         import select
-        expectRe = re.compile(r'ixia proxy error buffer end.*',re.DOTALL)
+        expectRe = re.compile(r'ixia proxy error buffer end..',re.DOTALL)
         buff = ''
         time_start = time.time()
         while True:

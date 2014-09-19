@@ -481,16 +481,22 @@ proc GetCapturePacket {cmdstr} {
     if {$fromPacket < 1} {
         return -1103
     }
+    if {$fromPacket > $toPacket} {
+        return -1102
+    }
     set capres [capture get $chasId $port $card]
     if {$capres != 0} {
         return -1101
     }
     set capnum [capture cget -nPackets]
+    if {$capnum == 0} {
+        return ""
+    }
     if {$capnum < $toPacket} {
         set toPacket $capnum
     }
     if {$fromPacket > $toPacket} {
-        return -1102
+        return ""
     }
     set capres [captureBuffer get $chasId $port $card $fromPacket $toPacket]
     if {$capres != 0} {

@@ -172,6 +172,7 @@ Get Capture Packet Num
 Filter Capture Packet
     [Arguments]    ${chasId}    ${card}    ${port}    ${fliter}
     @{filterres}=    Ixia.Filter Capture Packet    ${chasId}    ${card}    ${port}    ${fliter}
+    Should Be True    @{filterres}[0] >= 0
     [Return]    @{filterres}
 
 Set Stream Control
