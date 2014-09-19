@@ -2,4 +2,4 @@
 *.pyo
 test*.txt
 .tags*
-TCLEvents*.log
+ixia/
