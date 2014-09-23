@@ -608,6 +608,7 @@ proc SetStreamEnable {cmdstr} {
         return -100
     }
     global ixia_ip
+    ixDisconnectFromChassis $ixia_ip
     if {[ConnectToIxia $ixia_ip] != 0 } {
         return -400
     }

@@ -32,6 +32,7 @@ class Ixia(object):
         ''''''
         #self._ixia_tcl_path = os.path.join(os.path.dirname(os.getcwd()),'src','tools','ixia','tcl')
         self._ixia_tcl_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','tools','ixia','tcl')
+        self._ixia_pcapfile_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','tools','ixia','pcapfile')
         #self._proxy_server_path = os.path.join(os.path.dirname(os.getcwd()),'src','tools','IxiaProxyServer.tcl')
         self._proxy_server_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','tools','IxiaProxyServer.tcl')
         self._ixia_version = {
@@ -66,6 +67,9 @@ class Ixia(object):
         self._proxy_server_retcode = None
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
+        self.expect_err_Re = re.compile(r'ixia proxy error buffer end..',re.DOTALL)
+        self.expect_ret_Re = re.compile(r'\n')
+
 
     def init_ixia(self,ixia_ip):
         '''
@@ -415,7 +419,10 @@ class Ixia(object):
             return 0,[]
         if not issubclass(type(capFilter),basestring):
             raise AssertionError('capFilter must be a string')
-        import pcapy
+        try:
+            import pcapy
+        except Exception:
+            raise AssertionError('can not load pcap,may be not installed')
         try:
             matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
         except Exception:
@@ -428,6 +435,26 @@ class Ixia(object):
                 pktFiltered.append(ipkt)
                 i += 1
         return i,pktFiltered
+
+    def _write_capture_packet(self,chasId,port,card,locate=None):
+        '''
+        '''
+        capture_index = '%s %s %s' % (chasId,port,card)
+        if capture_index not in self._capture_packet_buffer.keys():
+            return -2
+        if self._capture_packet_buffer[capture_index] is None:
+            return -1
+        if not os.path.exists(self._ixia_pcapfile_path):
+            raise AssertionError('pcapfile path: %s is not exists' % self._ixia_pcapfile_path)
+        import hashlib
+        fn_hash = hashlib.md5('%s %s' % (time.time(),capture_index))
+        filename = fn_hash.hexdigest()
+        pcapfname = os.path.join(self._ixia_pcapfile_path,filename)
+        try:
+            wrpcap(pcapfname,self._capture_packet_buffer[capture_index])
+        except Exception,ex:
+            raise AssertionError('write pcap file %s error: %s' % (pcapfname,ex))
+        return pcapfname
 
     def _read_ret(self):
         '''
@@ -493,8 +520,9 @@ class Ixia(object):
         ret = readret[1]
         return ret.strip()
 
-    def set_stream_enable(self,chasId,port,card,streamId,flag):
+    def _set_stream_enable(self,chasId,port,card,streamId,flag):
         '''
+        #take no effect,ixia bug
         1: enable
         0: disable
         '''
@@ -543,7 +571,7 @@ class Ixia(object):
         '''
         '''
         import select
-        expectRe = re.compile(r'\n')
+        #expectRe = re.compile(r'\n')
         buff = ''
         time_start = time.time()
         while True:
@@ -557,9 +585,9 @@ class Ixia(object):
                     break
             c = self._ixia_client_handle.recv(100)
             buff += c
-            if expectRe.search(c):
+            if self.expect_ret_Re.search(c):
                 break
-        buff = expectRe.sub('',buff)
+        buff = self.expect_ret_Re.sub('',buff)
         try:
             ret_code = int(buff)
         except Exception:
@@ -576,7 +604,7 @@ class Ixia(object):
         '''
         '''
         import select
-        expectRe = re.compile(r'ixia proxy error buffer end..',re.DOTALL)
+        #expectRe = re.compile(r'ixia proxy error buffer end..',re.DOTALL)
         buff = ''
         time_start = time.time()
         while True:
@@ -590,7 +618,7 @@ class Ixia(object):
                     break
             c = self._ixia_client_handle.recv(100)
             buff += c
-            if expectRe.search(buff):
+            if self.expect_err_Re.search(buff):
                 break
-        buff = expectRe.sub('',buff)
+        buff = self.expect_err_Re.sub('',buff)
         return buff
