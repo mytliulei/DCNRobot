@@ -251,7 +251,9 @@ class Ixia(object):
         '''
         '''
         if self._proxy_server_process and self._proxy_server_process.poll() is None:
-            self._proxy_server_process.stdout.flush()
+            c= self._proxy_server_process.stdout.readline()
+            c= self._proxy_server_process.stdout.readline()
+            c= self._proxy_server_process.stdout.readline()
             return True
         return False
 
