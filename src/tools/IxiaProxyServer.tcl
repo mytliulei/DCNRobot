@@ -22,9 +22,11 @@ proc ProcessConn {channel clientaddr clientport} {
 
 #process ixia cmd
 proc IxiaCmd {chan} {
+    #global logfid
     set err "eof close channel"
     if { [catch {gets $chan line} err] || [eof $chan] } {
-        puts $err
+        #puts $logfid $err
+        #flush $logfid
         close $chan
     } else {
         #eval ixia cmd
@@ -47,6 +49,9 @@ proc evalIxiaCmd {cmdstr chan} {
     set cmdname [lindex $cmdlist 0]
     set cmdstr [join [lrange $cmdlist 1 end]]
     set result ""
+    #global logfid
+    #puts $logfid "$cmdname started"
+    #flush $logfid
     switch -exact $cmdname {
         "set_stream_from_hexstr" {
             if {[catch {set ret [SetStreamFromHexstr $cmdstr]} result]} {
@@ -118,16 +123,25 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -986
             }
         }
+        "connect_ixia" {
+            if {[catch {set ret [ConnectToIxia $cmdstr]} result]} {
+                set ret -985
+            }
+        }
         default {
             set ret -900
         }
     }
     if {$ret < -900 && $ret >= -999} {
+        #puts $logfid "err:$ret"
+        #flush $logfid
         puts $chan $ret
         flush $chan
         append result "ixia proxy error buffer end"
         set ret $result
     }
+    #puts $logfid "rtc:$ret"
+    #flush $logfid
     return $ret
 }
 
@@ -296,67 +310,67 @@ proc GetStatistics {cmdstr} {
     foreach stat_type $statlist {
         switch -exact $stat_type {
             "txpps" {
-                stat getRate allStats $chasId $port $card
+                stat getRate statframesSent $chasId $port $card
                 set statnum [stat cget -framesSent]
                 lappend ret $statnum
             }
             "txBps" {
-                stat getRate allStats $chasId $port $card
+                stat getRate statbytesSent $chasId $port $card
                 set statnum [stat cget -bytesSent]
                 lappend ret $statnum
             }
             "txbps" {
-                stat getRate allStats $chasId $port $card
+                stat getRate statbitsSent $chasId $port $card
                 set statnum [stat cget -bitsSent]
                 lappend ret $statnum
             }
             "txpackets" {
-                stat get allStats $chasId $port $card
+                stat get statframesSent $chasId $port $card
                 set statnum [stat cget -framesSent]
                 lappend ret $statnum
             }
             "txbytes" {
-                stat get allStats $chasId $port $card
+                stat get statbytesSent $chasId $port $card
                 set statnum [stat cget -bytesSent]
                 lappend ret $statnum
             }
             "txbits" {
-                stat get allStats $chasId $port $card
+                stat get statbitsSent $chasId $port $card
                 set statnum [stat cget -bitsSent]
                 lappend ret $statnum
             }
             "rxpps" {
-                stat getRate allStats $chasId $port $card
+                stat getRate statframesReceived $chasId $port $card
                 set statnum [stat cget -framesReceived]
                 lappend ret $statnum
             }
             "rxBps" {
-                stat getRate allStats $chasId $port $card
+                stat getRate statbytesReceived $chasId $port $card
                 set statnum [stat cget -bytesReceived]
                 lappend ret $statnum
             }
             "rxbps" {
-                stat getRate allStats $chasId $port $card
+                stat getRate statbitsReceived $chasId $port $card
                 set statnum [stat cget -bitsReceived]
                 lappend ret $statnum
             }
             "rxpackets" {
-                stat get allStats $chasId $port $card
+                stat get statframesReceived $chasId $port $card
                 set statnum [stat cget -framesReceived]
                 lappend ret $statnum
             }
             "rxbytes" {
-                stat get allStats $chasId $port $card
+                stat get statbytesReceived $chasId $port $card
                 set statnum [stat cget -bytesReceived]
                 lappend ret $statnum
             }
             "rxbits" {
-                stat get allStats $chasId $port $card
+                stat get statbitsReceived $chasId $port $card
                 set statnum [stat cget -bitsReceived]
                 lappend ret $statnum
             }
             "updown" {
-                stat get allStats $chasId $port $card
+                stat get statlink $chasId $port $card
                 set statnum [stat cget -link]
                 if {statnum != 1} {
                     set statnum 0
@@ -388,9 +402,14 @@ proc ClearStatistics {cmdstr} {
     }
     set chasId [GetIxiaChassID $ixia_ip]
     set ret 0
+    # set x [lindex $cmdlist 0]
+    # set port [lindex $cmdlist 1]
+    # set card [lindex $cmdlist 2]
+    # set portlist [list [list $chasId $port $card]]
+    # set ret [ixClearPortStats portlist]
     foreach {x port card} $cmdlist {
-        set portlist [list [list $chasId $port $card]]
-        set res [ixClearStats portlist]
+        #set portlist [list [list $chasId $port $card]]
+        set res [ixClearPortStats $chasId $port $card]
         set ret [expr $ret + $res]
     }
     return $ret
@@ -649,10 +668,18 @@ proc ShutdownProxyserver {} {
     return -10000
 }
 
+proc OpenLog {} {
+    set filepath [info script]
+    set logfile [file join [file dirname $filepath] "ixia" "ixia.log"]
+    set fid [open $logfile "w"]
+    return $fid
+}
+
 set bind_addr 0.0.0.0
 set bind_port 11917
 set ixia_version 4.10
 set ixia_ip 0.0.0.0
+#set logfid ""
 if {$argc > 2} {
     array set argarray $argv
     if {[info exists argarray(ixiaversion)]} {
@@ -669,11 +696,15 @@ if {$argc > 2} {
     }
 }
 
-if {[ConnectToIxia $ixia_ip] == 0} {
-    puts "ConnectToIxia success"
-    socket -server ProcessConn -myaddr $bind_addr $bind_port
-    vwait forever
-} else {
-    #code error -400: not connect to ixia
-    exit -400
-}
+socket -server ProcessConn -myaddr $bind_addr $bind_port
+#set logfid [OpenLog]
+vwait forever
+# if {[ConnectToIxia $ixia_ip] == 0} {
+#     puts "ConnectToIxia success"
+#     socket -server ProcessConn -myaddr $bind_addr $bind_port
+#     set logfid [OpenLog]
+#     vwait forever
+# } else {
+#     #code error -400: not connect to ixia
+#     exit -400
+# }

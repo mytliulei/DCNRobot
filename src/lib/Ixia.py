@@ -83,7 +83,8 @@ class Ixia(object):
         proxy_server_port = self._proxy_bind_port[version]
         sRet = self._start_proxy_server(ixia_ip,proxy_server_port)
         cRet = self._start_ixia_client(proxy_server_port)
-        ret = sRet and cRet
+        nRet = self._connect_ixia(ixia_ip)
+        ret = sRet and cRet and nRet == '0'
         if ret:
             self._initFlag[version] = True
         return ret
@@ -135,6 +136,8 @@ class Ixia(object):
     def _start_proxy_server(self,_ixia_ip,_proxy_server_port):
         '''
         '''
+        #debug ixia 
+        #return True
         if _ixia_ip in self._ixia_version.keys():
             version = self._ixia_version[_ixia_ip]
         else:
@@ -149,18 +152,41 @@ class Ixia(object):
         proxy_file = proxy_file_sub.sub(r'\\"\1"\\',self._proxy_server_path)
         cmd = '%s %s ixiaip %s bindport %s ixiaversion %s' % (cmdpath,proxy_file,_ixia_ip,_proxy_server_port,version)
         p=subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
+        #p=subprocess.Popen(cmd,shell=True)
         self._proxy_server_process = p
-        searchre = re.compile(r'ConnectToIxia success')
-        timeout = 0
-        while p.poll() is None and timeout < 60:
-            time.sleep(1)
-            timeout += 1
-            rdstr = p.stdout.readline()
-            if searchre.search(rdstr):
-                self._proxy_server_retcode = p.returncode
-                return True
+        #searchre = re.compile(r'ConnectToIxia success')
+        #timeout = 0
+        # while p.poll() is None and timeout < 60:
+        #     time.sleep(1)
+        #     timeout += 1
+        #     rdstr = p.stdout.readline()
+        #     if searchre.search(rdstr):
+        #         self._proxy_server_retcode = p.returncode
+        #         return True
+        # self._proxy_server_retcode = p.returncode
+        # return False
+        time.sleep(3)
+        if p.poll() is None:
+            self._proxy_server_retcode = p.returncode
+            return True
         self._proxy_server_retcode = p.returncode
         return False
+
+    def _connect_ixia(self,ixia_ip):
+        '''
+        '''
+        if self._ixia_client_handle:
+            cmd = 'connect_ixia %s\n' % ixia_ip
+            try:
+                self._ixia_client_handle.sendall(cmd)
+            except Exception:
+                self._close_ixia_client()
+                raise AssertionError('write cmd to proxy server error')
+            readret = self._read_ret_select()
+            if not readret[0]:
+                raise AssertionError('ixia proxy server error: %s' % readret[1])
+            ret = readret[1]
+            return ret.strip()
 
     def _close_proxy_server(self):
         '''
@@ -184,6 +210,8 @@ class Ixia(object):
     def _is_proxyserver_live(self):
         '''
         '''
+        #debug ixia
+        #return True
         if self._proxy_server_process:
             try:
                 return True if self._proxy_server_process.poll() is None else False
@@ -219,6 +247,14 @@ class Ixia(object):
                 pass
         self._ixia_client_handle = None
 
+    def _flush_proxy_server(self):
+        '''
+        '''
+        if self._proxy_server_process and self._proxy_server_process.poll() is None:
+            self._proxy_server_process.stdout.flush()
+            return True
+        return False
+
     def start_transmit(self,chasId,port,card):
         '''
         '''
@@ -232,6 +268,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def stop_transmit(self,chasId,port,card):
@@ -247,6 +284,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def start_capture(self,chasId,port,card):
@@ -264,6 +302,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def stop_capture(self,chasId,port,card):
@@ -279,6 +318,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def clear_statics(self,chasId,port,card):
@@ -294,6 +334,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def wait_for_transmit_done(self,chasId,port,card,timeout=180):
@@ -313,6 +354,7 @@ class Ixia(object):
             if not readret[0]:
                 raise AssertionError('ixia proxy server error: %s' % readret[1])
             ret = readret[1]
+            self._flush_proxy_server()
             if ret.strip() == '0':
                 break
             elapsed = time.time() - time_start
@@ -331,6 +373,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def set_port_mode_default(self,chasId,port,card):
@@ -346,6 +389,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def shutdown_proxy_server(self):
@@ -368,6 +412,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def get_capture_packet(self,chasId,port,card,packet_from=1,packet_to=1000):
@@ -503,6 +548,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def set_stream_control(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
@@ -518,6 +564,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def _set_stream_enable(self,chasId,port,card,streamId,flag):
@@ -536,6 +583,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         return ret.strip()
 
     def get_statistics(self,chasId,port,card,statisType,*args):
@@ -560,6 +608,7 @@ class Ixia(object):
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
         ret = readret[1]
+        self._flush_proxy_server()
         retList = ret.strip().split()
         return retList[0] if len(retList) == 1 else retList
 
