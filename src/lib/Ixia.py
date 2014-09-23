@@ -252,9 +252,7 @@ class Ixia(object):
         '''
         if self._proxy_server_process and self._proxy_server_process.poll() is None:
             c= self._proxy_server_process.stdout.readline()
-            c= self._proxy_server_process.stdout.readline()
-            c= self._proxy_server_process.stdout.readline()
-            return True
+            return c
         return False
 
     def start_transmit(self,chasId,port,card):
