@@ -73,6 +73,15 @@ class Ixia(object):
 
     def init_ixia(self,ixia_ip):
         '''
+        start ixia proxy server and connect to ixia;
+
+        Note: in the beginning of every test suit,please use this keyword,in the end of every test suit,the ixia proxy server will be shutdown
+
+        args:
+        - ixia_ip: the ip address of ixia
+
+        return:
+        - True or False
         '''
         if ixia_ip in self._ixia_version.keys():
             version = self._ixia_version[ixia_ip]
@@ -255,10 +264,20 @@ class Ixia(object):
             return c
         return False
 
-    def start_transmit(self,chasId,port,card):
+    def start_transmit(self,chasId,card,port):
         '''
+        start to transmit stream
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
-        cmd = 'start_transmit %s %s %s\n' % (chasId,port,card)
+        cmd = 'start_transmit %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -271,10 +290,20 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def stop_transmit(self,chasId,port,card):
+    def stop_transmit(self,chasId,card,port):
         '''
+        stop to transmit stream
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
-        cmd = 'stop_transmit %s %s %s\n' % (chasId,port,card)
+        cmd = 'stop_transmit %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -287,12 +316,22 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def start_capture(self,chasId,port,card):
+    def start_capture(self,chasId,card,port):
         '''
+        start to capture stream
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
-        capture_index = '%s %s %s' % (chasId,port,card)
+        capture_index = '%s %s %s' % (chasId,card,port)
         self._capture_packet_buffer[capture_index] = []
-        cmd = 'start_capture %s %s %s\n' % (chasId,port,card)
+        cmd = 'start_capture %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -305,10 +344,20 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def stop_capture(self,chasId,port,card):
+    def stop_capture(self,chasId,card,port):
         '''
+        stop to capture stream
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
-        cmd = 'stop_capture %s %s %s\n' % (chasId,port,card)
+        cmd = 'stop_capture %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -321,10 +370,20 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def clear_statics(self,chasId,port,card):
+    def clear_statics(self,chasId,card,port):
         '''
+        clear all statics of ixia port
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
-        cmd = 'clear_statics %s %s %s\n' % (chasId,port,card)
+        cmd = 'clear_statics %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -337,10 +396,21 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def wait_for_transmit_done(self,chasId,port,card,timeout=180):
+    def wait_for_transmit_done(self,chasId,card,port,timeout=180):
         '''
+        wait for transmiting  done
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - timeout: default 180s
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
-        cmd = 'get_statistics %s %s %s txstate\n' % (chasId,port,card)
+        cmd = 'get_statistics %s %s %s txstate\n' % (chasId,card,port)
         ret = '1'
         time_start = time.time()
         elapsed = time.time() - time_start
@@ -360,10 +430,21 @@ class Ixia(object):
             elapsed = time.time() - time_start
         return ret.strip()
 
-    def get_capture_packet_num(self,chasId,port,card):
+    def get_capture_packet_num(self,chasId,card,port):
         '''
+        get capture packet num,please use this keyword after Start Capture and Stop Capture
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - timeout: default 180s
+
+        return:
+        - non negative number: num of capture packet
+        - negative number: error code
         '''
-        cmd = 'get_capture_packet_num %s %s %s\n' % (chasId,port,card)
+        cmd = 'get_capture_packet_num %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -376,10 +457,20 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def set_port_mode_default(self,chasId,port,card):
+    def set_port_mode_default(self,chasId,card,port):
         '''
+        set ixia port default,please use this keyword before Set Stream Packet
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
-        cmd = 'set_port_mode_default %s %s %s\n' % (chasId,port,card)
+        cmd = 'set_port_mode_default %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -394,15 +485,23 @@ class Ixia(object):
 
     def shutdown_proxy_server(self):
         '''
+        shutdown proxy sever
+
+        Note: Do not use this keyword unless you know what you are doing
+
+        args:
+
+        return:
+        - True or False
         '''
         shut = self._close_proxy_server()
         self._close_ixia_client()
         return shut
 
-    def _get_capture_packet(self,chasId,port,card,packet_from,packet_to):
+    def _get_capture_packet(self,chasId,card,port,packet_from,packet_to):
         '''
         '''
-        cmd = 'get_capture_packet %s %s %s %s %s\n' % (chasId,port,card,packet_from,packet_to)
+        cmd = 'get_capture_packet %s %s %s %s %s\n' % (chasId,card,port,packet_from,packet_to)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -415,11 +514,25 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def get_capture_packet(self,chasId,port,card,packet_from=1,packet_to=1000):
+    def get_capture_packet(self,chasId,card,port,packet_from=1,packet_to=1000):
         '''
+        get capture packet, and save internally
+
+        Note:please use this keyword after Start Capture and Stop Capture
+
+        args:
+        - chasId:        normally should be 1
+        - card:          ixia card
+        - port:          ixia port
+        - packet_from:   default 1
+        - packet_to:     default 1000, and will be adjust by actual capture num
+
+        return:
+        - non negative number: num of capture packet
+        - negative number: error code
         '''
-        capture_index = '%s %s %s' % (chasId,port,card)
-        packetStr = self._get_capture_packet(chasId,port,card,packet_from,packet_to)
+        capture_index = '%s %s %s' % (chasId,card,port)
+        packetStr = self._get_capture_packet(chasId,card,port,packet_from,packet_to)
         if not packetStr:
             return 0
         packetStrList = packetStr.split('$')
@@ -445,17 +558,41 @@ class Ixia(object):
         self._capture_packet_buffer[capture_index] = packetList
         return n
 
-    def clear_capture_packet(self,chasId,port,card):
+    def clear_capture_packet(self,chasId,card,port):
         '''
+        clear saved capture packet
+
+        Note:Start Capture will clear saved capture packet automatically
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - 0: ok
+        - negative number: error code
         '''
-        capture_index = '%s %s %s' % (chasId,port,card)
+        capture_index = '%s %s %s' % (chasId,card,port)
         self._capture_packet_buffer[capture_index] = None
         return 0
 
-    def filter_capture_packet(self,chasId,port,card,capFilter):
+    def filter_capture_packet(self,chasId,card,port,capFilter):
         '''
+        filter the capture packet,and return a list including filter num and filter packets
+
+        Note:please use this keyword after Get Capture Packet
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - capFilter: filter expression, to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html
+
+        return:
+        - (num of filter,packet of filter)
         '''
-        capture_index = '%s %s %s' % (chasId,port,card)
+        capture_index = '%s %s %s' % (chasId,card,port)
         if capture_index not in self._capture_packet_buffer.keys():
             return -2,[]
         if self._capture_packet_buffer[capture_index] is None:
@@ -481,10 +618,21 @@ class Ixia(object):
                 i += 1
         return i,pktFiltered
 
-    def _write_capture_packet(self,chasId,port,card,locate=None):
+    def _write_capture_packet(self,chasId,card,port):
         '''
+        write the capture packet,normally saved in the path tools/ixia/pcapfile/
+
+        Note:please use this keyword after Get Capture Packet
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - pcap file name including path
         '''
-        capture_index = '%s %s %s' % (chasId,port,card)
+        capture_index = '%s %s %s' % (chasId,card,port)
         if capture_index not in self._capture_packet_buffer.keys():
             return -2
         if self._capture_packet_buffer[capture_index] is None:
@@ -516,12 +664,12 @@ class Ixia(object):
             self._close_ixia_client()
             raise AssertionError('read return from proxy server error')
 
-    # def build_stream(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
+    # def build_stream(self,chasId,card,port,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
     #     '''
     #     '''
     #     streamStr = self._pkt_class.get_packet_list(ixiaFlag=True)
     #     self._pkt_class.empty_packet_list()
-    #     cmd = 'set_stream_from_hexstr %s %s %s %s %s %s %s %s %s %s\n' % (chasId,port,card,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId,streamStr)
+    #     cmd = 'set_stream_from_hexstr %s %s %s %s %s %s %s %s %s %s\n' % (chasId,card,port,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId,streamStr)
     #     try:
     #         self._ixia_client_handle.sendall(cmd)
     #     except Exception:
@@ -533,12 +681,25 @@ class Ixia(object):
     #     ret = readret[1]
     #     return ret.strip()
 
-    def set_stream_packet(self,chasId,port,card,streamId):
+    def set_stream_packet(self,chasId,card,port,streamId):
         '''
+        set a packet on stream of ixia port
+
+        Note:please use this keyword after Build Packet
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - streamId: stream id
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
         streamStr = self._pkt_class.get_packet_list(ixiaFlag=True)
         self._pkt_class.empty_packet_list()
-        cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,port,card,streamId,streamStr)
+        cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -551,10 +712,33 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def set_stream_control(self,chasId,port,card,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
+    def set_stream_control(self,chasId,card,port,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
         '''
+        set stream trasmit mode
+
+        Note:please use this keyword after Set Stream Packet
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - streamId: stream id
+        - streamRate: stream send rate
+        - streamRateMode: 0:percent ; 1: pps ; 2: bps
+        - streamMode: stream control mode;
+          0: continuously transmit the frames on this stream;
+          1: continuously transmit bursts of frames on this stream
+          2: stop transmission
+          3: advance
+          4: return to id ,default to stream 1
+        - numFrames: stream send packet num,enable when streamMode 2,3,4; default 100
+        - ReturnId: enable when streamMode 4 ,default 1
+
+        return:
+        - 0: ok
+        - non zero: error code
         '''
-        cmd = 'set_stream_control %s %s %s %s %s %s %s %s %s\n' % (chasId,port,card,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId)
+        cmd = 'set_stream_control %s %s %s %s %s %s %s %s %s\n' % (chasId,card,port,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -567,13 +751,13 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def _set_stream_enable(self,chasId,port,card,streamId,flag):
+    def _set_stream_enable(self,chasId,card,port,streamId,flag):
         '''
         #take no effect,ixia bug
         1: enable
         0: disable
         '''
-        cmd = 'set_stream_enable %s %s %s %s %s\n' % (chasId,port,card,streamId,flag)
+        cmd = 'set_stream_enable %s %s %s %s %s\n' % (chasId,card,port,streamId,flag)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -586,15 +770,24 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def get_statistics(self,chasId,port,card,statisType,*args):
+    def get_statistics(self,chasId,card,port,statisType,*args):
         '''
+        get port statics
+
         args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
         - statisType: txpps,txBps,txbps,txpackets,txbytes,txbits
                       rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
                       updown: 0:down,1:up;
                       txstate: 0:stop,1:start;
+
+        return:
+        - non negative number: statics num
+        - negative number: error code
         '''
-        cmd = 'get_statistics %s %s %s %s' % (chasId,port,card,statisType)
+        cmd = 'get_statistics %s %s %s %s' % (chasId,card,port,statisType)
         if args:
             for iarg in args:
                 cmd += ' %s' % iarg

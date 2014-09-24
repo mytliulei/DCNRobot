@@ -118,59 +118,187 @@ Build Payload
 
 Connect To Ixia
     [Arguments]    ${address}
+    [Documentation]    start ixia proxy server and connect to ixia;
+    ...
+    ...     \ \ \ \ \ Note: in the beginning of every test suit,please use this keyword,in the end of every test suit,the ixia proxy server will be shutdown
+    ...
+    ...     \ \ \ args:
+    ...     \ \ - ixia_ip: the ip address of ixia
+    ...
+    ...     return:
+    ...    - True or False
     ${rc}=    Ixia.Init Ixia    ${address}
     Should Be True    ${rc}
     [Return]    ${rc}
 
 Start Transmit
     [Arguments]    ${chasId}    ${card}    ${port}
+    [Documentation]    start to transmit stream
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...
+    ...     return:
+    ...    - 0: ok
+    ...    - non zero: error code
     ${rc}=    Ixia.Start Transmit    ${chasId}    ${card}    ${port}
     [Return]    ${rc}
 
 Stop Transmit
     [Arguments]    ${chasId}    ${card}    ${port}
+    [Documentation]    stop to transmit stream
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...
+    ...     return:
+    ...    - 0: ok
+    ...    - non zero: error code
     ${rc}=    Ixia.Stop Transmit    ${chasId}    ${card}    ${port}
     [Return]    ${rc}
 
 Get Statics
     [Arguments]    ${chasId}    ${card}    ${port}    @{stats}
+    [Documentation]    get port statics
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...     \ - stats: \ a string or a string list;
+    ...     \ \ \ \ \ \ \ \ \ \ \ \ \ txpps,txBps,txbps,txpackets,txbytes,txbits
+    ...     \ \ \ \ \ \ \ \ \ \ \ \ \ rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
+    ...     \ \ \ \ \ \ \ \ \ \ \ \ updown: 0:down,1:up;
+    ...     \ \ \ \ \ \ \ \ \ \ \ txstate: 0:stop,1:start;
+    ...
+    ...    return:
+    ...    - a statics number or a statics number list; statics number will be a non negative number:
+    ...    - negative number: error code
+    ...
+    ...    example:
+    ...    | Get Statics | 1 | 1 | 1 | txpps |
+    ...    | Get Statics | 1 | 1 | 1 | txpps | rxpps |
     ${rc}=    Ixia.Get Statistics    ${chasId}    ${card}    ${port}    @{stats}
     [Return]    ${rc}
 
 Clear Statics
     [Arguments]    ${chasId}    ${card}    ${port}
+    [Documentation]    clear all statics of ixia port
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...
+    ...     return:
+    ...    - 0: ok
+    ...    - non zero: error code
     ${rc}=    Ixia.Clear Statics    ${chasId}    ${card}    ${port}
     [Return]    ${rc}
 
 Set Stream Packet
     [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}
+    [Documentation]    set a packet on stream of ixia port
+    ...
+    ...     \ \ \ \ \ Note:please use this keyword after Build Packet
+    ...
+    ...     \ \ \ args:
+    ...     \ \ - chasId: normally should be 1
+    ...     \ - card: \ \ ixia card
+    ...     - port: \ \ ixia port
+    ...    - streamId: stream id
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
     ${rc}=    Ixia.Set Stream Packet    ${chasId}    ${card}    ${port}    ${streamId}
     Should Be Equal As Integers    ${rc}    0
     [Return]    ${rc}
 
 Start Capture
     [Arguments]    ${chasId}    ${card}    ${port}
+    [Documentation]    start to capture stream
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...
+    ...     return:
+    ...    - 0: ok
+    ...    - non zero: error code
     ${rc}=    Ixia.Start Capture    ${chasId}    ${card}    ${port}
     [Return]    ${rc}
 
 Stop Capture
     [Arguments]    ${chasId}    ${card}    ${port}
+    [Documentation]    stop to capture stream
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...
+    ...     return:
+    ...    - 0: ok
+    ...    - non zero: error code
     ${rc}=    Ixia.Stop Capture    ${chasId}    ${card}    ${port}
     [Return]    ${rc}
 
 Get Capture Packet
     [Arguments]    ${chasId}    ${card}    ${port}    ${from}=${1}    ${to}=${1000}
+    [Documentation]    get capture packet, and save internally
+    ...
+    ...     \ \ \ \ \ Note:please use this keyword after Start Capture and Stop Capture
+    ...
+    ...     \ \ \ args:
+    ...     \ \ - chasId: \ \ \ \ \ \ \ normally should be 1
+    ...     \ - card: \ \ \ \ \ \ \ \ \ ixia card
+    ...     - port: \ \ \ \ \ \ \ \ \ ixia port
+    ...    - packet_from: \ \ default 1
+    ...    - packet_to: \ \ \ \ default 1000, and will be adjust by actual capture num
+    ...
+    ...    return:
+    ...    - non negative number: num of capture packet
+    ...    - negative number: error code
     ${rc}=    Ixia.Get Capture Packet    ${chasId}    ${card}    ${port}    ${from}    ${to}
     Should Be True    ${rc} >= 0
     [Return]    ${rc}
 
 Get Capture Packet Num
     [Arguments]    ${chasId}    ${card}    ${port}
+    [Documentation]    get capture packet num,please use this keyword after Start Capture and Stop Capture
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...     \ - timeout: default 180s
+    ...
+    ...    return:
+    ...    - non negative number: num of capture packet
+    ...    - negative number: error code
     ${rc}=    Ixia.Get Capture Packet Num    ${chasId}    ${card}    ${port}
     [Return]    ${rc}
 
 Filter Capture Packet
     [Arguments]    ${chasId}    ${card}    ${port}    ${fliter}
+    [Documentation]    filter the capture packet,and return a list including filter num and filter packets
+    ...
+    ...     \ \ \ \ \ Note:please use this keyword after Get Capture Packet
+    ...
+    ...     \ \ \ args:
+    ...     \ \ - chasId: normally should be 1
+    ...     \ - card: \ \ ixia card
+    ...     - port: \ \ ixia port
+    ...    - capFilter: filter expression, to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html WinPcap用户指南--过滤串表达式的语法
+    ...
+    ...    return:
+    ...    - (num of filter,packet of filter)
     @{filterres}=    Ixia.Filter Capture Packet    ${chasId}    ${card}    ${port}    ${fliter}
     Should Be True    @{filterres}[0] >= 0
     [Return]    @{filterres}
@@ -178,6 +306,29 @@ Filter Capture Packet
 Set Stream Control
     [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}    ${streamRate}    ${streamRateMode}
     ...    ${streamMode}    ${numPackets}=100    ${returnToId}=1
+    [Documentation]    set stream trasmit mode
+    ...
+    ...     \ \ \ \ \ Note:please use this keyword after Set Stream Packet
+    ...
+    ...     \ \ \ args:
+    ...     \ \ - chasId: normally should be 1
+    ...     \ - card: \ \ ixia card
+    ...     - port: \ \ ixia port
+    ...    - streamId: stream id
+    ...    - streamRate: stream send rate
+    ...    - streamRateMode: 0:percent ; 1: pps ; 2: bps
+    ...    - streamMode: stream control mode;
+    ...    0: continuously transmit the frames on this stream;
+    ...    1: continuously transmit bursts of frames on this stream
+    ...    2: stop transmission
+    ...    3: advance
+    ...    4: return to id ,default to stream 1
+    ...    - numFrames: stream send packet num,enable when streamMode 2,3,4; default 100
+    ...    - ReturnId: enable when streamMode 4 ,default 1
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
     ${rc}=    Ixia.Set Stream Control    ${chasId}    ${card}    ${port}    ${streamId}    ${streamRate}
     ...    ${streamRateMode}    ${streamMode}    ${numPackets}    ${returnToId}
     Should Be Equal As Integers    ${rc}    0
@@ -185,5 +336,60 @@ Set Stream Control
 
 Wait For Transmit Done
     [Arguments]    ${chasId}    ${port}    ${card}    ${timeout}={180}
+    [Documentation]    wait for transmiting \ done
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...     \ - timeout: default 180s
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
     ${rc}=    Ixia.Wait For Transmit Done    ${chasId}    ${port}    ${card}    ${timeout}
+    [Return]    ${rc}
+
+Set Port Mode Default
+    [Arguments]    ${chasId}    ${port}    ${card}
+    [Documentation]    set ixia port default,please use this keyword before Set Stream Packet
+    ...
+    ...     \ \ \ \ \ args:
+    ...     \ \ \ \ - chasId: normally should be 1
+    ...     \ \ \ - card: \ \ ixia card
+    ...     \ \ - port: \ \ ixia port
+    ...
+    ...     return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Mode Default    ${chasId}    ${port}    ${card}
+    [Return]    ${rc}
+
+Clear Capture Packet
+    [Arguments]    ${chasId}    ${port}    ${card}
+    [Documentation]    clear saved capture packet
+    ...
+    ...     \ \ \ \ \ Note:Start Capture will clear saved capture packet automatically
+    ...
+    ...     \ \ \ args:
+    ...     \ \ - chasId: normally should be 1
+    ...     \ - card: \ \ ixia card
+    ...     - port: \ \ ixia port
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - negative number: error code
+    ${rc}=    Ixia.Clear Capture Packet    ${chasId}    ${port}    ${card}
+    [Return]    ${rc}
+
+Shutdown Proxy Server
+    [Documentation]    shutdown proxy sever
+    ...
+    ...     \ \ \ \ \ Note: Do not use this keyword unless you know what you are doing
+    ...
+    ...     \ \ \ args:
+    ...
+    ...     \ return:
+    ...     - True or False
+    ${rc}=    Ixia.Shutdown Proxy Server
     [Return]    ${rc}
