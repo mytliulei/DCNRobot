@@ -128,6 +128,11 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -985
             }
         }
+        "set_stream_from_ixiaapi" {
+            if {[catch {set ret [SetStreamFromIxiaAPI $cmdstr]} result]} {
+                set ret -985
+            }
+        }
         default {
             set ret -900
         }
@@ -646,6 +651,46 @@ proc SetStreamEnable {cmdstr} {
     }
     stream set $chasId $port $card $streamId
     ixWriteConfigToHardware portlist
+    return 0
+}
+
+#set_stream_from_ixiaapi
+#err code : 2200-2299
+proc SetStreamFromIxiaAPI {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 4} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set streamId [lindex $cmdlist 3]
+    set packet [lindex $cmdlist 4]
+    set pktlist [split $packet "$"]
+    stream setDefault
+    foreach {xcmd ycmd} $pktlist {
+        set xcmdlist [split $xcmd "@"]
+        set ycmdlist [split $ycmd "@"]
+        set ilist 0
+        foreach icmd $xcmdlist {
+            set icmdlist [split $icmd "!"]
+            foreach ecmd $icmdlist {
+                eval ecmd
+            }
+            set wcmd [lindex $ycmdlist $ilist]
+            set ewcmd "$wcmd $chasId $port $card"
+            eval $ewcmd
+            incr ilist
+        }
+    }
+    stream set $chasId $port $card $streamId
+    ixWriteConfigToHardware portlist -noProtocolServer
     return 0
 }
 
