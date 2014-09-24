@@ -29,6 +29,10 @@ class PacketBase(object):
         self._packetField = []
         self._ixia_flag = False
         self._ixia_packetField = []
+        self._ixia_vlan_flag = 0
+        self._ixia_vlan_cmd = []
+        self._ixia_write_cmd = []
+        self._ixia_packet_cmd = []
 
     def _get_stream_from_pcapfile(self,filename):
         '''read pcap file and return bytes stream'''
@@ -52,6 +56,8 @@ class PacketBase(object):
 
     def empty_packet_list(self):
         self._packetList = []
+        if self._ixia_flag:
+            self._ixia_packet_cmd = ""
 
     def _build_stream(self):
         ''''''
@@ -69,6 +75,31 @@ class PacketBase(object):
             cmd = pktstr
         self._packetList.append(cmd)
         self._packetField = []
+        if self._ixia_flag:
+            if self._ixia_vlan_flag > 0:
+                if self._ixia_vlan_flag == 1:
+                    self._ixia_packetField.append(self._ixia_vlan_cmd[0])
+                    self._ixia_write_cmd.append("vlan set")
+                else:
+                    cmdlist = []
+                    cmdlist.append("stackedVlan setDefault")
+                    i = 1
+                    for icmd in self._ixia_vlan_cmd:
+                        cmdlist.append(icmd)
+                        cmdlist.append("stackedVlan setVlan %s" % i)
+                        i += 1
+                    vlancmd = '!'.join(cmdlist)
+                    self._ixia_packetField.append(vlancmd)
+                    self._ixia_write_cmd.append("stackedVlan set")
+                self._ixia_vlan_flag = 0
+                self._ixia_vlan_cmd = []
+
+            #join ixia cmd
+            xcmd = '@'.join(self._ixia_packetField)
+            ycmd = '@'.join(self._ixia_write_cmd)
+            self._ixia_packet_cmd = xcmd + '$' + ycmd
+            self._ixia_packetField = []
+            self._ixia_write_cmd = []
         return 0
 
     def build_ether(self,dst='ff:ff:ff:ff:ff:ff',src='00:00:00:00:00:00',typeid=None,**kwargs):
@@ -121,31 +152,30 @@ class PacketBase(object):
         src = ' '.join(srclist)
         #src mac config
         cmdlist.append('stream config -sa "%s"' % src)
-        if saRepeateCounter in kwargs.keys():
-            cmdlist.append('stream config -saRepeateCounter %s' % kwargs[saRepeateCounter])
-        if saStep in kwargs.keys():
-            cmdlist.append('stream config -saStep %s' % kwargs[saStep])
-        if saMaskValue in kwargs.keys():
-            cmdlist.append('stream config -saMaskValue "%s"' % kwargs[saMaskValue])
-        if saMaskSelect in kwargs.keys():
-            cmdlist.append('stream config -saMaskSelect "%s"' % kwargs[saMaskSelect])
+        if 'saRepeateCounter' in kwargs.keys():
+            cmdlist.append('stream config -saRepeateCounter %s' % kwargs['saRepeateCounter'])
+        if 'saStep' in kwargs.keys():
+            cmdlist.append('stream config -saStep %s' % kwargs['saStep'])
+        if 'saMaskValue' in kwargs.keys():
+            cmdlist.append('stream config -saMaskValue "%s"' % kwargs['saMaskValue'])
+        if 'saMaskSelect' in kwargs.keys():
+            cmdlist.append('stream config -saMaskSelect "%s"' % kwargs['saMaskSelect'])
         #dst mac config
         cmdlist.append('stream config -da "%s"' % dst)
-        if daRepeateCounter in kwargs.keys():
-            cmdlist.append('stream config -daRepeateCounter %s' % kwargs[daRepeateCounter])
-        if daStep in kwargs.keys():
-            cmdlist.append('stream config -daStep %s' % kwargs[daStep])
-        if daMaskValue in kwargs.keys():
-            cmdlist.append('stream config -daMaskValue "%s"' % kwargs[daMaskValue])
-        if daMaskSelect in kwargs.keys():
-            cmdlist.append('stream config -daMaskSelect "%s"' % kwargs[daMaskSelect])
+        if 'daRepeateCounter' in kwargs.keys():
+            cmdlist.append('stream config -daRepeateCounter %s' % kwargs['daRepeateCounter'])
+        if 'daStep' in kwargs.keys():
+            cmdlist.append('stream config -daStep %s' % kwargs['daStep'])
+        if 'daMaskValue' in kwargs.keys():
+            cmdlist.append('stream config -daMaskValue "%s"' % kwargs['daMaskValue'])
+        if 'daMaskSelect' in kwargs.keys():
+            cmdlist.append('stream config -daMaskSelect "%s"' % kwargs['daMaskSelect'])
         cmd = '!'.join(cmdlist)
         self._ixia_packetField.append(cmd)
+        self._ixia_write_cmd.append("none")
         return True
 
-
-
-    def build_arp(self,hwtype=0x1,ptype=0x800,hwlen=6,plen=4,op=1,hwsrc='00:00:00:00:00:00',psrc='0.0.0.0',hwdst='00:00:00:00:00:00',pdst='0.0.0.0'):
+    def build_arp(self,hwtype=0x1,ptype=0x800,hwlen=6,plen=4,op=1,hwsrc='00:00:00:00:00:00',psrc='0.0.0.0',hwdst='00:00:00:00:00:00',pdst='0.0.0.0',**kwargs):
         '''build arp field packet
 
            args:
@@ -203,7 +233,55 @@ class PacketBase(object):
             return -1
         else:
             self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_arp_ixia(op,hwsrc,psrc,hwdst,pdst,kwargs)
             return len(p)
+
+    def _build_arp_ixia(self,op,hwsrc,psrc,hwdst,pdst,**kwargs):
+        '''
+        '''
+        cmdlist = []
+        dstlist = hwdst.split(':')
+        hwdst = ' '.join(dstlist)
+        srclist = hwsrc.split(':')
+        hwsrc = ' '.join(srclist)
+        #config protocol
+        cmdlist.append('protocol setDefault')
+        cmdlist.append('protocol config -appName Arp')
+        cmdlist.append('protocol config -ethernetType ethernetII')
+        #config arp
+        cmdlist.append('arp setDefault')
+        cmdlist.append('arp config -sourceProtocolAddr "%s"' % psrc)
+        cmdlist.append('arp config -destProtocolAddr "%s"' % pdst)
+        cmdlist.append('arp config -operation %s' % op)
+        cmdlist.append('arp config -sourceHardwareAddr "%s"' % hwsrc)
+        cmdlist.append('arp config -destHardwareAddr "%s"' % hwdst)
+        if 'destHardwareAddrMode' in kwargs.keys():
+            cmdlist.append('arp config -destHardwareAddrMode %s' % kwargs['destHardwareAddrMode'])
+        if 'destProtocolAddrMode' in kwargs.keys():
+            cmdlist.append('arp config -destProtocolAddrMode %s' % kwargs['destProtocolAddrMode'])
+        if 'destProtocolAddrRepeatCount' in kwargs.keys():
+            cmdlist.append('arp config -destProtocolAddrRepeatCount %s' % kwargs['destProtocolAddrRepeatCount'])
+        else:
+            cmdlist.append('arp config -destProtocolAddrRepeatCount 1')
+        if 'sourceProtocolAddrRepeatCount' in kwargs.keys():
+            cmdlist.append('arp config -sourceProtocolAddrRepeatCount %s' % kwargs['sourceProtocolAddrRepeatCount'])
+        else:
+            cmdlist.append('arp config -sourceProtocolAddrRepeatCount 1')
+        if 'sourceHardwareAddrRepeatCount' in kwargs.keys():
+            cmdlist.append('arp config -sourceHardwareAddrRepeatCount %s' % kwargs['sourceHardwareAddrRepeatCount'])
+        else:
+            cmdlist.append('arp config -sourceHardwareAddrRepeatCount 1')
+        if 'destHardwareAddrRepeatCount' in kwargs.keys():
+            cmdlist.append('arp config -destHardwareAddrRepeatCount %s' % kwargs['destHardwareAddrRepeatCount'])
+        else:
+            cmdlist.append('arp config -destHardwareAddrRepeatCount 1')
+        ##########arp set $chassid $port $card
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        self._ixia_write_cmd.append("arp set")
+        return True
+
 
     def build_ip(self,version=4,ihl=None,tos=0x0,iplen=None,iden=0,flags=0,frag=0,ttl=64,proto=0,chksum=None,src='0.0.0.0',dst='0.0.0.0',options=None):
         '''build ip field packet
@@ -298,7 +376,63 @@ class PacketBase(object):
             return -1
         else:
             self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_ip_ixia(ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,kwargs)
             return len(p)
+
+    def _build_ip_ixia(self,ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,**kwargs):
+        '''
+        '''
+        cmdlist = []
+        #config protocol
+        cmdlist.append('protocol setDefault')
+        cmdlist.append('protocol config -name ipV4')
+        cmdlist.append('protocol config -appName noType')
+        cmdlist.append('protocol config -ethernetType ethernetII')
+        #config ip
+        cmdlist.append('ip setDefault')
+        cmdlist.append('ip config -identifier %s' % iden)
+        if iplen:
+            cmdlist.append('ip config -totalLength %s' % iplen)
+            cmdlist.append('ip config -lengthOverride false')
+        cmdlist.append('ip config -ttl %s' % ttl)
+        if flags == 1:
+            cmdlist.append('ip config -fragment may')
+            cmdlist.append('ip config -lastFragment more')
+            cmdlist.append('ip config -fragmentOffset %s' % frag)
+        elif flags == 2:
+            cmdlist.append('ip config -fragment dont')
+            cmdlist.append('ip config -lastFragment last')
+            cmdlist.append('ip config -fragmentOffset %s' % frag)
+        else:
+            pass
+        cmdlist.append('ip config -ipProtocol %s' % proto)
+        if chksum:
+            cmdlist.append('ip config -useValidChecksum false')
+        cmdlist.append('ip config -sourceIpAddr "%s"' % src)
+        if 'sourceIpMask' in kwargs.keys():
+            cmdlist.append('ip config -sourceIpMask "%s"' % kwargs['sourceIpMask'])
+        if 'sourceIpAddrMode' in kwargs.keys():
+            cmdlist.append('ip config -sourceIpAddrMode "%s"' % kwargs['sourceIpAddrMode'])
+        if 'sourceIpAddrRepeatCount' in kwargs.keys():
+            cmdlist.append('ip config -sourceIpAddrRepeatCount "%s"' % kwargs['sourceIpAddrRepeatCount'])
+        if 'sourceClass' in kwargs.keys():
+            cmdlist.append('ip config -sourceClass "%s"' % kwargs['sourceClass'])
+        cmdlist.append('ip config -destIpAddr "%s"' % dst)
+        if 'destIpMask' in kwargs.keys():
+            cmdlist.append('ip config -destIpMask "%s"' % kwargs['destIpMask'])
+        if 'destIpAddrMode' in kwargs.keys():
+            cmdlist.append('ip config -destIpAddrMode "%s"' % kwargs['destIpAddrMode'])
+        if 'destIpAddrRepeatCount' in kwargs.keys():
+            cmdlist.append('ip config -destIpAddrRepeatCount "%s"' % kwargs['destIpAddrRepeatCount'])
+        if 'destClass' in kwargs.keys():
+            cmdlist.append('ip config -destClass "%s"' % kwargs['destClass'])
+
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        self._ixia_write_cmd.append("ip set")
+        return True
+
 
     def build_dot1q(self,prio=0,cfi=0,vlan=1,typeid=None,**kwargs):
         '''
@@ -354,14 +488,28 @@ class PacketBase(object):
     def _build_vlan_ixia(self,prio,cfi,vlan,typeid,**kwargs):
         '''
         '''
+        self._ixia_vlan_flag += 1
         cmdlist = []
         cmdlist.append('vlan setDefault')
         cmdlist.append('vlan config -vlanID %s' % vlan)
         cmdlist.append('vlan config -userPriority %s' % prio)
+        if typeid == 0x8100:
+            cmdlist.append('vlan config -protocolTagId vlanProtocolTag8100')
+        elif typeid == 0x9100:
+            cmdlist.append('vlan config -protocolTagId vlanProtocolTag9100')
+        elif typeid == 0x9200:
+            cmdlist.append('vlan config -protocolTagId vlanProtocolTag9200')
+        else:
+            cmdlist.append('vlan config -protocolTagId vlanProtocolTag8100')
+        if 'mode' in kwargs.keys():
+            cmdlist.append('vlan config -mode %s' % kwargs['mode'])
+        if 'repeat' in kwargs.keys():
+            cmdlist.append('vlan config -repeat %s' % kwargs['repeat'])
+        if 'step' in kwargs.keys():
+            cmdlist.append('vlan config -step %s' % kwargs['step'])
         cmd = '!'.join(cmdlist)
-        self._ixia_packetField.append(cmd)
+        self._ixia_vlan_cmd.append(cmd)
         return True
-
 
     def build_payload(self,payload):
         '''
