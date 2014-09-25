@@ -33,6 +33,14 @@ class PacketBase(object):
         self._ixia_vlan_cmd = []
         self._ixia_write_cmd = []
         self._ixia_packet_cmd = []
+        self._ixia_frameType = None
+        self._ixia_ipProto_flag = 0
+        self._ixia_ipProto = 0
+
+    def _set_ixia_flag(self,flag):
+        old = self._ixia_flag
+        self._ixia_flag = flag
+        return old
 
     def _get_stream_from_pcapfile(self,filename):
         '''read pcap file and return bytes stream'''
@@ -53,6 +61,12 @@ class PacketBase(object):
             return ixia_packetStr
         else:
             return self._packetList
+
+    def get_packet_list_ixiaapi(self):
+        if self._ixia_flag:
+            return self._ixia_packet_cmd
+        else:
+            return ""
 
     def empty_packet_list(self):
         self._packetList = []
@@ -75,7 +89,31 @@ class PacketBase(object):
             cmd = pktstr
         self._packetList.append(cmd)
         self._packetField = []
-        if self._ixia_flag:
+        if self._ixia_flag and not packetstr:
+            #add framLength
+            self._ixia_packetField[0] += '!stream config -frameSizeType sizeFixed!stream config -framesize %s!stream config -frameSizeMIN %s!stream config -frameSizeMAX %s' % (length,length,length)
+            #add frameType
+            if self._ixia_frameType:
+                typeidstr = "%04X" % self._ixia_frameType
+                types = '%s %s' % (typeidstr[0:2],typeidstr[2:4])
+                self._ixia_packetField[0] += '!stream config -frameType "%s"' % types
+            #add 'protocol setDefault'
+            self._ixia_packetField[0] += '!protocol setDefault'
+            if self._ixia_vlan_flag == 1:
+                self._ixia_packetField[0] += '!protocol config -enable802dot1qTag vlanSingle'
+            elif self._ixia_vlan_flag > 1:
+                self._ixia_packetField[0] += '!protocol config -enable802dot1qTag vlanStacked'
+            #add ip proto
+            if self._ixia_ipProto_flag:
+                protostr = '!ip config -ipProtocol %s' % self._ixia_ipProto
+                ipmatchre = re.compile(r'ip config -')
+                istrlen = 0
+                for istr in self._ixia_packetField:
+                    if ipmatchre.search(istr):
+                        self._ixia_packetField[istrlen] += protostr
+                        break
+                    istrlen += 1
+            #add vlan
             if self._ixia_vlan_flag > 0:
                 if self._ixia_vlan_flag == 1:
                     self._ixia_packetField.append(self._ixia_vlan_cmd[0])
@@ -93,13 +131,15 @@ class PacketBase(object):
                     self._ixia_write_cmd.append("stackedVlan set")
                 self._ixia_vlan_flag = 0
                 self._ixia_vlan_cmd = []
-
             #join ixia cmd
             xcmd = '@'.join(self._ixia_packetField)
             ycmd = '@'.join(self._ixia_write_cmd)
             self._ixia_packet_cmd = xcmd + '$' + ycmd
             self._ixia_packetField = []
             self._ixia_write_cmd = []
+            self._ixia_frameType = None
+            self._ixia_ipProto_flag = 0
+            self._ixia_ipProto = 0
         return 0
 
     def build_ether(self,dst='ff:ff:ff:ff:ff:ff',src='00:00:00:00:00:00',typeid=None,**kwargs):
@@ -139,7 +179,7 @@ class PacketBase(object):
         else:
             self._packetField.append(cmd)
             if self._ixia_flag:
-                self._build_ether_ixia(dst,src,typeid,kwargs)
+                self._build_ether_ixia(dst,src,typeid,**kwargs)
             return len(p)
 
     def _build_ether_ixia(self,dst,src,typeid,**kwargs):
@@ -170,6 +210,11 @@ class PacketBase(object):
             cmdlist.append('stream config -daMaskValue "%s"' % kwargs['daMaskValue'])
         if 'daMaskSelect' in kwargs.keys():
             cmdlist.append('stream config -daMaskSelect "%s"' % kwargs['daMaskSelect'])
+        #frameType
+        cmdlist.append('stream config -patternType nonRepeat')
+        cmdlist.append('stream config -dataPattern allZeroes')
+        cmdlist.append('stream config -pattern "00 00"')
+        #cmdlist.append('protocol setDefault')
         cmd = '!'.join(cmdlist)
         self._ixia_packetField.append(cmd)
         self._ixia_write_cmd.append("none")
@@ -234,7 +279,7 @@ class PacketBase(object):
         else:
             self._packetField.append(cmd)
             if self._ixia_flag:
-                self._build_arp_ixia(op,hwsrc,psrc,hwdst,pdst,kwargs)
+                self._build_arp_ixia(op,hwsrc,psrc,hwdst,pdst,**kwargs)
             return len(p)
 
     def _build_arp_ixia(self,op,hwsrc,psrc,hwdst,pdst,**kwargs):
@@ -246,7 +291,7 @@ class PacketBase(object):
         srclist = hwsrc.split(':')
         hwsrc = ' '.join(srclist)
         #config protocol
-        cmdlist.append('protocol setDefault')
+        #cmdlist.append('protocol setDefault')
         cmdlist.append('protocol config -appName Arp')
         cmdlist.append('protocol config -ethernetType ethernetII')
         #config arp
@@ -283,7 +328,7 @@ class PacketBase(object):
         return True
 
 
-    def build_ip(self,version=4,ihl=None,tos=0x0,iplen=None,iden=0,flags=0,frag=0,ttl=64,proto=0,chksum=None,src='0.0.0.0',dst='0.0.0.0',options=None):
+    def build_ip(self,version=4,ihl=None,tos=0x0,iplen=None,iden=0,flags=0,frag=0,ttl=64,proto=None,chksum=None,src='0.0.0.0',dst='0.0.0.0',options=None,**kwargs):
         '''build ip field packet
 
            args:
@@ -295,7 +340,7 @@ class PacketBase(object):
            - flags   = 0
            - frag    = 0
            - ttl     = 64
-           - proto   = 0
+           - proto   = None
            - chksum  = None
            - src     = 0.0.0.0
            - dst     = 0.0.0.0
@@ -368,7 +413,19 @@ class PacketBase(object):
                     options = int(options)
         else:
             options = []
-        cmd = "IP(version=%i,ihl=%s,tos=%#x,len=%s,id=%i,flags=%i,frag=%i,ttl=%i,proto=%i,chksum=%s,src='%s',dst='%s',options=%s)" % (version,ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options)
+        cmd = "IP(version=%i,tos=%#x,flags=%i,frag=%i,ttl=%i,src='%s',dst='%s',id=%i" % (version,tos,flags,frag,ttl,src,dst,iden)
+        if ihl:
+            cmd += ",ihl=%s" % ihl
+        if iplen:
+            cmd += ",len=%s" % iplen
+        if proto:
+            cmd += ",proto=%i" % proto
+        if chksum:
+            cmd += ",chksum=%s" % chksum
+        if options:
+            cmd += ",options=%s" % options
+        cmd += ")"
+        #cmd = "IP(version=%i,ihl=%s,tos=%#x,len=%s,id=%i,flags=%i,frag=%i,ttl=%i,proto=%i,chksum=%s,src='%s',dst='%s',options=%s)" % (version,ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options)
         try:
             exec('p=%s' % cmd)
         except Exception,ex:
@@ -377,7 +434,7 @@ class PacketBase(object):
         else:
             self._packetField.append(cmd)
             if self._ixia_flag:
-                self._build_ip_ixia(ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,kwargs)
+                self._build_ip_ixia(ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,**kwargs)
             return len(p)
 
     def _build_ip_ixia(self,ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,**kwargs):
@@ -385,7 +442,7 @@ class PacketBase(object):
         '''
         cmdlist = []
         #config protocol
-        cmdlist.append('protocol setDefault')
+        #cmdlist.append('protocol setDefault')
         cmdlist.append('protocol config -name ipV4')
         cmdlist.append('protocol config -appName noType')
         cmdlist.append('protocol config -ethernetType ethernetII')
@@ -406,7 +463,21 @@ class PacketBase(object):
             cmdlist.append('ip config -fragmentOffset %s' % frag)
         else:
             pass
-        cmdlist.append('ip config -ipProtocol %s' % proto)
+        if tos:
+            ip_reserved = tos & 1
+            cmdlist.append('ip config -reserved %i' % ip_reserved)
+            ip_cost = (tos >> 1) & 1
+            cmdlist.append('ip config -cost %i' % ip_cost)
+            ip_reliability = (tos >> 2) & 1
+            cmdlist.append('ip config -reliability %i' % ip_reliability)
+            ip_throughput = (tos >> 3) & 1
+            cmdlist.append('ip config -throughput %i' % ip_throughput)
+            ip_delay = (tos >> 4) & 1
+            cmdlist.append('ip config -delay %i' % ip_delay)
+            ip_precedence = tos >> 5
+            cmdlist.append('ip config -precedence %i' % ip_precedence)
+        #cmdlist.append('ip config -ipProtocol %s' % proto)
+        self._ixia_ipProto_flag = 1
         if chksum:
             cmdlist.append('ip config -useValidChecksum false')
         cmdlist.append('ip config -sourceIpAddr "%s"' % src)
@@ -482,7 +553,7 @@ class PacketBase(object):
         else:
             self._packetField.append(cmd)
             if self._ixia_flag:
-                self._build_vlan_ixia(prio,cfi,vlan,typeid,kwargs)
+                self._build_vlan_ixia(prio,cfi,vlan,typeid,**kwargs)
             return len(p)
 
     def _build_vlan_ixia(self,prio,cfi,vlan,typeid,**kwargs):
@@ -575,6 +646,10 @@ class PacketBase(object):
                 return -1
             else:
                 ptklen = len(p)
+                if self._ixia_flag:
+                    self._ixia_frameType = p.type
+                    if self._ixia_ipProto_flag:
+                        self._ixia_ipProto = p.proto
             filllen = length - ptklen - 4  # remove crc field
             if filllen < 0:
                 logger.info('packet length is %i, greater than given para' % ptklen)

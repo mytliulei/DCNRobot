@@ -52,7 +52,7 @@ class XiaoFish(object):
     def _get_pkt_keywords(self):
         if self._pkt_kws is None:
             pkt = self._pkt_class
-            excluded = ['get_packet_list','empty_packet_list']
+            excluded = ['get_packet_list','empty_packet_list','get_packet_list_ixiaapi']
             self._pkt_kws = self._get_keywords(pkt, excluded)
         return self._pkt_kws
 

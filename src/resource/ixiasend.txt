@@ -54,7 +54,7 @@ Build Arp
 
 Build Ip
     [Arguments]    ${version}=${4}    ${ihl}=${None}    ${tos}=${0x0}    ${iplen}=${None}    ${iden}=${0}    ${flags}=${0}
-    ...    ${frag}=${0}    ${ttl}=${64}    ${proto}=${0}    ${chksum}=${None}    ${src}=0.0.0.0    ${dst}=0.0.0.0
+    ...    ${frag}=${0}    ${ttl}=${64}    ${proto}=${None}    ${chksum}=${None}    ${src}=0.0.0.0    ${dst}=0.0.0.0
     ...    ${options}=${None}
     [Documentation]    build ip field packet
     ...
@@ -67,7 +67,7 @@ Build Ip
     ...    \ \ - flags \ \ = 0
     ...    \ - frag \ \ \ = 0
     ...    - ttl \ \ \ \ = 64
-    ...    - proto \ \ = 0
+    ...    - proto \ \ = None
     ...    - chksum \ = None
     ...    - src \ \ \ \ = 0.0.0.0
     ...    - dst \ \ \ \ = 0.0.0.0

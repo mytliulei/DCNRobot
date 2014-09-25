@@ -63,6 +63,7 @@ class Ixia(object):
         self._pkt_streamlist_hexstring = []
         self._pkt_kws = self._lib_kws = None
         self._pkt_class = rfbase.PacketBase()
+        self._pkt_class._set_ixia_flag(True)
         self._proxy_server_process = None
         self._proxy_server_retcode = None
         self._ixia_client_handle = None
@@ -123,7 +124,7 @@ class Ixia(object):
     def _get_pkt_keywords(self):
         if self._pkt_kws is None:
             pkt = self._pkt_class
-            excluded = ['get_packet_list','empty_packet_list']
+            excluded = ['get_packet_list','empty_packet_list','get_packet_list_ixiaapi']
             self._pkt_kws = self._get_keywords(pkt, excluded)
         return self._pkt_kws
 
@@ -700,6 +701,37 @@ class Ixia(object):
         streamStr = self._pkt_class.get_packet_list(ixiaFlag=True)
         self._pkt_class.empty_packet_list()
         cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def set_stream_packet_by_ixiaapi(self,chasId,card,port,streamId):
+        '''
+        set a packet on stream of ixia port
+
+        Note:please use this keyword after Build Packet
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - streamId: stream id
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        streamStr = self._pkt_class.get_packet_list_ixiaapi()
+        self._pkt_class.empty_packet_list()
+        cmd = 'set_stream_from_ixiaapi %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
