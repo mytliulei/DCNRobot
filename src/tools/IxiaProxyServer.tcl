@@ -666,7 +666,10 @@ proc SetStreamFromIxiaAPI {cmdstr} {
     if {[ConnectToIxia $ixia_ip] != 0 } {
         return -400
     }
-    global logfid
+    global logflag
+    if {$logflag == 1} {
+        global $logfid
+    }
     set chasId [GetIxiaChassID $ixia_ip]
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
@@ -674,10 +677,14 @@ proc SetStreamFromIxiaAPI {cmdstr} {
     set streamId [lindex $cmdlist 3]
     set packetlist [lrange $cmdlist 4 end]
     set packet [join $packetlist " "]
-    puts $logfid $packet
+    if {$logflag == 1} {
+        puts $logfid $packet
+    }
     set pktlist [split $packet "$"]
     stream setDefault
-    puts $logfid "stream setDefault"
+    if {$logflag == 1} {
+        puts $logfid "stream setDefault"
+    }
     foreach {xcmd ycmd} $pktlist {
         set xcmdlist [split $xcmd "@"]
         set ycmdlist [split $ycmd "@"]
@@ -686,13 +693,17 @@ proc SetStreamFromIxiaAPI {cmdstr} {
             set icmdlist [split $icmd "!"]
             foreach ecmd $icmdlist {
                 eval $ecmd
-                puts $logfid $ecmd
+                if {$logflag == 1} {
+                    puts $logfid $ecmd
+                }
             }
             set wcmd [lindex $ycmdlist $ilist]
             if {$wcmd != "none"} {
                 set ewcmd "$wcmd $chasId $port $card"
                 eval $ewcmd
-                puts $logfid $ewcmd
+                if {$logflag == 1} {
+                    puts $logfid $ewcmd
+                }
             }
             incr ilist
         }
@@ -700,8 +711,10 @@ proc SetStreamFromIxiaAPI {cmdstr} {
     stream set $chasId $port $card $streamId
     set portlist [list [list $chasId $port $card]]
     set ret [ixWriteConfigToHardware portlist -noProtocolServer]
-    puts $logfid "stream set $chasId $port $card $streamId"
-    puts $logfid "ixWriteConfigToHardware portlist -noProtocolServer"
+    if {$logflag == 1} {
+        puts $logfid "stream set $chasId $port $card $streamId"
+        puts $logfid "ixWriteConfigToHardware portlist -noProtocolServer"
+    }
     return $ret
 }
 
@@ -735,7 +748,7 @@ set bind_addr 0.0.0.0
 set bind_port 11917
 set ixia_version 4.10
 set ixia_ip 0.0.0.0
-#set logfid ""
+set logflag 0
 if {$argc > 2} {
     array set argarray $argv
     if {[info exists argarray(ixiaversion)]} {
@@ -750,10 +763,15 @@ if {$argc > 2} {
     if {[info exists argarray(ixiaip)]} {
         set ixia_ip $argarray(ixiaip)
     }
+    if {[info exists argarray(logflag)]} {
+        set logflag $argarray(logflag)
+    }
 }
 
 socket -server ProcessConn -myaddr $bind_addr $bind_port
-set logfid [OpenLog]
+if {$logflag == 1} {
+    set logfid [OpenLog]
+}
 vwait forever
 # if {[ConnectToIxia $ixia_ip] == 0} {
 #     puts "ConnectToIxia success"

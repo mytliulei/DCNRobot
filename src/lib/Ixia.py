@@ -682,7 +682,7 @@ class Ixia(object):
     #     ret = readret[1]
     #     return ret.strip()
 
-    def set_stream_packet(self,chasId,card,port,streamId):
+    def set_stream_packet_by_datapattern(self,chasId,card,port,streamId):
         '''
         set a packet on stream of ixia port
 
@@ -713,7 +713,7 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def set_stream_packet_by_ixiaapi(self,chasId,card,port,streamId):
+    def set_stream_packet_by_api(self,chasId,card,port,streamId):
         '''
         set a packet on stream of ixia port
 

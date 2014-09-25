@@ -91,6 +91,12 @@ Build Stream
 
 Build Packet
     [Arguments]    ${length}=${128}    ${packetstr}=${None}
+    [Documentation]    将之前建立的各层字段组织为一个报文
+    ...
+    ...    参数：
+    ...
+    ...    - length \ \ \ \ : \ \ 报文长度，不足的由00补足
+    ...    - packetstr : \ \ 默认为None，该参数被赋值后，组成的报文将由packetstr决定，而不是由之前建立的各层字段，packetstr是scapy包的命令字符串，一般情况下用不到
     ${rc}=    XiaoFish.Build Packet    ${length}    ${packetstr}
     [Return]    ${rc}
 

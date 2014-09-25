@@ -1,14 +1,22 @@
 *** Settings ***
 Library           ../lib/Ixia.py
+Library           String
+Library           Collections
 
 *** Keywords ***
 Build Packet
     [Arguments]    ${length}=${128}    ${packetstr}=${None}
+    [Documentation]    将之前建立的各层字段组织为一个报文
+    ...
+    ...    参数：
+    ...
+    ...    - length \ \ \ \ : \ \ 报文长度，不足的由00补足
+    ...    - packetstr : \ \ 默认为None，该参数被赋值后，组成的报文将由packetstr决定，而不是由之前建立的各层字段，packetstr是scapy包的命令字符串，一般情况下用不到
     ${rc}=    Ixia.Build Packet    ${length}    ${packetstr}
     [Return]    ${rc}
 
 Build Ether
-    [Arguments]    ${dst}=ff:ff:ff:ff:ff:ff    ${src}=00:00:00:00:00:00    ${typeid}=${None}
+    [Arguments]    ${dst}=ff:ff:ff:ff:ff:ff    ${src}=00:00:00:00:00:00    ${typeid}=${None}    ${kwargs}=${None}
     [Documentation]    build Ethernet field packet
     ...
     ...    \ \ \ \ \ \ \ \ args:
@@ -23,12 +31,12 @@ Build Ether
     ...    | Build Ether | dst=00:00:00:00:00:01 | src=00:00:00:00:00:02 |
     ...    | Build Ether | src=00:00:00:00:00:02 |
     ...    | Build Ether | dst=00:00:00:00:00:02 |
-    ${plen}=    Ixia.Build Ether    ${dst}    ${src}    ${typeid}
+    ${plen}=    Ixia.Build Ether    ${dst}    ${src}    ${typeid}    ${kwargs}
     [Return]    ${plen}
 
 Build Arp
     [Arguments]    ${hwtype}=${0x1}    ${ptype}=${0x800}    ${hwlen}=${6}    ${plen}=${4}    ${op}=${1}    ${hwsrc}=00:00:00:00:00:00
-    ...    ${psrc}=0.0.0.0    ${hwdst}=00:00:00:00:00:00    ${pdst}=0.0.0.0
+    ...    ${psrc}=0.0.0.0    ${hwdst}=00:00:00:00:00:00    ${pdst}=0.0.0.0    ${kwargs}=${None}
     [Documentation]    build arp field packet
     ...
     ...    \ \ \ \ \ \ \ \ args:
@@ -49,13 +57,13 @@ Build Arp
     ...    | Build Arp | hwsrc=00:00:00:00:00:01 | psrc=10.1.1.1 | hwdst=10.1.1.254 |
     ...    | Build Arp | op=${2} | hwsrc=00:00:00:00:00:02 | psrc=10.1.1.254 | pdst=10.1.1.1 |
     ${packetlen}=    Ixia.Build Arp    ${hwtype}    ${ptype}    ${hwlen}    ${op}    ${hwsrc}
-    ...    ${psrc}    ${hwdst}    ${pdst}    ${plen}
+    ...    ${psrc}    ${hwdst}    ${pdst}    ${plen}    ${kwargs}
     [Return]    ${packetlen}
 
 Build Ip
     [Arguments]    ${version}=${4}    ${ihl}=${None}    ${tos}=${0x0}    ${iplen}=${None}    ${iden}=${0}    ${flags}=${0}
     ...    ${frag}=${0}    ${ttl}=${64}    ${proto}=${None}    ${chksum}=${None}    ${src}=0.0.0.0    ${dst}=0.0.0.0
-    ...    ${options}=${None}
+    ...    ${options}=${None}    ${kwargs}=${None}
     [Documentation]    build ip field packet
     ...
     ...    \ \ \ \ \ \ \ \ args:
@@ -80,11 +88,11 @@ Build Ip
     ...    | Build Ip | src=10.1.1.1 | dst=10.1.1.254 |
     ${packetlen}=    Ixia.Build Ip    ${version}    ${ihl}    ${tos}    ${iplen}    ${iden}
     ...    ${flags}    ${frag}    ${ttl}    ${proto}    ${chksum}    ${src}
-    ...    ${dst}    ${options}
+    ...    ${dst}    ${options}    ${kwargs}
     [Return]    ${packetlen}
 
 Build Dot1Q
-    [Arguments]    ${prio}=${0}    ${cfi}=${0}    ${vlan}=${1}    ${typeid}=${None}
+    [Arguments]    ${prio}=${0}    ${cfi}=${0}    ${vlan}=${1}    ${typeid}=${None}    ${kwargs}=${None}
     [Documentation]    build 802.1Q field packet
     ...
     ...    \ \ \ \ \ \ \ \ args:
@@ -98,7 +106,7 @@ Build Dot1Q
     ...
     ...    exapmle:
     ...    | Build Dot1q | prio=${7} | vlan=${10} |
-    ${packetlen}=    Ixia.Build Dot1q    ${prio}    ${cfi}    ${vlan}    ${typeid}
+    ${packetlen}=    Ixia.Build Dot1q    ${prio}    ${cfi}    ${vlan}    ${typeid}    ${kwargs}
     [Return]    ${packetlen}
 
 Build Payload
@@ -120,7 +128,7 @@ Connect To Ixia
     [Arguments]    ${address}
     [Documentation]    start ixia proxy server and connect to ixia;
     ...
-    ...     \ \ \ \ \ Note: in the beginning of every test suit,please use this keyword,in the end of every test suit,the ixia proxy server will be shutdown
+    ...     \ \ \ \ \ Note: in the beginning of every test suit,please use this keyword,in the end of every test suit,the ixia proxy server will be shutdown automatically
     ...
     ...     \ \ \ args:
     ...     \ \ - ixia_ip: the ip address of ixia
@@ -393,3 +401,12 @@ Shutdown Proxy Server
     ...     - True or False
     ${rc}=    Ixia.Shutdown Proxy Server
     [Return]    ${rc}
+
+Make Kwargs
+    [Arguments]    @{kwargs}
+    @{kwlist}=    Create List    test    test
+    :FOR    ${istr}    IN    @{kwargs}
+    \    @{ilist}    String.Split String    ${istr}    =
+    \    @{kwlist}=    Collections.Combine Lists    ${kwlist}    ${ilist}
+    ${dict}=    Collections.Create Dictionary    @{kwlist}
+    [Return]    ${dict}
