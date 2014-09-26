@@ -315,6 +315,10 @@ class PacketBase(object):
             cmdlist.append('arp config -destHardwareAddrMode %s' % kwargs['destHardwareAddrMode'])
         if kwargs and 'destProtocolAddrMode' in kwargs.keys():
             cmdlist.append('arp config -destProtocolAddrMode %s' % kwargs['destProtocolAddrMode'])
+        if kwargs and 'sourceHardwareAddrMode' in kwargs.keys():
+            cmdlist.append('arp config -sourceHardwareAddrMode %s' % kwargs['sourceHardwareAddrMode'])
+        if kwargs and 'sourceProtocolAddrMode' in kwargs.keys():
+            cmdlist.append('arp config -sourceProtocolAddrMode %s' % kwargs['sourceProtocolAddrMode'])
         if kwargs and 'destProtocolAddrRepeatCount' in kwargs.keys():
             cmdlist.append('arp config -destProtocolAddrRepeatCount %s' % kwargs['destProtocolAddrRepeatCount'])
         else:
