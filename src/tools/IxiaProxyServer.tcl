@@ -133,6 +133,11 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -985
             }
         }
+        "test_proxy_server" {
+            if {[catch {set ret [Test_Proxy_Server $cmdstr]} result]} {
+                set ret -984
+            }
+        }
         default {
             set ret -900
         }
@@ -718,6 +723,28 @@ proc SetStreamFromIxiaAPI {cmdstr} {
     return $ret
 }
 
+#test_proxy_server
+#err code : 2300-2399
+proc Test_Proxy_Server {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    set cmd_type [lindex $cmdlist 0]
+    switch -exact $cmd_type {
+        "alive" {
+            return 0
+        }
+        "connect" {
+            set ip [lindex $cmdlist 1]
+            set ret [ConnectToIxia $ip]
+            return $ret
+        }
+        default {
+            set ret -2399
+            return $ret
+        }
+    }
+}
+
 #connect to ixia
 proc ConnectToIxia {ip} {
     set ret [ixConnectToChassis $ip]
@@ -768,10 +795,13 @@ if {$argc > 2} {
     }
 }
 
-socket -server ProcessConn -myaddr $bind_addr $bind_port
+set sockserver [socket -server ProcessConn -myaddr $bind_addr $bind_port]
 if {$logflag == 1} {
     set logfid [OpenLog]
 }
+set sockname [fconfigure $sockserver -sockname]
+set listen [lindex $sockname 2]
+puts "proxy server listen port:$listen"
 vwait forever
 # if {[ConnectToIxia $ixia_ip] == 0} {
 #     puts "ConnectToIxia success"

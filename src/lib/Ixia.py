@@ -47,11 +47,17 @@ class Ixia(object):
             '5.60':os.path.join(self._ixia_tcl_path,'ixia560','bin'),
             'default':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
         }
+        # self._proxy_bind_port = {
+        #     '4.10':11917,
+        #     '5.50':11916,
+        #     '5.60':11915,
+        #     'default':11917,
+        # }
         self._proxy_bind_port = {
-            '4.10':11917,
-            '5.50':11916,
-            '5.60':11915,
-            'default':11917,
+            '4.10':0,
+            '5.50':0,
+            '5.60':0,
+            'default':0,
         }
         self._initFlag = {
             '4.10':False,
@@ -59,6 +65,7 @@ class Ixia(object):
             '5.60':False,
             'default':False
         }
+        self._proxy_server_auto_bind_port = None
         self._proxy_server_host = '127.0.0.1'
         self._pkt_streamlist_hexstring = []
         self._pkt_kws = self._lib_kws = None
@@ -92,7 +99,10 @@ class Ixia(object):
             return True,True
         proxy_server_port = self._proxy_bind_port[version]
         sRet = self._start_proxy_server(ixia_ip,proxy_server_port)
-        cRet = self._start_ixia_client(proxy_server_port)
+        if not sRet:
+            return False
+        #cRet = self._start_ixia_client(proxy_server_port)
+        cRet = self._start_ixia_client(self._proxy_server_auto_bind_port)
         nRet = self._connect_ixia(ixia_ip)
         ret = sRet and cRet and nRet == '0'
         if ret:
@@ -164,23 +174,26 @@ class Ixia(object):
         p=subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
         #p=subprocess.Popen(cmd,shell=True)
         self._proxy_server_process = p
-        #searchre = re.compile(r'ConnectToIxia success')
-        #timeout = 0
-        # while p.poll() is None and timeout < 60:
-        #     time.sleep(1)
-        #     timeout += 1
-        #     rdstr = p.stdout.readline()
-        #     if searchre.search(rdstr):
-        #         self._proxy_server_retcode = p.returncode
-        #         return True
-        # self._proxy_server_retcode = p.returncode
-        # return False
-        time.sleep(3)
-        if p.poll() is None:
-            self._proxy_server_retcode = p.returncode
-            return True
+        searchre = re.compile(r'proxy server listen port:(\d+)')
+        #self._proxy_server_auto_bind_port
+        timeout = 0
+        while p.poll() is None and timeout < 60:
+            time.sleep(1)
+            timeout += 1
+            rdstr = p.stdout.readline()
+            ret_port = searchre.search(rdstr)
+            if ret_port:
+                self._proxy_server_auto_bind_port = int(ret_port.groups()[0])
+                self._proxy_server_retcode = p.returncode
+                return True
         self._proxy_server_retcode = p.returncode
         return False
+        #time.sleep(3)
+        #if p.poll() is None:
+        #    self._proxy_server_retcode = p.returncode
+        #    return True
+        #self._proxy_server_retcode = p.returncode
+        #return False
 
     def _connect_ixia(self,ixia_ip):
         '''
@@ -229,6 +242,50 @@ class Ixia(object):
                 return False
         else:
             return False
+
+    def _is_proxyserver_alive(self,_proxy_server_port,timeout=5):
+        '''
+        '''
+        #debug ixia
+        #return True
+        try:
+            sock = socket.create_connection((self._proxy_server_host, _proxy_server_port))
+        except Exception:
+            return False
+        #test alive
+        cmd = 'test_proxy_server alive\n'
+        try:
+            sock.sendall(cmd)
+        except Exception:
+            sock.close()
+            raise AssertionError('proxy server error')
+        import select
+        expectRe = re.compile(r'\n')
+        buff = ''
+        time_start = time.time()
+        while True:
+            if timeout is not None:
+                elapsed = time.time() - time_start
+                if elapsed >= timeout:
+                    break
+                s_args = ([sock], [], [], timeout-elapsed)
+                r, w, x = select.select(*s_args)
+                if not r:
+                    return False
+            c = sock.recv(100)
+            buff += c
+            if expectRe.search(c):
+                break
+        buff = expectRe.sub('',buff)
+        try:
+            ret_code = int(buff)
+        except Exception:
+            return False
+        else:
+            if ret_code == 0:
+                return True
+            else:
+                return False
 
     def _start_ixia_client(self,_proxy_server_port):
         '''
