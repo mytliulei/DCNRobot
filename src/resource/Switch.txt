@@ -74,10 +74,12 @@ Close All Console
     Telnet.Close All Connections
 
 Exec Cmd Until Regexp
-    [Arguments]    ${alias}    ${cmd}    ${regexp}
+    [Arguments]    ${alias}    ${cmd}    ${regexp}    ${timeout}=${None}
     Telnet.Switch Connection    ${alias}
     Telnet.Write    ${cmd}
+    Run Keyword If    ${timeout} is not None    Telnet.Set Timeout    ${timeout}
     ${output}=    Telnet.Read Until Regexp    ${regexp}
+    Run Keyword If    ${timeout} is not None    Telnet.Set Timeout    ${sw_timeout}
     [Return]    ${output}
 
 Exec Cmd List
@@ -304,6 +306,15 @@ Get Debug
     Telnet.Switch Connection    ${alias}
     ${output}=    Telnet.My Read Eager
     Log    ${output}
+
+Exec Cmd Until Timeout
+    [Arguments]    ${alias}    ${cmd}    ${timeout}=${None}
+    [Documentation]    由wuzq补充
+    Telnet.Switch Connection    ${alias}
+    Telnet.Write    ${cmd}
+    Run Keyword If    ${timeout} is not None    Sleep    ${timeout}
+    ${output}=    Telnet.Read
+    [Return]    ${output}
 
 Print Message To Console Log
     [Arguments]    @{msg}
