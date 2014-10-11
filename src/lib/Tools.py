@@ -5,7 +5,7 @@
 from robot.api import logger
 import re
 
-__version__ = '0.1'
+__version__ = 'dcn.1.0.0'
 __author__ = 'liuleic'
 __copyright__ = 'Copyright 2014, DigitalChina Network'
 __license__ = 'Apache License, Version 2.0'
@@ -13,6 +13,9 @@ __mail__ = 'liuleic@digitalchina.com'
 
 
 class Tools(object):
+    ''''''
+    ROBOT_LIBRARY_SCOPE = 'GLOBAL'
+    ROBOT_LIBRARY_VERSION = __version__
     def __init__(self):
         pass
 
