@@ -9,7 +9,6 @@ Build Packet
     [Documentation]    将之前建立的各层字段组织为一个报文
     ...
     ...    参数：
-    ...
     ...    - length \ \ \ \ : \ \ 报文长度，不足的由00补足
     ...    - packetstr : \ \ 默认为None，该参数被赋值后，组成的报文将由packetstr决定，而不是由之前建立的各层字段，packetstr是scapy包的命令字符串，一般情况下用不到
     ${rc}=    Ixia.Build Packet    ${length}    ${packetstr}
@@ -19,13 +18,13 @@ Build Ether
     [Arguments]    ${dst}=ff:ff:ff:ff:ff:ff    ${src}=00:00:00:00:00:00    ${typeid}=${None}    ${kwargs}=${None}
     [Documentation]    build Ethernet field packet
     ...
-    ...    \ \ \ \ \ \ \ \ args:
-    ...    \ \ \ \ \ \ \ - dst \ \ \ : Dest Mac \ \ \ = ff:ff:ff:ff:ff:ff
-    ...    \ \ \ \ \ \ - src \ \ \ : Source Mac \ = 00:00:00:00:00:00
-    ...    \ \ \ \ \ - typeid : type \ \ \ \ \ \ \ = None
+    ...    args:
+    ...    - dst \ \ \ : Dest Mac \ \ \ = ff:ff:ff:ff:ff:ff
+    ...    - src \ \ \ : Source Mac \ = 00:00:00:00:00:00
+    ...    - typeid : type \ \ \ \ \ \ \ = None
     ...
-    ...    \ \ \ return:
-    ...    \ \ packet field length
+    ...    return:
+    ...    packet field length
     ...
     ...    exapmle:
     ...    | Build Ether | dst=00:00:00:00:00:01 | src=00:00:00:00:00:02 |
@@ -39,14 +38,14 @@ Build Arp
     ...    ${psrc}=0.0.0.0    ${hwdst}=00:00:00:00:00:00    ${pdst}=0.0.0.0    ${kwargs}=${None}
     [Documentation]    build arp field packet
     ...
-    ...    \ \ \ \ \ \ \ \ args:
-    ...    \ \ \ \ \ \ \ - hwtype = 0x1
-    ...    \ \ \ \ \ \ - ptype \ = 0x800
-    ...    \ \ \ \ \ - hwlen \ = 6
-    ...    \ \ \ \ - plen \ \ = 4
-    ...    \ \ \ - op \ \ \ \ = 1
-    ...    \ \ - hwsrc \ = 00:00:00:00:00:00
-    ...    \ - psrc \ \ = 0.0.0.0
+    ...    args:
+    ...    - hwtype = 0x1
+    ...    - ptype \ = 0x800
+    ...    - hwlen \ = 6
+    ...    - plen \ \ = 4
+    ...    - op \ \ \ \ = 1
+    ...    - hwsrc \ = 00:00:00:00:00:00
+    ...    - psrc \ \ = 0.0.0.0
     ...    - hwdst \ = 00:00:00:00:00:00
     ...    - pdst \ \ = 0.0.0.0
     ...
@@ -66,14 +65,14 @@ Build Ip
     ...    ${options}=${None}    ${kwargs}=${None}
     [Documentation]    build ip field packet
     ...
-    ...    \ \ \ \ \ \ \ \ args:
-    ...    \ \ \ \ \ \ \ - version = 4
-    ...    \ \ \ \ \ \ - ihl \ \ \ \ = None
-    ...    \ \ \ \ \ - tos \ \ \ \ = 0x0
-    ...    \ \ \ \ - iplen \ \ = None
-    ...    \ \ \ - iden \ \ \ = 0
-    ...    \ \ - flags \ \ = 0
-    ...    \ - frag \ \ \ = 0
+    ...    args:
+    ...    - version = 4
+    ...    - ihl \ \ \ \ = None
+    ...    - tos \ \ \ \ = 0x0
+    ...    - iplen \ \ = None
+    ...    - iden \ \ \ = 0
+    ...    - flags \ \ = 0
+    ...    - frag \ \ \ = 0
     ...    - ttl \ \ \ \ = 64
     ...    - proto \ \ = None
     ...    - chksum \ = None
@@ -95,14 +94,14 @@ Build Dot1Q
     [Arguments]    ${prio}=${0}    ${cfi}=${0}    ${vlan}=${1}    ${typeid}=${None}    ${kwargs}=${None}
     [Documentation]    build 802.1Q field packet
     ...
-    ...    \ \ \ \ \ \ \ \ args:
-    ...    \ \ \ \ \ \ \ - prio \ \ \ = 0
-    ...    \ \ \ \ \ \ - cfi \ \ \ \ \ = 0
-    ...    \ \ \ \ \ - vlan \ \ \ = 1
-    ...    \ \ \ \ - typeid \ = None
+    ...    args:
+    ...    - prio \ \ \ = 0
+    ...    - cfi \ \ \ \ \ = 0
+    ...    - vlan \ \ \ = 1
+    ...    - typeid \ = None
     ...
-    ...    \ \ return:
-    ...    \ packet field length
+    ...    return:
+    ...    packet field length
     ...
     ...    exapmle:
     ...    | Build Dot1q | prio=${7} | vlan=${10} |
@@ -113,14 +112,14 @@ Build Payload
     [Arguments]    ${payload}
     [Documentation]    build payload field packet
     ...
-    ...    \ \ \ \ \ \ \ \ args:
-    ...    \ \ \ \ \ \ \ - payload \ = None; \ filled automatically using \x00; if you fill manually,please assinged using hexstring,and length para is invlaid
+    ...    args:
+    ...    - payload \ = None; \ filled automatically using \x00; if you fill manually,please assinged using hexstring,and length para is invlaid
     ...
-    ...    \ \ \ \ \ return:
-    ...    \ \ \ \ packet field length
+    ...    return:
+    ...    packet field length
     ...
-    ...    \ \ exapmle:
-    ...    \ | Build Payload | 000102030405 |
+    ...    exapmle:
+    ...    | Build Payload | 000102030405 |
     ${packetlen}=    Ixia.Build Payload    ${payload}
     [Return]    ${packetlen}
 
@@ -128,10 +127,10 @@ Connect To Ixia
     [Arguments]    ${address}
     [Documentation]    start ixia proxy server and connect to ixia;
     ...
-    ...    \ \ \ \ \ Note: in the beginning of every test suit,please use this keyword,in the end of every test suit,the ixia proxy server will be shutdown automatically
+    ...    Note: in the beginning of every test suit,please use this keyword,in the end of every test suit,the ixia proxy server will be shutdown automatically
     ...
-    ...    \ \ \ args:
-    ...    \ \ - ixia_ip: the ip address of ixia
+    ...    args:
+    ...    - ixia_ip: the ip address of ixia
     ...
     ...    return:
     ...    - True or False
@@ -143,10 +142,10 @@ Start Transmit
     [Arguments]    ${chasId}    ${card}    ${port}
     [Documentation]    start to transmit stream
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
     ...
     ...    return:
     ...    - 0: ok
@@ -158,10 +157,10 @@ Stop Transmit
     [Arguments]    ${chasId}    ${card}    ${port}
     [Documentation]    stop to transmit stream
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
     ...
     ...    return:
     ...    - 0: ok
@@ -173,15 +172,17 @@ Get Statics
     [Arguments]    ${chasId}    ${card}    ${port}    @{stats}
     [Documentation]    get port statics
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
-    ...    \ - stats: \ a string or a string list;
-    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ txpps,txBps,txbps,txpackets,txbytes,txbits
-    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
-    ...    \ \ \ \ \ \ \ \ \ \ \ \ updown: 0:down,1:up;
-    ...    \ \ \ \ \ \ \ \ \ \ \ txstate: 0:stop,1:start;
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: ixia card
+    ...    - port: ixia port
+    ...    - stats: a string or a string list;
+    ...    \ \ \ \ tx include:txpps,txBps,txbps,txpackets,txbytes,txbits
+    ...    \ \ \ \ rx include:rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
+    ...    \ \ \ \ other info:updown: 0:down,1:up;
+    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ txstate: 0:stop,1:start;
+    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lineSpeed: The speed configured for the port,unit:Mbps;
+    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ duplex: 0:half,1:full;
     ...
     ...    return:
     ...    - a statics number or a statics number list; statics number will be a non negative number:
@@ -197,10 +198,10 @@ Clear Statics
     [Arguments]    ${chasId}    ${card}    ${port}
     [Documentation]    clear all statics of ixia port
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
     ...
     ...    return:
     ...    - 0: ok
@@ -212,11 +213,11 @@ Set Stream Packet By Datapattern
     [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}
     [Documentation]    set a packet on stream of ixia port
     ...
-    ...    \ \ \ \ \ Note:please use this keyword after Build Packet
+    ...    Note:please use this keyword after Build Packet
     ...
-    ...    \ \ \ args:
-    ...    \ \ - chasId: normally should be 1
-    ...    \ - card: \ \ ixia card
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
     ...    - port: \ \ ixia port
     ...    - streamId: stream id
     ...
@@ -231,10 +232,10 @@ Start Capture
     [Arguments]    ${chasId}    ${card}    ${port}
     [Documentation]    start to capture stream
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
     ...
     ...    return:
     ...    - 0: ok
@@ -246,10 +247,10 @@ Stop Capture
     [Arguments]    ${chasId}    ${card}    ${port}
     [Documentation]    stop to capture stream
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
     ...
     ...    return:
     ...    - 0: ok
@@ -261,11 +262,11 @@ Get Capture Packet
     [Arguments]    ${chasId}    ${card}    ${port}    ${from}=${1}    ${to}=${1000}
     [Documentation]    get capture packet, and save internally
     ...
-    ...    \ \ \ \ \ Note:please use this keyword after Start Capture and Stop Capture
+    ...    Note:please use this keyword after Start Capture and Stop Capture
     ...
-    ...    \ \ \ args:
-    ...    \ \ - chasId: \ \ \ \ \ \ \ normally should be 1
-    ...    \ - card: \ \ \ \ \ \ \ \ \ ixia card
+    ...    args:
+    ...    - chasId: \ \ \ \ \ \ \ normally should be 1
+    ...    - card: \ \ \ \ \ \ \ \ \ ixia card
     ...    - port: \ \ \ \ \ \ \ \ \ ixia port
     ...    - packet_from: \ \ default 1
     ...    - packet_to: \ \ \ \ default 1000, and will be adjust by actual capture num
@@ -281,11 +282,11 @@ Get Capture Packet Num
     [Arguments]    ${chasId}    ${card}    ${port}
     [Documentation]    get capture packet num,please use this keyword after Start Capture and Stop Capture
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
-    ...    \ - timeout: default 180s
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - timeout: default 180s
     ...
     ...    return:
     ...    - non negative number: num of capture packet
@@ -297,11 +298,11 @@ Filter Capture Packet
     [Arguments]    ${chasId}    ${card}    ${port}    ${fliter}
     [Documentation]    filter the capture packet,and return a list including filter num and filter packets
     ...
-    ...    \ \ \ \ \ Note:please use this keyword after Get Capture Packet
+    ...    Note:please use this keyword after Get Capture Packet
     ...
-    ...    \ \ \ args:
-    ...    \ \ - chasId: normally should be 1
-    ...    \ - card: \ \ ixia card
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
     ...    - port: \ \ ixia port
     ...    - capFilter: filter expression, to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html WinPcap用户指南--过滤串表达式的语法
     ...
@@ -316,11 +317,11 @@ Set Stream Control
     ...    ${streamMode}    ${numPackets}=100    ${returnToId}=1
     [Documentation]    set stream trasmit mode
     ...
-    ...    \ \ \ \ \ Note:please use this keyword after Set Stream Packet
+    ...    Note:please use this keyword after Set Stream Packet
     ...
-    ...    \ \ \ args:
-    ...    \ \ - chasId: normally should be 1
-    ...    \ - card: \ \ ixia card
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
     ...    - port: \ \ ixia port
     ...    - streamId: stream id
     ...    - streamRate: stream send rate
@@ -346,11 +347,11 @@ Wait For Transmit Done
     [Arguments]    ${chasId}    ${port}    ${card}    ${timeout}={180}
     [Documentation]    wait for transmiting \ done
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
-    ...    \ - timeout: default 180s
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - timeout: default 180s
     ...
     ...    return:
     ...    - 0: ok
@@ -362,10 +363,10 @@ Set Port Mode Default
     [Arguments]    ${chasId}    ${port}    ${card}
     [Documentation]    set ixia port default,please use this keyword before Set Stream Packet
     ...
-    ...    \ \ \ \ \ args:
-    ...    \ \ \ \ - chasId: normally should be 1
-    ...    \ \ \ - card: \ \ ixia card
-    ...    \ \ - port: \ \ ixia port
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
     ...
     ...    return:
     ...    - 0: ok
@@ -377,11 +378,11 @@ Clear Capture Packet
     [Arguments]    ${chasId}    ${port}    ${card}
     [Documentation]    clear saved capture packet
     ...
-    ...    \ \ \ \ \ Note:Start Capture will clear saved capture packet automatically
+    ...    Note:Start Capture will clear saved capture packet automatically
     ...
-    ...    \ \ \ args:
-    ...    \ \ - chasId: normally should be 1
-    ...    \ - card: \ \ ixia card
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
     ...    - port: \ \ ixia port
     ...
     ...    return:
@@ -393,11 +394,11 @@ Clear Capture Packet
 Shutdown Proxy Server
     [Documentation]    shutdown proxy sever
     ...
-    ...    \ \ \ \ \ Note: Do not use this keyword unless you know what you are doing
+    ...    Note: Do not use this keyword unless you know what you are doing
     ...
-    ...    \ \ \ args:
+    ...    args:
     ...
-    ...    \ return:
+    ...    return:
     ...    - True or False
     ${rc}=    Ixia.Shutdown Proxy Server
     [Return]    ${rc}
@@ -486,12 +487,12 @@ Set Stream Packet By Api
     [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}
     [Documentation]    set a packet on stream of ixia port
     ...
-    ...    \ \ \ \ \ Note:please use this keyword after Build Packet
+    ...    Note:please use this keyword after Build Packet
     ...
-    ...    \ \ \ args:
-    ...    \ \ - chasId: normally should be 1
-    ...    \ - card: \ \ ixia card
-    ...    - port: \ \ ixia port
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: ixia card
+    ...    - port: ixia port
     ...    - streamId: stream id
     ...
     ...    return:
@@ -499,4 +500,61 @@ Set Stream Packet By Api
     ...    - non zero: error code
     ${rc}=    Ixia.Set Stream Packet By Api    ${chasId}    ${card}    ${port}    ${streamId}
     Should Be Equal As Integers    ${rc}    0
+    [Return]    ${rc}
+
+Set Port Speed Duplex
+    [Arguments]    ${chasId}    ${port}    ${card}    ${mode}
+    [Documentation]    set port speed duplex
+    ...
+    ...    note: this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - mode: \ \ 0: auto;
+    ...    \ \ \ \ \ \ \ \ \ \ 1: force1gfull;
+    ...    \ \ \ \ \ \ \ \ \ \ 2: force100full;
+    ...    \ \ \ \ \ \ \ \ \ \ 3: force100half;
+    ...    \ \ \ \ \ \ \ \ \ \ 4: force10full;
+    ...    \ \ \ \ \ \ \ \ \ \ 5: force10half;
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Speed Duplex    ${chasId}    ${port}    ${card}    ${mode}
+    [Return]    ${rc}
+
+Set Port Flowcontrol
+    [Arguments]    ${chasId}    ${port}    ${card}    ${flag}
+    [Documentation]    set port flowcontrol
+    ...
+    ...    note: this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - flag: \ \ 0: disable;
+    ...    \ \ \ \ \ \ \ \ \ \ 1: enable;
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Flowcontrol    ${chasId}    ${port}    ${card}    ${flag}
+    [Return]    ${rc}
+
+Set Port Config Default
+    [Arguments]    ${chasId}    ${port}    ${card}
+    [Documentation]    set ixia port default,please use this keyword after set port flowcontrol or set port speed duplex to clear the config
+    ...
+    ...    note: this keyword will clear the stream config and cause the port updown
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Config Default    ${chasId}    ${port}    ${card}
     [Return]    ${rc}

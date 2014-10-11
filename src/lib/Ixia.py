@@ -871,6 +871,8 @@ class Ixia(object):
                       rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
                       updown: 0:down,1:up;
                       txstate: 0:stop,1:start;
+                      lineSpeed: The speed configured for the port,unit:Mbps;
+                      duplex: 0:half,1:full;
 
         return:
         - non negative number: statics num
@@ -893,6 +895,96 @@ class Ixia(object):
         self._flush_proxy_server()
         retList = ret.strip().split()
         return retList[0] if len(retList) == 1 else retList
+
+    def set_port_speed_duplex(self,chasId,card,port,mode):
+        '''
+        set port speed duplex
+
+        note: this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - mode:   0: auto;
+                  1: force1gfull;
+                  2: force100full;
+                  3: force100half;
+                  4: force10full;
+                  5: force10half;
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'set_port_speed_duplex %s %s %s %s\n' % (chasId,card,port,mode)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def set_port_flowcontrol(self,chasId,card,port,flag):
+        '''
+        set port flowcontrol
+
+        note: this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - flag:   0: disable;
+                  1: enable;
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'set_port_flowcontrol %s %s %s %s\n' % (chasId,card,port,flag)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def set_port_config_default(self,chasId,card,port):
+        '''
+        set ixia port default,please use this keyword after set port flowcontrol or set port speed duplex to clear the config
+
+        note: this keyword will clear the stream config and cause the port updown
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'set_port_config_default %s %s %s\n' % (chasId,card,port)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
 
     def _fileno(self):
         """Return the fileno() of the socket object used internally."""

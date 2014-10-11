@@ -130,12 +130,27 @@ proc evalIxiaCmd {cmdstr chan} {
         }
         "set_stream_from_ixiaapi" {
             if {[catch {set ret [SetStreamFromIxiaAPI $cmdstr]} result]} {
-                set ret -985
+                set ret -984
             }
         }
         "test_proxy_server" {
             if {[catch {set ret [Test_Proxy_Server $cmdstr]} result]} {
-                set ret -984
+                set ret -983
+            }
+        }
+        "set_port_speed_duplex" {
+            if {[catch {set ret [SetPortSpeedDuplex $cmdstr]} result]} {
+                set ret -982
+            }
+        }
+        "set_port_flowcontrol" {
+            if {[catch {set ret [SetPortFlowControl $cmdstr]} result]} {
+                set ret -981
+            }
+        }
+        "set_port_config_default" {
+            if {[catch {set ret [SetPortConfigDefault $cmdstr]} result]} {
+                set ret -980
             }
         }
         default {
@@ -390,6 +405,16 @@ proc GetStatistics {cmdstr} {
             "txstate" {
                 stat get allStats $chasId $port $card
                 set statnum [stat cget -transmitState]
+                lappend ret $statnum
+            }
+            "lineSpeed" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -lineSpeed]
+                lappend ret $statnum
+            }
+            "duplex" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -duplexMode]
                 lappend ret $statnum
             }
         }
@@ -743,6 +768,145 @@ proc Test_Proxy_Server {cmdstr} {
             return $ret
         }
     }
+}
+
+#set_port_speed_duplex
+#err code : 2400-2499
+proc SetPortSpeedDuplex {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 3} {
+        return -100
+    }
+    global ixia_ip
+    ixDisconnectFromChassis $ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set mode [lindex $cmdlist 3]
+    set portlist [list [list $chasId $port $card]]
+    #port setDefault
+    if {$mode == 0} {
+        port config -duplex full
+        port config -autonegotiate true
+        port config -advertise100FullDuplex true
+        port config -advertise100HalfDuplex true
+        port config -advertise10FullDuplex true
+        port config -advertise10HalfDuplex true
+        port config -advertise1000FullDuplex true
+    } elseif {$mode == 1} {
+        port config -speed 1000
+        port config -duplex full
+        port config -autonegotiate true
+        port config -advertise100FullDuplex false
+        port config -advertise100HalfDuplex false
+        port config -advertise10FullDuplex false
+        port config -advertise10HalfDuplex false
+        port config -advertise1000FullDuplex true
+    } elseif {$mode == 2} {
+        port config -speed 100
+        port config -duplex full
+        port config -autonegotiate true
+        port config -advertise100FullDuplex true
+        port config -advertise100HalfDuplex false
+        port config -advertise10FullDuplex false
+        port config -advertise10HalfDuplex false
+        port config -advertise1000FullDuplex false
+    } elseif {$mode == 3} {
+        port config -speed 100
+        port config -duplex half
+        port config -autonegotiate true
+        port config -advertise100FullDuplex false
+        port config -advertise100HalfDuplex true
+        port config -advertise10FullDuplex false
+        port config -advertise10HalfDuplex false
+        port config -advertise1000FullDuplex false
+    } elseif {$mode == 4} {
+        port config -speed 10
+        port config -duplex full
+        port config -autonegotiate true
+        port config -advertise100FullDuplex false
+        port config -advertise100HalfDuplex false
+        port config -advertise10FullDuplex true
+        port config -advertise10HalfDuplex false
+        port config -advertise1000FullDuplex false
+    } elseif {$mode == 5} {
+        port config -speed 10
+        port config -duplex half
+        port config -autonegotiate true
+        port config -advertise100FullDuplex false
+        port config -advertise100HalfDuplex false
+        port config -advertise10FullDuplex false
+        port config -advertise10HalfDuplex true
+        port config -advertise1000FullDuplex false
+    } else {
+
+    }
+    port set $chasId $port $card
+    #ixWriteConfigToHardware portlist
+    ixWritePortsToHardware portlist
+    return 0
+}
+
+#set_port_flowcontrol
+#err code : 2500-2599
+proc SetPortFlowControl {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 3} {
+        return -100
+    }
+    global ixia_ip
+    ixDisconnectFromChassis $ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set mode [lindex $cmdlist 3]
+    set portlist [list [list $chasId $port $card]]
+    #port setDefault
+    if {$mode == 0} {
+        port config -flowControl false
+        port config -advertiseAbilities portAdvertiseNone
+    } elseif {$mode == 1} {
+        port config -flowControl true
+        port config -advertiseAbilities portAdvertiseSendAndOrReceive
+    } else {
+
+    }
+    port set $chasId $port $card
+    #ixWriteConfigToHardware portlist
+    ixWritePortsToHardware portlist
+    return 0
+}
+
+#set_port_config_default
+#err code : 2600-2699
+proc SetPortConfigDefault {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 3} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set portlist [list [list $chasId $port $card]]
+    set ret [port setModeDefaults $chasId $port $card]
+    ixWritePortsToHardware portlist
+    return $ret
 }
 
 #connect to ixia
