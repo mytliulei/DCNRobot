@@ -187,8 +187,3 @@ Login
     Telnet.Read Until Regexp    Password:
     Telnet.Write    ${password}
     Telnet.Read Until Prompt
-
-Print Message To Console Log
-    [Arguments]    @{msg}
-    [Documentation]    打印信息到console的log文件中，注意：实际不是向console输出的信息，只是把信息输出到log文件里了
-    Telnet.Print To Console Log    @{msg}

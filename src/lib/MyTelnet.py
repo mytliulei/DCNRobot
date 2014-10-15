@@ -451,9 +451,14 @@ class MyTelnet(object):
     def print_to_console_log(self,*msg):
         '''
         '''
-        message = '\n'+ '#'*15 + '\n'
-        message += '\n'.join(msg)
-        message += '\n'+ '#'*15 + '\n'
+        if not msg:
+            return 0
+        msg_len_list = map(len,msg)
+        msg_maxlen = max(msg_len_list)
+        print_num = msg_maxlen + 20
+        message = '\n'+ '#'*print_num + '\n#'
+        message += '\n#'.join(msg)
+        message += '\n'+ '#'*print_num + '\n'
         for iconn in self._cache:
             iconn.write_monitor_buffer(message)
 

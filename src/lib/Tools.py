@@ -2,8 +2,9 @@
 #-*- coding: UTF-8 -*-
 '''Tools KeyWord for RF'''
 
-from robot.api import logger
 import re
+from robot.api import logger
+from robot.libraries.BuiltIn import BuiltIn
 
 __version__ = 'dcn.1.0.0'
 __author__ = 'liuleic'
@@ -286,3 +287,25 @@ class Tools(object):
         else:
             logger.info('not find %r in %s',(regexp,string))
             return 0
+
+    def comment(self,*msg):
+        '''
+        this keyword displays the given messages in the log file as keyword arguments, look for telnet instance to invoke print_to_console_log, and print the comment messages to log
+
+        Note: 
+        - these messages will not send to console,so you can only find these messages in the keyword Close Console
+        - when import Library MyTelnet,please name it as Telnet,for example:
+          Library ../lib/MyTelnet.py  WITH NAME  Telnet
+
+        This keyword does nothing with the arguments it receives, but as they
+        are visible in the log, this keyword can be used to display simple
+        messages. Given arguments are ignored so thoroughly that they can even
+        contain non-existing variables. If you are interested about variable
+        values, you can use the `Log` or `Log Many` keywords.
+        '''
+        try:
+            my_telnet = BuiltIn().get_library_instance('Telnet')
+            my_telnet.print_to_console_log(*msg)
+        except Exception,ex:
+            #raise RuntimeError(unicode(ex))
+            pass
