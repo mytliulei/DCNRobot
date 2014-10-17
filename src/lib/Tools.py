@@ -247,6 +247,20 @@ class Tools(object):
 
     def convert_macaddress_format(self,macstr,splitstr=':',joinstr='-',lower=True):
         '''
+        KeyWord: Convert Macaddress Format, 转换mac地址的形式，一般mac地址的形式有00-00-00-00-00-01,00:00:00:00:00:01,00 00 00 00 00 01三种
+
+        args:
+        - macstr: 原始的mac地址
+        - splitstr：原始mac地址的分隔符，默认为:
+        - joinstr: 转换后的mac地址分隔符，默认为-
+        - lower：返回小写的mac地址形式，默认为True，False时返回大写形式
+
+        return：
+        - 转换后的mac地址
+
+        examples：
+        | Convert Macaddress Format | 00:00:00:00:00:01 |
+        | Convert Macaddress Format | 00-00-00-00-00-01 | - | : |
         '''
         if not hasattr(macstr,'split'):
             raise AssertionError('macstr should be str')
@@ -260,6 +274,15 @@ class Tools(object):
 
     def is_none(self,robotVar):
         '''
+        KeyWord: Is None, 当给定的参数为None时返回True，否则返回False
+
+        args:
+        - robotVar
+
+        return:
+        - True: when robotVar is None
+        - False: when robotVar is not None
+
         '''
         return False if robotVar else True
 
@@ -293,6 +316,7 @@ class Tools(object):
         this keyword displays the given messages in the log file as keyword arguments, look for telnet instance to invoke print_to_console_log, and print the comment messages to log
 
         Note: 
+        - msg must be string or other type that has len and str/repr method
         - these messages will not send to console,so you can only find these messages in the keyword Close Console
         - when import Library MyTelnet,please name it as Telnet,for example:
           Library ../lib/MyTelnet.py  WITH NAME  Telnet

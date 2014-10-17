@@ -21,7 +21,10 @@ ${wifi_ap_password}    admin
 *** Keywords ***
 Open Console
     [Arguments]    ${ip}    ${port}    ${alias}
-    [Documentation]    打开console连接，一般用于测试例初始化时，建议在测试集中定于 Init Test Case关键字，其中引用Open Console，打开需要控制的console；
+    [Documentation]    打开console连接，一般用于test suite的setup中
+    ...
+    ...    注意：Telnet实例的生存范围是test suite，即在同一个test suite里采用Open Console打开的连接是可用的，在另一个test suite中是不能引用的，故需要在每个test suite里建立setup来Open Console及在teardown中Close Console
+    ...
     ...    \ \ - 默认情况，timeout为1分钟
     ...    \ - 默认情况，会打开monitor选项，即将console的输出另存一份，以获得整个console的输出
     ...
@@ -68,15 +71,46 @@ Exec Cmd
 
 Close Console
     [Arguments]    ${alias}    ${monitor_loglevel}=${wifi_ap_monitor_loglevel}    ${monitor}=${wifi_ap_monitor}
+    [Documentation]    关闭console连接，一般用于test suite的teardown中
+    ...
+    ...    注意：Telnet实例的生存范围是test suite，即在同一个test suite里采用Open Console打开的连接是可用的，在另一个test suite中是不能引用的，故需要在每个test suite里建立setup来Open Console及在teardown中Close Console
+    ...
+    ...    args：
+    ...    - alias \ ： \ \ 别名，一般在测试例集中定义
+    ...
+    ...    return： 无
+    ...
+    ...    example：
+    ...    | Close Console | s1 |
+    ...    | Close Console | ${s1_alias} |
     Telnet.Switch Connection    ${alias}
     Telnet.Set Monitor    ${monitor}
     Telnet.Close Connection    ${monitor_loglevel}
 
 Close All Console
+    [Documentation]    该关键字不能将console的全部输出记录到log里，不建议使用
+    ...
+    ...    Closes all open connections and empties the connection cache.
+    ...
+    ...    If multiple connections are opened, this keyword should be used in a test or suite teardown to make sure that all connections are closed. It is not an error is some of the connections have already been closed by `Close Connection`.
+    ...
+    ...    After this keyword, new indexes returned by `Open Connection` keyword are reset to 1.
     Telnet.Close All Connections
 
 Exec Cmd Until Regexp
     [Arguments]    ${alias}    ${cmd}    ${regexp}
+    [Documentation]    该关键字用于执行一条命令，用正则匹配返回信息，直到匹配成功，匹配不成功会导致该关键字失败
+    ...
+    ...    注意：该关键字不会读取返回信息在匹配字符后面的内容，会导致后面的读取信息中包含该关键字的内容，容易出错，请慎用，如必须采用，请在该关键字后执行Telnet.Read来消耗掉整个返回信息
+    ...
+    ...    Exec cmd and reads output until any of the `expected` regular expressions match.
+    ...
+    ...    This keyword accepts any number of regular expressions patterns or compiled Python regular expression objects as arguments. Text up to and including the first match to any of the regular expressions is returned and logged. If no match is found, this keyword fails. How much to wait for the output depends on the configured timeout.
+    ...
+    ...    See the documentation of Python `re` module for more information about the supported regular expression syntax. Notice that possible backslashes need to be escaped in Robot Framework test data.
+    ...
+    ...    Examples:
+    ...    | Exec Cmd Until Regexp | s1 | show version | 1.0 |
     Telnet.Switch Connection    ${alias}
     Telnet.Write    ${cmd}
     ${output}=    Telnet.Read Until Regexp    ${regexp}
@@ -106,6 +140,14 @@ Exec Cmd List
 
 Reboot AP
     [Arguments]    ${alias}    ${write}=${True}    ${wait}=5    ${regexp_reload}=${wifi_ap_regexp_reload}    ${timeout}=10 minutes
+    [Documentation]    重启AP设备
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
+    ...    - ${write}: 是否保存配置，默认为True
+    ...    - ${wait}: \ 匹配到重启成功字符后的等待时间，默认为5s，一般不用修改
+    ...    - ${regexp_reload}: 重启完成的匹配字符，默认为(?m)^[-a-zA-Z0-9_]{1,30}( )?login:
+    ...    - ${timeout}: 最长等待时间，默认为10分钟，超过会报错
     Run Keyword If    ${write}    AP.Save Running    ${alias}
     Run Keyword Unless    ${write}    AP.Enable Mode    ${alias}
     Telnet.Write    reboot
@@ -120,6 +162,10 @@ Reboot AP
 
 Save Running
     [Arguments]    ${alias}
+    [Documentation]    保存AP的配置
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
     AP.Enable Mode    ${alias}
     Telnet.Execute Command    save-running
 
@@ -145,12 +191,20 @@ Factory Reset
 
 Get System
     [Arguments]    ${alias}
+    [Documentation]    获取AP的系统信息
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
     AP.Enable Mode    ${alias}
     ${output}=    Telnet.Execute Command    get system
     [Return]    ${output}
 
 Get Management Mac
     [Arguments]    ${alias}
+    [Documentation]    获取AP的mac
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
     ${output}=    AP.Exec Cmd    ${alias}    get management
     ${baseMac}    Tools.Get Value From String    ${output}    mac\\s+(.*?)\\r\\n
     Should Not Be Equal    ${baseMac}    ${None}
@@ -158,6 +212,13 @@ Get Management Mac
 
 Enter BootRom From Img
     [Arguments]    ${alias}    ${regexp_testram}=Hit any key to stop autoboot:    ${regexp_bootrom}=Bootloader/>( )?    ${timeout}=3 minutes
+    [Documentation]    从img进入bootrom
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
+    ...    - ${regexp_testram}: 内存检测的匹配字符，默认为Hit any key to stop autoboot:
+    ...    - ${regexp_bootrom}: 进入bootrom的匹配字符，默认为Bootloader/>( )?
+    ...    - ${timeout}: 最长等待时间，默认为3分钟，超过会报错
     AP.Enable Mode    ${alias}
     Telnet.Write    reboot
     Telnet.Read Until Regexp    \\[Y/N\\]
@@ -171,6 +232,13 @@ Enter BootRom From Img
 
 Enter BootRom From BootRom
     [Arguments]    ${alias}    ${regexp_testram}=Hit any key to stop autoboot:    ${regexp_bootrom}=Bootloader/>( )?    ${timeout}=3 minutes
+    [Documentation]    从bootrom进入bootrom
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
+    ...    - ${regexp_testram}: 内存检测的匹配字符，默认为Hit any key to stop autoboot:
+    ...    - ${regexp_bootrom}: 进入bootrom的匹配字符，默认为Bootloader/>( )?
+    ...    - ${timeout}: 最长等待时间，默认为3分钟，超过会报错
     Telnet.Switch Connection    ${alias}
     Telnet.Write    reset
     Telnet.Set Timeout    ${timeout}

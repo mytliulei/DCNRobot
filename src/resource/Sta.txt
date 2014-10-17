@@ -173,6 +173,15 @@ Read Command Output
 
 Execute Sudo Command
     [Arguments]    ${alias}    ${cmd}    ${password}    ${return_stdout}=${True}    ${return_stderr}=${False}    ${return_rc}=${False}
+    [Documentation]    为了执行特权命令，加入sudo的支持，与Execute Command类似
+    ...
+    ...    args:
+    ...    - ${alias}: sta别名
+    ...    - ${cmd}: 命令
+    ...    - ${password}: root的密码
+    ...    - ${return_stdout}: 返回stdout的信息，默认为True
+    ...    - ${return_stderr}: 返回stderr的信息，默认为False
+    ...    - ${return_rc}: 返回命令执行的返回值，默认为False
     SSHLibrary.Switch Connection    ${alias}
     SSHLibrary.Write    ${cmd}
     SSHLibrary.Read Until    :
@@ -345,6 +354,12 @@ Set Client Configuration
 
 Sta Wpa Disconnect
     [Arguments]    ${alias}    ${netcard_name}    ${forceFlag}=${False}
+    [Documentation]    断开连接
+    ...
+    ...    args：
+    ...    - ${alias}: sta别名
+    ...    - ${netcard_name}: 接口名称
+    ...    - ${forceFlag}: 强制接口down/up，默认False
     Sta.Execute Command    ${alias}    dhclient -r ${netcard_name}
     Run Keyword If    ${forceFlag}    Sta.Execute Command    ${alias}    ifconfig ${netcard_name} down
     Sta.Execute Command    ${alias}    wpa_cli -i ${netcard_name} disable_network 0
@@ -633,6 +648,11 @@ Sta Wpa2 Eap Connect
 
 Sta Get Interface Ip
     [Arguments]    ${alias}    ${netcard_name}
+    [Documentation]    获取接口的ip地址
+    ...
+    ...    args：
+    ...    - ${alias}: sta别名
+    ...    - ${netcard_name}: 接口名称
     ${output}=    Sta.Execute Command    ${alias}    ifconfig -v ${netcard_name}
     ${ipaddress}=    Tools.Get Value From String    ${output}    (?m)inet.+?(\\d+\\.\\d+\\.\\d+\\.\\d+)\\s
     [Return]    ${ipaddress}
