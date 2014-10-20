@@ -3,7 +3,7 @@
 
 # proxy server to ixia, for RF
 
-#version    :   0.1
+#version    :   1.0
 #author     :   liuleic
 #copyright  :   Copyright 2014, DigitalChina Network
 #license    :   Apache License, Version 2.0
@@ -397,7 +397,7 @@ proc GetStatistics {cmdstr} {
             "updown" {
                 stat get statlink $chasId $port $card
                 set statnum [stat cget -link]
-                if {statnum != 1} {
+                if {$statnum != 1} {
                     set statnum 0
                 }
                 lappend ret $statnum
