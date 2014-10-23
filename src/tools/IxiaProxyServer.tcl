@@ -801,7 +801,7 @@ proc SetPortSpeedDuplex {cmdstr} {
     } elseif {$mode == 1} {
         port config -speed 1000
         port config -duplex full
-        port config -autonegotiate true
+        port config -autonegotiate false
         port config -advertise100FullDuplex false
         port config -advertise100HalfDuplex false
         port config -advertise10FullDuplex false
@@ -810,7 +810,7 @@ proc SetPortSpeedDuplex {cmdstr} {
     } elseif {$mode == 2} {
         port config -speed 100
         port config -duplex full
-        port config -autonegotiate true
+        port config -autonegotiate false
         port config -advertise100FullDuplex true
         port config -advertise100HalfDuplex false
         port config -advertise10FullDuplex false
@@ -819,7 +819,7 @@ proc SetPortSpeedDuplex {cmdstr} {
     } elseif {$mode == 3} {
         port config -speed 100
         port config -duplex half
-        port config -autonegotiate true
+        port config -autonegotiate false
         port config -advertise100FullDuplex false
         port config -advertise100HalfDuplex true
         port config -advertise10FullDuplex false
@@ -828,7 +828,7 @@ proc SetPortSpeedDuplex {cmdstr} {
     } elseif {$mode == 4} {
         port config -speed 10
         port config -duplex full
-        port config -autonegotiate true
+        port config -autonegotiate false
         port config -advertise100FullDuplex false
         port config -advertise100HalfDuplex false
         port config -advertise10FullDuplex true
@@ -837,7 +837,7 @@ proc SetPortSpeedDuplex {cmdstr} {
     } elseif {$mode == 5} {
         port config -speed 10
         port config -duplex half
-        port config -autonegotiate true
+        port config -autonegotiate false
         port config -advertise100FullDuplex false
         port config -advertise100HalfDuplex false
         port config -advertise10FullDuplex false
