@@ -896,27 +896,41 @@ class Ixia(object):
         retList = ret.strip().split()
         return retList[0] if len(retList) == 1 else retList
 
-    def set_port_speed_duplex(self,chasId,card,port,mode):
+    def set_port_speed_duplex(self,chasId,card,port,mode,mulchoice):
         '''
         set port speed duplex
 
-        note: this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
+        note: this keyword will cause the port updown and use the keyword of Set Port Config Default to clear this config in the end of testcase
 
         args:
         - chasId: normally should be 1
         - card:   ixia card
         - port:   ixia port
         - mode:   0: auto;
-                  1: force1gfull;
+                  1: force1gfull; *Note: force1gfull will not take effect on ixia*
                   2: force100full;
                   3: force100half;
                   4: force10full;
                   5: force10half;
+                  -1: autonegotiate,but type of autonegotiate must be assigned by mulchoice
+        - mulchoice: take effect when mode be -1,must be a list including below choice
+                  1: force1gfull; *Note: force1gfull will not take effect on ixia*
+                  2: force100full;
+                  3: force100half;
+                  4: force10full;
+                  5: force10half;
+
         return:
         - 0: ok
         - non zero: error code
         '''
-        cmd = 'set_port_speed_duplex %s %s %s %s\n' % (chasId,card,port,mode)
+        if issubclass(type(mode),basestring):
+            mode = int(mode)
+        if mode == -1:
+            mulchoice = ';'.join(mulchoice)
+        if not mulchoice:
+            mulchoice = '0'
+        cmd = 'set_port_speed_duplex %s %s %s %s %s\n' % (chasId,card,port,mode,mulchoice)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:

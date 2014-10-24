@@ -775,7 +775,7 @@ proc Test_Proxy_Server {cmdstr} {
 proc SetPortSpeedDuplex {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
-    if {$cmdlen <= 3} {
+    if {$cmdlen <= 4} {
         return -100
     }
     global ixia_ip
@@ -788,6 +788,7 @@ proc SetPortSpeedDuplex {cmdstr} {
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
     set mode [lindex $cmdlist 3]
+    set negstr [lindex $cmdlist 4]
     set portlist [list [list $chasId $port $card]]
     #port setDefault
     if {$mode == 0} {
@@ -843,6 +844,33 @@ proc SetPortSpeedDuplex {cmdstr} {
         port config -advertise10FullDuplex false
         port config -advertise10HalfDuplex true
         port config -advertise1000FullDuplex false
+    } elseif {$mode == -1} {
+        port config -autonegotiate true
+        port config -advertise100FullDuplex false
+        port config -advertise100HalfDuplex false
+        port config -advertise10FullDuplex false
+        port config -advertise10HalfDuplex false
+        port config -advertise1000FullDuplex false
+        set neglist [split $negstr ";"]
+        foreach negx $neglist {
+            switch -exact $negx {
+                "1" {
+                    port config -advertise1000FullDuplex true
+                }
+                "2" {
+                    port config -advertise100FullDuplex true
+                }
+                "3" {
+                    port config -advertise100HalfDuplex true
+                }
+                "4" {
+                    port config -advertise10FullDuplex true
+                }
+                "5" {
+                    port config -advertise10HalfDuplex true
+                }
+            }
+        }
     } else {
 
     }

@@ -1,4 +1,29 @@
 *** Settings ***
+Documentation     控制ixia各类操作的关键字集合，常规用法：
+...
+...               ---
+...               1. *编辑报文:*
+...
+...               ---
+...               2. *将编辑的报文设置到ixia端口:*
+...
+...               ---
+...               3. *设置流的属性:*
+...
+...               ---
+...               4. *设置ixia端口的属性:*
+...
+...               ---
+...               5. *发包:*
+...
+...               ---
+...               6. *停止发包:*
+...
+...               ---
+...               7. *抓包过滤:*
+...
+...               ---
+...               8. *获取统计数据:*
 Library           ../lib/Ixia.py
 Library           String
 Library           Collections
@@ -151,6 +176,7 @@ Start Transmit
     ...    - 0: ok
     ...    - non zero: error code
     ${rc}=    Ixia.Start Transmit    ${chasId}    ${card}    ${port}
+    Should Be Equal As Integers    ${rc}    0
     [Return]    ${rc}
 
 Stop Transmit
@@ -166,6 +192,7 @@ Stop Transmit
     ...    - 0: ok
     ...    - non zero: error code
     ${rc}=    Ixia.Stop Transmit    ${chasId}    ${card}    ${port}
+    Should Be Equal As Integers    ${rc}    0
     [Return]    ${rc}
 
 Get Statics
@@ -545,7 +572,7 @@ Clear Capture Packet
 Shutdown Proxy Server
     [Documentation]    shutdown proxy sever
     ...
-    ...    Note: Do not use this keyword unless you know what you are doing
+    ...    *Note: Do not use this keyword unless you know what you are doing*
     ...
     ...    args:
     ...
@@ -654,7 +681,7 @@ Set Stream Packet By Api
     [Return]    ${rc}
 
 Set Port Speed Duplex
-    [Arguments]    ${chasId}    ${port}    ${card}    ${mode}
+    [Arguments]    ${chasId}    ${port}    ${card}    ${mode}    @{negChoice}
     [Documentation]    set port speed duplex
     ...
     ...    note: this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
@@ -664,6 +691,13 @@ Set Port Speed Duplex
     ...    - card: \ \ ixia card
     ...    - port: \ \ ixia port
     ...    - mode: \ \ 0: auto;
+    ...    \ \ \ \ \ \ \ \ \ \ 1: force1gfull; *Note: force1gfull will not take effect on ixia*
+    ...    \ \ \ \ \ \ \ \ \ \ 2: force100full;
+    ...    \ \ \ \ \ \ \ \ \ \ 3: force100half;
+    ...    \ \ \ \ \ \ \ \ \ \ 4: force10full;
+    ...    \ \ \ \ \ \ \ \ \ \ 5: force10half;
+    ...    \ \ \ \ \ \ \ \ \ \ -1: autonegotiate,but type of autonegotiate must be assigned by mulchoice
+    ...    - negChoice: \ \ take effect when mode be -1,must be a list including below choice
     ...    \ \ \ \ \ \ \ \ \ \ 1: force1gfull;
     ...    \ \ \ \ \ \ \ \ \ \ 2: force100full;
     ...    \ \ \ \ \ \ \ \ \ \ 3: force100half;
@@ -672,7 +706,11 @@ Set Port Speed Duplex
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
-    ${rc}=    Ixia.Set Port Speed Duplex    ${chasId}    ${port}    ${card}    ${mode}
+    ...
+    ...    example:
+    ...    | Set Port Speed Duplex | 1 | 1 | 1 | 2 |
+    ...    | Set Port Speed Duplex | 1 | 1 | 1 | -1 | 1 | 2 | 3 |
+    ${rc}=    Ixia.Set Port Speed Duplex    ${chasId}    ${port}    ${card}    ${mode}    ${negChoice}
     [Return]    ${rc}
 
 Set Port Flowcontrol
