@@ -5,6 +5,7 @@
 import re
 from robot.api import logger
 from robot.libraries.BuiltIn import BuiltIn
+from robot.running import Keyword, RUN_KW_REGISTER
 
 __version__ = 'dcn.1.0.0'
 __author__ = 'liuleic'
@@ -12,6 +13,11 @@ __copyright__ = 'Copyright 2014, DigitalChina Network'
 __license__ = 'Apache License, Version 2.0'
 __mail__ = 'liuleic@digitalchina.com'
 
+def run_keyword_variant(resolve):
+    def decorator(method):
+        RUN_KW_REGISTER.register_run_keyword('Tools', method.__name__, resolve)
+        return method
+    return decorator
 
 class Tools(object):
     ''''''
@@ -310,7 +316,7 @@ class Tools(object):
         else:
             logger.info('not find %r in %s',(regexp,string))
             return 0
-
+    @run_keyword_variant(resolve=0)
     def comment(self,*msg):
         '''
         this keyword displays the given messages in the log file as keyword arguments, look for telnet instance to invoke print_to_console_log, and print the comment messages to log
