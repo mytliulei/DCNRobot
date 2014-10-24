@@ -316,7 +316,7 @@ class Tools(object):
         else:
             logger.info('not find %r in %s',(regexp,string))
             return 0
-    @run_keyword_variant(resolve=0)
+    #@run_keyword_variant(resolve=0)
     def comment(self,*msg):
         '''
         this keyword displays the given messages in the log file as keyword arguments, look for telnet instance to invoke print_to_console_log, and print the comment messages to log
