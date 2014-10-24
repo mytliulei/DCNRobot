@@ -1,29 +1,64 @@
 *** Settings ***
-Documentation     控制ixia各类操作的关键字集合，常规用法：
+Documentation     控制ixia各类操作的关键字集合，用法规范：
 ...
 ...               ---
-...               1. *编辑报文:*
+...               1. *连接ixia:*
+...               - 通常在包含实际测试例的test suite内通过关键字Connect To Ixia，一般放在setup内
+...               - *注意: test suite结束时，会将ixia的连接断开，因此，需要在每个test suite建立到ixia的连接*
+...
+...               说明：ixia的关键字的生效范围为test suite，也就是说，test suite结束时，会将ixia的连接断开
 ...
 ...               ---
-...               2. *将编辑的报文设置到ixia端口:*
+...               2. *编辑报文:*
+...               - 分层编辑报文，目前提供的关键字有：Build Ether; Build Dot1Q; Build Arp; Build Ip
+...               - 对于4层以上的报文，一般采用关键字Build Payload来补充，或者编写相应的报文结构来识别
+...               - 通过关键字Build Packet组装各层报文，*注意: 各层报文要按从从低到高顺序编辑*
+...               - *注意:编辑ixia支持的各层报文时，如果要实现如地址递增等的功能，需要使用关键字Make Kwargs来实现*
+...
+...               举例:
+...               | ${dict}= | Ixiasend.Make Kwargs | saRepeatCounter=increment | numSA=10 |
+...               | ixiasend.Build Ether | dst=00:00:00:00:00:02 | src=00:00:00:00:00:01 | kwargs=${dict} |
+...               | ixiasend.Build Dot1q | vlan=${10} | prio=${7} | typeid=0x9100 |
+...               | ixiasend.Build Dot1q | vlan=${20} | prio=${5} |
+...               | ixiasend.Build Ip | dst=10.1.1.1 | src=20.1.1.2 | tos=${0xE0} |
+...               | ixiasend.Build Packet |
 ...
 ...               ---
-...               3. *设置流的属性:*
+...               3. *将编辑的报文设置到ixia端口:*
+...               - 通过关键字Set Stream Packet By Api将编辑好的报文设置到ixia端口
 ...
 ...               ---
-...               4. *设置ixia端口的属性:*
+...               4. *设置流的属性:*
+...               - 通过关键字Set Stream Control设置流的发送参数
+...               - 通过上述过程，可依次设置ixia端口的所有流
+...               - *注意: 在进行ixia端口设置前,需要Set Port Mode Default来恢复ixia端口的配置*
 ...
 ...               ---
-...               5. *发包:*
+...               5. *设置ixia端口的属性:*
+...               - 目前支持的：速率双工 Set Port Speed Duplex; 流控 Set Port Flowcontrol
+...               - *注意: ixia端口属性设置后，清除需要使用关键字Set Port Config Default*
 ...
 ...               ---
-...               6. *停止发包:*
+...               6. *发包:*
+...               - 关键字: Start Transmit
+...               - 如果不是持续发包，可以使用关键字Wait For Transmit Done来等待发送完成
+...               ---
+...               7. *停止发包:*
+...               - 关键字: Stop Transmit
 ...
 ...               ---
-...               7. *抓包过滤:*
+...               8. *抓包过滤:*
+...               - 抓包关键字: Start Capture
+...               - 停止抓包关键字: Stop Capture
+...               - 获取抓包的数量: Get Capture Packet Num
+...               - 过滤报文: Filter Capture Packet,
+...               - *注意: 过滤报文之前需要先Get Capture Packet,这样可以按不同条件，反复过滤报文; 同时提供关键字 Clear Capture Packet用于清除获取的抓包报文*
 ...
 ...               ---
-...               8. *获取统计数据:*
+...               9. *获取统计数据:*
+...               - 关键字 Get Statics
+...
+...               ---
 Library           ../lib/Ixia.py
 Library           String
 Library           Collections
