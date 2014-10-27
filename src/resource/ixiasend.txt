@@ -3,10 +3,10 @@ Documentation     控制ixia各类操作的关键字集合，用法规范：
 ...
 ...               ---
 ...               1. *连接ixia:*
-...               - 通常在包含实际测试例的test suite内通过关键字Connect To Ixia，一般放在setup内
-...               - *注意: test suite结束时，会将ixia的连接断开，因此，需要在每个test suite建立到ixia的连接*
-...
-...               说明：ixia的关键字的生效范围为test suite，也就是说，test suite结束时，会将ixia的连接断开
+...               - 在直接包含test case的test suite内通过关键字Connect To Ixia连接，一般放在setup内
+...               - *注意: 在执行Connect To Ixia的test suite结束时，会将ixia的连接断开，因此需要在每个直接包含测试例的test suite内使用Connect To Ixia*
+...               - 测试模块初始化的过程，如果需要控制Ixia，需要在初始化关键字的开始使用Connect To Ixia，在初始化关键字的结束时关闭Shutdown Proxy Server，一般初始化关键字在最高层test suite的setup中
+...               - 测试模块清理配置的过程，如果需要控制Ixia，需要在清理配置的关键字的开始使用Connect To Ixia，在清理配置的关键字的结束时关闭Shutdown Proxy Server，一般清理配置的关键字在最高层test suite的teardown中
 ...
 ...               ---
 ...               2. *编辑报文:*
@@ -187,7 +187,7 @@ Connect To Ixia
     [Arguments]    ${address}
     [Documentation]    start ixia proxy server and connect to ixia;
     ...
-    ...    Note: in the beginning of every test suit,please use this keyword,in the end of every test suit,the ixia proxy server will be shutdown automatically
+    ...    Note: in the beginning of \ every lowest test suit,please use this keyword,in the end of this test suit,the ixia proxy server will be shutdown automatically
     ...
     ...    args:
     ...    - ixia_ip: the ip address of ixia

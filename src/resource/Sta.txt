@@ -1,4 +1,39 @@
 *** Settings ***
+Documentation     控制Station的关键字集合，使用规范：
+...
+...               ---
+...               1. *打开/关闭ssh connection:*
+...               - 通过ssh登陆terminal，控制station
+...               - 在直接包含test case的test suite内通过关键字Open SSH Connection连接，一般放在setup内
+...               - *注意: 在执行Open SSH Connection的test suite结束时，需要关闭cosole，在teardown里使用Close SSH Connection*
+...               - *注意: 需要在每个直接包含测试例的test suite内使用Open SSH Connection，teardown里使用Close SSH Connection*
+...               - 测试模块初始化的过程，如果需要控制station，需要在初始化关键字的开始使用Open SSH Connection，在初始化关键字的结束时关闭Close SSH Connection，一般初始化关键字在最高层test suite的setup中
+...               - 测试模块清理配置的过程，如果需要控制station，需要在清理配置的关键字的开始使用Open SSH Connection，在清理配置的关键字的结束时关闭Close SSH Connection，一般清理配置的关键字在最高层test suite的teardown中
+...
+...               ---
+...               2. *执行命令,获取结果*
+...               - 执行命令的关键字有：Execute Command；Start Command，Read Command Output；Write，Read Until Prompt等
+...               - Execute Command一般用于非交互式的命令（每个Execute Command都会打开一个shell），比如ifconfig，同时该命令是同步的，也就是说需要等到命令执行完毕才返回
+...               - Start Command一般用于非交互式的命令，但该命令式异步的，就是说是在后台执行，会立即返回，命令的结果使用Read Command Output读取
+...               - Write一般用于交互式的命令（所有的Write在一个shell上），比如需要输入Y/N的命令或者对环境变量有依赖的命令，该命令的返回信息通过Read，Read Until Prompt等读取
+...
+...               ---
+...               3. *常用命令:*
+...               - Sta Wep Open Connect
+...               - Sta Wep Shared Connect
+...               - Sta Wpa Open Connect
+...               - Sta Wpa Psk Connect
+...               - Sta Wpa2 Psk Connect
+...               - Sta Wpa Eap Connect
+...               - Sta Wpa2 Eap Connect
+...               - Sta Wap Disconnect
+...               - Sta Dhclient
+...               - Sta Get Interface Ip
+...               - Check Sta Ping
+...
+...               ---
+...               4. *注意事项*
+...               - 命令执行结束的标志为匹配到提示符，timeout时间为1分钟，如果命令的执行时间多于1分钟，用Sa.Set Client Configuration暂时修改timeout时间，然后执行完毕后再恢复默认值
 Library           SSHLibrary
 Library           ../lib/Tools.py
 

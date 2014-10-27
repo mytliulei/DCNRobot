@@ -1,4 +1,34 @@
 *** Settings ***
+Documentation     控制AP的关键字集合，使用规范：
+...
+...               ---
+...               1. *打开/关闭console:*
+...               - 在直接包含test case的test suite内通过关键字Open Console连接，一般放在setup内
+...               - *注意: 在执行Open Console的test suite结束时，需要关闭cosole，在teardown里使用Close Console*
+...               - *注意: 需要在每个直接包含测试例的test suite内使用Open Console，teardown里使用Close Console*
+...               - 测试模块初始化的过程，如果需要控制AP，需要在初始化关键字的开始使用Open Console，在初始化关键字的结束时关闭Close Console，一般初始化关键字在最高层test suite的setup中
+...               - 测试模块清理配置的过程，如果需要控制AP，需要在清理配置的关键字的开始使用Open Console，在清理配置的关键字的结束时关闭Close Console，一般清理配置的关键字在最高层test suite的teardown中
+...
+...               ---
+...               2. *执行命令,获取结果*
+...               - 一般执行命令的起始地点在enable模式，关键字Enable Mode
+...               - 执行单条命令并返回命令执行后的输出，关键字 Exec Cmd，该关键字的执行起点依据上一条命令，并不是在enable模式下
+...               - 一般使能某个功能，是一串命令的组合，关键字 Exec Cmd List，该关键字的执行起点在enable模式,按命令list的顺序依次配置执行，返回的是每条命令的输出信息的list
+...
+...               ---
+...               3. *常用命令:*
+...               - Reboot AP
+...               - Save Running
+...               - Get System
+...               - Factory Reset
+...               - Get Management Mac
+...               - Enter BootRom From Img
+...               - Enter BootRom From BootRom
+...
+...               ---
+...               4. *注意事项*
+...               - 命令执行结束的标志为匹配到提示符，timeout时间为1分钟，如果命令的执行时间多于1分钟，可以参考Reboot AP关键字的实现，用Telnet.Set Timeout ${timeout}暂时修改timeout时间，然后执行完毕后再恢复默认值
+...               - 在一个test suite里console的完整执行log会另存一份，当执行关键字Close Console时，会进行写入，有需要可以查询该关键字
 Library           Collections
 Library           String
 Library           ../lib/Tools.py
