@@ -688,6 +688,6 @@ Sta Get Interface Ip
     ...    args：
     ...    - ${alias}: sta别名
     ...    - ${netcard_name}: 接口名称
-    ${output}=    Sta.Execute Command    ${alias}    ifconfig -v ${netcard_name}
-    ${ipaddress}=    Tools.Get Value From String    ${output}    (?m)inet.+?(\\d+\\.\\d+\\.\\d+\\.\\d+)\\s
+    ${output}=    Sta.Execute Command    ${alias}    ip -f inet addr show ${netcard_name}
+    ${ipaddress}=    Tools.Get Value From String    ${output}    (?m)inet\\s+(\\d+\\.\\d+\\.\\d+\\.\\d+)
     [Return]    ${ipaddress}
