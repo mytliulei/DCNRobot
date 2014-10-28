@@ -402,22 +402,24 @@ Exec Cmd List In WirelessMode
     Log List    ${output_list}
 
 Wait For AP Profile Apply OK
-    [Arguments]    ${alias}    ${profileid}    ${timeout}=${120}    ${cmd}=show wireless ap status
+    [Arguments]    ${alias}    ${profileid}    ${apmac}=${None}    ${timeout}=${120}    ${cmd}=show wireless ap status
     [Documentation]    等待AP profile下发成功
     ...
     ...    args：
     ...    - ${alias}：Open Console时设置的别名
     ...    - ${profileId}: profile id
+    ...    - ${apmac} : mac地址，默认为None，默认会查找所有的profile id，当设置mac后，会查找指定的mac的profile id
     ...    - ${timeout}: 最长等待时间，默认为120s
     ...    - ${cmd}: 观察下发是否成功的命令
     ...
     ...    注意：超过timeout后，不会报错，关键字会返回，进行下一个关键字的执行
     AC.Enable Mode    ${alias}
+    ${matchMac}=    Set Variable If    ${apmac} == None    ([0-9A-F]{2}-){5}[0-9A-F]    ${apmac}
     Sleep    10
     : FOR    ${index}    IN RANGE    0    ${timeout}    10
     \    ${output}=    AC.Exec Cmd    ${alias}    ${cmd}
-    \    ${apProfileNum}=    Tools.Find All Num From String    ${output}    (?im)([0-9A-F]{2}-){5}[0-9A-F].*?\\s+${profileid}\\s
-    \    ${apstatusNum}=    Tools.Find All Num From String    ${output}    (?im)\\s+${profileid}\\s+Managed\\s+Success
+    \    ${apProfileNum}=    Tools.Find All Num From String    ${output}    (?im)${matchMac}.*?\\s+${profileid}\\s
+    \    ${apstatusNum}=    Tools.Find All Num From String    ${output}    (?im)${matchMac}.*?\\s+${profileid}\\s+Managed\\s+Success
     \    Run Keyword If    ${apstatusNum} == ${apProfileNum}    Exit For Loop
     \    Sleep    10
 
