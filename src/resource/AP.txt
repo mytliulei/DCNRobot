@@ -47,6 +47,7 @@ ${wifi_ap_monitor_loglevel}    INFO
 ${wifi_ap_login_regexp}    (?m)^[-a-zA-Z0-9_]{1,30}( )?login:
 ${wifi_ap_username}    admin
 ${wifi_ap_password}    admin
+${wifi_ap_newline}    LF
 
 *** Keywords ***
 Open Console
@@ -69,7 +70,7 @@ Open Console
     ...    | Open Console | 172.16.11.51 | ${10001} | s1 |
     ...    | Open Console | ${s1_ip} | ${s1_port} | ${s1_alias} |
     Telnet.Open Connection    ${ip}    ${alias}    ${port}    timeout=${wifi_ap_timeout}    prompt_is_regexp=${wifi_ap_prompt_is_regexp}    prompt=${wifi_ap_prompt}
-    ...    default_log_level=${wifi_ap_default_log_level}    terminal_emulation=${wifi_ap_terminal_emulation}    terminal_type=${wifi_ap_terminal_type}    monitor=${wifi_ap_monitor}
+    ...    default_log_level=${wifi_ap_default_log_level}    terminal_emulation=${wifi_ap_terminal_emulation}    terminal_type=${wifi_ap_terminal_type}    monitor=${wifi_ap_monitor}    newline=${wifi_ap_newline}
     AP.Enable Mode    ${alias}
 
 Enable Mode

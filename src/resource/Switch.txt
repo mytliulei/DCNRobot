@@ -66,6 +66,7 @@ ${sw_timeout}     1 minute
 ${sw_regexp_reload}    Mac\\sAddr\\s
 ${sw_monitor}     ${True}
 ${sw_monitor_loglevel}    INFO
+${sw_newline}     LF
 
 *** Keywords ***
 Open Console
@@ -85,7 +86,7 @@ Open Console
     ...    | Open Console | 172.16.11.51 | ${10001} | s1 |
     ...    | Open Console | ${s1_ip} | ${s1_port} | ${s1_alias} |
     Telnet.Open Connection    ${ip}    ${alias}    ${port}    timeout=${sw_timeout}    prompt_is_regexp=${sw_prompt_is_regexp}    prompt=${sw_prompt}
-    ...    default_log_level=${sw_default_log_level}    terminal_emulation=${sw_terminal_emulation}    terminal_type=${sw_terminal_type}    monitor=${sw_monitor}
+    ...    default_log_level=${sw_default_log_level}    terminal_emulation=${sw_terminal_emulation}    terminal_type=${sw_terminal_type}    monitor=${sw_monitor}    newline=${sw_newline}
     Switch.Enable Mode    ${alias}
     Switch.Set Exec TimeOut    ${alias}
 

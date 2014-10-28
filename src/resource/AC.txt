@@ -74,6 +74,7 @@ ${wifi_ac_monitor_loglevel}    INFO
 ${wifi_ac_login_regexp}    (?m)^Username:
 ${wifi_ac_username}    admin
 ${wifi_ac_password}    admin
+${wifi_ac_newline}    LF
 
 *** Keywords ***
 Open Console
@@ -96,7 +97,7 @@ Open Console
     ...    | Open Console | 172.16.11.51 | ${10001} | s1 |
     ...    | Open Console | ${s1_ip} | ${s1_port} | ${s1_alias} |
     Telnet.Open Connection    ${ip}    ${alias}    ${port}    timeout=${wifi_ac_timeout}    prompt_is_regexp=${wifi_ac_prompt_is_regexp}    prompt=${wifi_ac_prompt}
-    ...    default_log_level=${wifi_ac_default_log_level}    terminal_emulation=${wifi_ac_terminal_emulation}    terminal_type=${wifi_ac_terminal_type}    monitor=${wifi_ac_monitor}
+    ...    default_log_level=${wifi_ac_default_log_level}    terminal_emulation=${wifi_ac_terminal_emulation}    terminal_type=${wifi_ac_terminal_type}    monitor=${wifi_ac_monitor}    newline=${wifi_ac_newline}
     AC.Enable Mode    ${alias}
     AC.Set Exec TimeOut    ${alias}
 
