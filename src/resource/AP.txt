@@ -237,7 +237,7 @@ Get Management Mac
     ...    args：
     ...    - ${alias}：Open Console时设置的别名
     ${output}=    AP.Exec Cmd    ${alias}    get management
-    ${baseMac}    Tools.Get Value From String    ${output}    mac\\s+(.*?)\\r\\n
+    ${baseMac}    Tools.Get Value From String    ${output}    mac\\s+(.*?)\\s
     Should Not Be Equal    ${baseMac}    ${None}
     [Return]    ${baseMac}
 
@@ -281,8 +281,29 @@ Enter BootRom From BootRom
 
 Login
     [Arguments]    ${alias}    ${username}=${wifi_ap_username}    ${password}=${wifi_ap_password}
+    [Documentation]    登陆AP
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
+    ...    - ${username}: 用户名，默认为admin
+    ...    - ${password}: 密码，默认为admin
     Telnet.Switch Connection    ${alias}
     Telnet.Write    ${username}
     Telnet.Read Until Regexp    Password:
     Telnet.Write    ${password}
     Telnet.Read Until Prompt
+
+Get AP Ipaddr
+    [Arguments]    ${alias}
+    [Documentation]    ap通过get management获取ip
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
+    ...
+    ...    return：
+    ...    - ip地址
+    AP.Enable Mode    ${alias}
+    ${output}=    Telnet.Execute Command    get management
+    ${baseIp}    Tools.Get Value From String    ${output}    (?m)^\\bip\\s+(.*?)\\s
+    Should Not Be Equal    ${baseIp}    ${None}
+    [Return]    ${baseIp}
