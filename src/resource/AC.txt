@@ -414,7 +414,8 @@ Wait For AP Profile Apply OK
     ...
     ...    注意：超过timeout后，不会报错，关键字会返回，进行下一个关键字的执行
     AC.Enable Mode    ${alias}
-    ${matchMac}=    Set Variable If    ${apmac} == None    ([0-9A-F]{2}-){5}[0-9A-F]    ${apmac}
+    ${apmacFlag}=    Tools.Is None    ${apmac}
+    ${matchMac}=    Set Variable If    ${apmacFlag}    ([0-9A-F]{2}-){5}[0-9A-F]    ${apmac}
     Sleep    10
     : FOR    ${index}    IN RANGE    0    ${timeout}    10
     \    ${output}=    AC.Exec Cmd    ${alias}    ${cmd}

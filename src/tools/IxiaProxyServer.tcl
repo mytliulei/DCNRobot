@@ -844,6 +844,8 @@ proc SetPortSpeedDuplex {cmdstr} {
         port config -advertise10FullDuplex false
         port config -advertise10HalfDuplex true
         port config -advertise1000FullDuplex false
+    } elseif {$mode == 6} {
+        port config -autonegotiate false
     } elseif {$mode == -1} {
         port config -autonegotiate true
         port config -advertise100FullDuplex false

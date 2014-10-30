@@ -273,7 +273,7 @@ Clear Statics
 
 Set Stream Packet By Datapattern
     [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}
-    [Documentation]    set a packet on stream of ixia port
+    [Documentation]    set a packet on stream of ixia port,filled src/dst mac by ixia api, and other fields by ixia datapattern method
     ...
     ...    Note:please use this keyword after Build Packet
     ...
@@ -694,11 +694,12 @@ Make Kwargs
     \    @{ilist}    String.Split String    ${istr}    =
     \    @{kwlist}=    Collections.Combine Lists    ${kwlist}    ${ilist}
     ${dict}=    Collections.Create Dictionary    @{kwlist}
+    Log    ${dict}
     [Return]    ${dict}
 
 Set Stream Packet By Api
     [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}
-    [Documentation]    set a packet on stream of ixia port
+    [Documentation]    set a packet on stream of ixia port, filled all fields by ixia api
     ...
     ...    Note:please use this keyword after Build Packet
     ...
@@ -731,6 +732,7 @@ Set Port Speed Duplex
     ...    \ \ \ \ \ \ \ \ \ \ 3: force100half;
     ...    \ \ \ \ \ \ \ \ \ \ 4: force10full;
     ...    \ \ \ \ \ \ \ \ \ \ 5: force10half;
+    ...    \ \ \ \ \ \ \ \ \ \ 6: no autonegotiate, used for fiber port normally
     ...    \ \ \ \ \ \ \ \ \ \ -1: autonegotiate,but type of autonegotiate must be assigned by mulchoice
     ...    - negChoice: \ \ take effect when mode be -1,must be a list including below choice
     ...    \ \ \ \ \ \ \ \ \ \ 1: force1gfull;

@@ -321,17 +321,15 @@ class Tools(object):
         '''
         this keyword displays the given messages in the log file as keyword arguments, look for telnet instance to invoke print_to_console_log, and print the comment messages to log
 
-        Note: 
-        - msg must be string or other type that has len and str/repr method
+        Note:
+        - Given arguments are resolved so thoroughly that they can not contain non-existing variables
+        - Given arguments must be string or other type that has len or str/repr method,If you are interested about variable values of other types, you can use the `Log` or `Log Many` keywords
         - these messages will not send to console,so you can only find these messages in the keyword Close Console
-        - when import Library MyTelnet,please name it as Telnet,for example:
-          Library ../lib/MyTelnet.py  WITH NAME  Telnet
+        - when import Library MyTelnet,please rename it Telnet,for example: Library ../lib/MyTelnet.py  WITH NAME  Telnet
 
         This keyword does nothing with the arguments it receives, but as they
         are visible in the log, this keyword can be used to display simple
-        messages. Given arguments are ignored so thoroughly that they can even
-        contain non-existing variables. If you are interested about variable
-        values, you can use the `Log` or `Log Many` keywords.
+        messages.
         '''
         try:
             my_telnet = BuiltIn().get_library_instance('Telnet')

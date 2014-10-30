@@ -906,12 +906,13 @@ class Ixia(object):
         - chasId: normally should be 1
         - card:   ixia card
         - port:   ixia port
-        - mode:   0: auto;
+        - mode:   0: autonegotiate;
                   1: force1gfull; *Note: force1gfull will not take effect on ixia*
                   2: force100full;
                   3: force100half;
                   4: force10full;
                   5: force10half;
+                  6: no autonegotiate, used for fiber port normally
                   -1: autonegotiate,but type of autonegotiate must be assigned by mulchoice
         - mulchoice: take effect when mode be -1,must be a list including below choice
                   1: force1gfull; *Note: force1gfull will not take effect on ixia*
