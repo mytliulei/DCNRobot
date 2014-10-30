@@ -697,9 +697,7 @@ proc SetStreamFromIxiaAPI {cmdstr} {
         return -400
     }
     global logflag
-    if {$logflag == 1} {
-        global $logfid
-    }
+    global logfid
     set chasId [GetIxiaChassID $ixia_ip]
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
@@ -970,6 +968,7 @@ set bind_port 11917
 set ixia_version 4.10
 set ixia_ip 0.0.0.0
 set logflag 0
+set logfid ""
 if {$argc > 2} {
     array set argarray $argv
     if {[info exists argarray(ixiaversion)]} {

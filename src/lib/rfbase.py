@@ -36,6 +36,7 @@ class PacketBase(object):
         self._ixia_frameType = None
         self._ixia_ipProto_flag = 0
         self._ixia_ipProto = 0
+        self._ixia_etherType = 0
 
     def _set_ixia_flag(self,flag):
         old = self._ixia_flag
@@ -105,6 +106,8 @@ class PacketBase(object):
                 self._ixia_packetField[0] += '!stream config -frameType "%s"' % types
             #add 'protocol setDefault'
             self._ixia_packetField[0] += '!protocol setDefault'
+            if self._ixia_etherType == 1:
+                self._ixia_packetField[0] += '!protocol config -ethernetType ethernetII'
             if self._ixia_vlan_flag == 1:
                 self._ixia_packetField[0] += '!protocol config -enable802dot1qTag vlanSingle'
             elif self._ixia_vlan_flag > 1:
@@ -146,6 +149,7 @@ class PacketBase(object):
             self._ixia_frameType = None
             self._ixia_ipProto_flag = 0
             self._ixia_ipProto = 0
+            self._ixia_etherType = 0
         return 0
 
     def build_ether(self,dst='ff:ff:ff:ff:ff:ff',src='00:00:00:00:00:00',typeid=None,kwargs=None):
@@ -196,6 +200,9 @@ class PacketBase(object):
         dst = ' '.join(dstlist)
         srclist = src.split(':')
         src = ' '.join(srclist)
+        if typeid:
+            # _ixia_etherType = 1 : ethernetII
+            self._ixia_etherType = 1
         #src mac config
         cmdlist.append('stream config -sa "%s"' % src)
         if kwargs and 'saRepeatCounter' in kwargs.keys():
