@@ -209,7 +209,7 @@ Exec Cmd List In ConfigMode
     \    Collections.Append To List    ${output_list}    ${out}
     Log List    ${output_list}
 
-Reload Swtich
+Reload Switch
     [Arguments]    ${alias}    ${write}=${True}    ${wait}=60    ${regexp_reload}=${sw_regexp_reload}    ${timeout}=20 minutes
     [Documentation]    重启设备
     ...
