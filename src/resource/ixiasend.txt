@@ -115,8 +115,8 @@ Build Arp
     ...    exapmle:
     ...    | Build Arp | hwsrc=00:00:00:00:00:01 | psrc=10.1.1.1 | hwdst=10.1.1.254 |
     ...    | Build Arp | op=${2} | hwsrc=00:00:00:00:00:02 | psrc=10.1.1.254 | pdst=10.1.1.1 |
-    ${packetlen}=    Ixia.Build Arp    ${hwtype}    ${ptype}    ${hwlen}    ${op}    ${hwsrc}
-    ...    ${psrc}    ${hwdst}    ${pdst}    ${plen}    ${kwargs}
+    ${packetlen}=    Ixia.Build Arp    ${hwtype}    ${ptype}    ${hwlen}    ${plen}    ${op}
+    ...    ${hwsrc}    ${psrc}    ${hwdst}    ${pdst}    ${kwargs}
     [Return]    ${packetlen}
 
 Build Ip
