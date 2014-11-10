@@ -195,7 +195,7 @@ class Tools(object):
                 return g[0]
             return g
         else:
-            logger.info('not search %r in %s',(regexp,string))
+            logger.info('not search %r in %s' % (regexp,string))
             return None
 
     def find_all_from_string(self,string,regexp):
@@ -221,7 +221,7 @@ class Tools(object):
         if m:
             return m
         else:
-            logger.info('not find %r in %s',(regexp,string))
+            logger.info('not find %r in %s' % (regexp,string))
             return None
 
     def is_match_from_string(self,string,regexp):
@@ -245,10 +245,10 @@ class Tools(object):
         research = re.compile(regexp)
         m = research.search(string)
         if m:
-            logger.info('match %r in %s',(regexp,string))
+            logger.info('match %r in %s' % (regexp,string))
             return True
         else:
-            logger.info('not match %r in %s',(regexp,string))
+            logger.info('not match %r in %s' % (regexp,string))
             return False
 
     def convert_macaddress_format(self,macstr,splitstr=':',joinstr='-',lower=True):
@@ -314,7 +314,7 @@ class Tools(object):
         if m:
             return len(m)
         else:
-            logger.info('not find %r in %s',(regexp,string))
+            logger.info('not find %r in %s' % (regexp,string))
             return 0
     #@run_keyword_variant(resolve=0)
     def comment(self,*msg):
