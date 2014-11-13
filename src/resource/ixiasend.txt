@@ -784,3 +784,26 @@ Set Port Config Default
     ...    - non zero: error code
     ${rc}=    Ixia.Set Port Config Default    ${chasId}    ${port}    ${card}
     [Return]    ${rc}
+
+Build Icmp
+    [Arguments]    ${typeid}=${8}    ${code}=${0}    ${chksum}=${None}    ${iden}=${0}    ${seq}=${0}    ${kwargs}=${None}
+    [Documentation]    build icmp field packet
+    ...
+    ...    *Note: this keyword do not support the parameter ${kwargs} now*
+    ...
+    ...    args:
+    ...    - typeid = 8
+    ...    - code \ \ \ \ = 0
+    ...    - chksum \ \ \ \ = None
+    ...    - iden \ \ = 0
+    ...    - seq \ \ \ = 0
+    ...    - kwargs \ \ \ \ = None
+    ...
+    ...    return:
+    ...    packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Icmp | typeid=${0} |
+    ${packetlen}=    Ixia.Build Icmp    ${typeid}    ${code}    ${chksum}    ${iden}    ${seq}
+    ...    ${kwargs}
+    [Return]    ${packetlen}

@@ -442,7 +442,7 @@ class PacketBase(object):
         if proto:
             cmd += ",proto=%i" % proto
         if chksum:
-            cmd += ",chksum=%s" % chksum
+            cmd += ",chksum=%#x" % chksum
         if options:
             cmd += ",options=%s" % options
         cmd += ")"
@@ -525,6 +525,78 @@ class PacketBase(object):
         self._ixia_write_cmd.append("ip set")
         return True
 
+    def build_icmp(self,typeid=8,code=0,chksum=None,iden=0,seq=0,kwargs=None):
+        '''build Icmp field packet
+
+           args:
+           - typeid    : type    = 8
+           - code      : code    = 0
+           - chksum    : chksum  = None
+           - iden      ：id      = 0
+           - seq       : seq     = 0
+
+           return:
+           packet field length
+
+           exapmle:
+           | Build Icmp | typeid=0 | code=0 |
+           | Build Icmp | typeid=8 |
+        '''
+        if issubclass(type(typeid),basestring):
+            if typeid.startswith('0x'):
+                typeid = int(typeid,16)
+            else:
+                typeid = int(typeid)
+        if issubclass(type(code),basestring):
+            if code.startswith('0x'):
+                code = int(code,16)
+            else:
+                code = int(code)
+        if issubclass(type(iden),basestring):
+            if iden.startswith('0x'):
+                iden = int(iden,16)
+            else:
+                iden = int(iden)
+        if issubclass(type(seq),basestring):
+            if seq.startswith('0x'):
+                seq = int(seq,16)
+            else:
+                seq = int(seq)
+        if chksum:
+            if issubclass(type(chksum),basestring):
+                if chksum.startswith('0x'):
+                    chksum = int(chksum,16)
+                else:
+                    chksum = int(chksum)
+        if chksum:
+            cmd = "ICMP(type=%i, code=%i, id=%i, seq=%i,chksum=%#x)" % (typeid,code,iden,seq,chksum)
+        else:
+            cmd = "ICMP(type=%i, code=%i, id=%i, seq=%i)" % (typeid,code,iden,seq)
+        try:
+            exec('p=%s' % cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_icmp_ixia(typeid,code,chksum,iden,seq,kwargs)
+            return len(p)
+
+    def _build_icmp_ixia(self,typeid,code,chksum,iden,seq,kwargs):
+        '''
+        '''
+        cmdlist = []
+        #config icmp
+        cmdlist.append('icmp setDefault')
+        cmdlist.append('icmp config -type %s' % typeid)
+        cmdlist.append('icmp config -code %s' % code)
+        cmdlist.append('icmp config -id %s' % iden)
+        cmdlist.append('icmp config -sequence %s' % seq)
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        self._ixia_write_cmd.append("icmp set")
+        return True
 
     def build_dot1q(self,prio=0,cfi=0,vlan=1,typeid=None,kwargs=None):
         '''
