@@ -30,8 +30,8 @@ class Tools(object):
         '''
         KeyWord: Incr Mac
 
-        args: 
-            - mac:mac地址 如'00-01-01-01-01-01'
+        args:
+            - mac:mac地址 如'00-01-01-01-01-01',兼容-,:及空格的连接符
             - step:增长数量  默认1
             - mask:掩码，从掩码位置增长，默认6
 
@@ -39,16 +39,28 @@ class Tools(object):
 
         examples:
         | Incr Mac | 00-01-01-01-01-01 | #结果00-01-01-01-01-02 |
-        | Incr Mac | 00-01-01-01-01-01 | step=${2} | #结果00-01-01-01-01-03 |           
+        | Incr Mac | 00-01-01-01-01-01 | step=${2} | #结果00-01-01-01-01-03 |
         | Incr Mac | 00-01-01-01-01-01 | mask=${3} | #结果00-01-02-01-01-01 |
         '''
         if mask > 6:
             logger.info('mask error: should less than 6')
             return
-        maclist = mac.split('-')
+        maclist1 = mac.split('-')
+        maclist2 = mac.split(' ')
+        maclist3 = mac.split(':')
+        joinstr = '-'
+        if len(maclist1) == 6:
+            maclist = maclist1
+        elif len(maclist2) == 6:
+            maclist = maclist2
+            joinstr = ' '
+        elif len(maclist3) == 6:
+            maclist = maclist3
+            joinstr = ':'
+        else:
+            maclist = []
         if len(maclist) != 6:
             logger.info('mac length error: should equal to 6')
-            #print 'mac length error'
             return
         snum = ''
         for i in range(mask):
@@ -59,8 +71,7 @@ class Tools(object):
         ss = l%dnum
         for i in range(mask):
             maclist[i] = ss[i*2:i*2+2]
-        return '-'.join(maclist)    
-    
+        return joinstr.join(maclist)
 
     def incr_ip(self,ip,step=1,mask=32):
         '''
