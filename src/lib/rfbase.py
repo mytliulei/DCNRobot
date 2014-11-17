@@ -526,7 +526,7 @@ class PacketBase(object):
         return True
 
     def build_icmp(self,typeid=8,code=0,chksum=None,iden=0,seq=0,kwargs=None):
-        '''build Icmp field packet
+        '''build ICMP field packet
 
            args:
            - typeid    : type    = 8
@@ -596,6 +596,86 @@ class PacketBase(object):
         cmd = '!'.join(cmdlist)
         self._ixia_packetField.append(cmd)
         self._ixia_write_cmd.append("icmp set")
+        return True
+
+    def build_igmpv1v2(self,version=0x11,maxres=100,cksum=None,group='0.0.0.0',kwargs=None):
+        '''build IGMPv1v2 field packet
+
+           args:
+           - version    = 0x11
+           - maxres     = 100
+           - chksum     = None
+           - group      = 0.0.0.0
+           - kwargs     = None,the detail spec in the doc of keywrod Make Kwargs
+
+           return:
+           packet field length
+
+           exapmle:
+           | Build Igmpv1v2 | version=0x22 | group=225.1.1.1 |
+        '''
+        if issubclass(type(version),basestring):
+            if version.startswith('0x'):
+                version = int(version,16)
+            else:
+                version = int(version)
+        if issubclass(type(maxres),basestring):
+            if maxres.startswith('0x'):
+                maxres = int(maxres,16)
+            else:
+                maxres = int(maxres)
+        if chksum:
+            if issubclass(type(chksum),basestring):
+                if chksum.startswith('0x'):
+                    chksum = int(chksum,16)
+                else:
+                    chksum = int(chksum)
+        if chksum:
+            cmd = "IGMP(version=%i, maxres=%i, group='%s', chksum=%#x)" % (version,maxres,group,chksum)
+        else:
+            cmd = "IGMP(version=%i, maxres=%i, group='%s')" % (version,maxres,group)
+        try:
+            exec('p=%s' % cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_igmpv1v2_ixia(version,maxres,cksum,group,kwargs)
+            return len(p)
+
+    def _build_igmpv1v2_ixia(self,version,maxres,cksum,group,kwargs):
+        '''
+        '''
+        cmdlist = []
+        #config icmp
+        cmdlist.append('igmp setDefault')
+        if version == 0x11:
+            cmdlist.append('igmp config -type 17')
+            #cmdlist.append('igmp config -version 2')
+        elif version == 0x12:
+            cmdlist.append('igmp config -type 18')
+            cmdlist.append('igmp config -version 1')
+        elif version == 0x16:
+            cmdlist.append('igmp config -type 22')
+            cmdlist.append('igmp config -version 2')
+        elif version == 0x17:
+            cmdlist.append('igmp config -type 23')
+            cmdlist.append('igmp config -version 2')
+        else:
+            pass
+        cmdlist.append('igmp config -maxResponseTime %s' % maxres)
+        cmdlist.append('igmp config -groupIpAddress "%s"' % group)
+        if cksum:
+            cmdlist.append('igmp config -useValidChecksum false')
+        if kwargs and 'mode' in kwargs.keys():
+            cmdlist.append('igmp config -mode %s' % kwargs['mode'])
+        if kwargs and 'repeatCount' in kwargs.keys():
+            cmdlist.append('igmp config -repeatCount %s' % kwargs['repeatCount'])
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        self._ixia_write_cmd.append("igmp set")
         return True
 
     def build_dot1q(self,prio=0,cfi=0,vlan=1,typeid=None,kwargs=None):
