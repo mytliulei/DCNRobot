@@ -153,6 +153,11 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -980
             }
         }
+        "set_port_ignorelink" {
+            if {[catch {set ret [SetPortIgnoreLink $cmdstr]} result]} {
+                set ret -979
+            }
+        }
         default {
             set ret -900
         }
@@ -934,6 +939,39 @@ proc SetPortConfigDefault {cmdstr} {
     set portlist [list [list $chasId $port $card]]
     set ret [port setModeDefaults $chasId $port $card]
     ixWritePortsToHardware portlist
+    return $ret
+}
+
+#set_port_ignorelink
+#err code : 2700-2799
+proc SetPortIgnoreLink {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 3} {
+        return -100
+    }
+    global ixia_ip
+    ixDisconnectFromChassis $ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set flag [lindex $cmdlist 3]
+    set portlist [list [list $chasId $port $card]]
+    #port setDefault
+    if {$flag == 0} {
+        set ret [port config -ignoreLink false]
+    } elseif {$flag == 1} {
+        set ret [port config -ignoreLink true]
+    } else {
+        set ret 2700
+    }
+    port set $chasId $port $card
+    ixWriteConfigToHardware portlist
+    #ixWritePortsToHardware portlist
     return $ret
 }
 

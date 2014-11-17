@@ -975,6 +975,35 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
+    def set_port_ignorelink(self,chasId,card,port,flag):
+        '''
+        set port ignore link
+
+        note: this keyword normally should be used when send stream if port down
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - flag:   0: false; ignore link disable
+                  1: true; ignore link enable
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'set_port_ignorelink %s %s %s %s\n' % (chasId,card,port,flag)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
     def set_port_config_default(self,chasId,card,port):
         '''
         set ixia port default,please use this keyword after set port flowcontrol or set port speed duplex to clear the config
