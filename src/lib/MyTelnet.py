@@ -942,7 +942,7 @@ class MyTelnetConnection(telnetlib.Telnet):
         """Reads output until `expected` text is encountered.
 
         Text up to and including the match is returned and logged. If no match
-        is found, this keyword fails. How much to wait for the output depends
+        is found, this keyword will not fail. How much to wait for the output depends
         on the [#Configuration|configured timeout].
 
         See `Logging` section for more information about log levels. Use
@@ -1062,6 +1062,39 @@ class MyTelnetConnection(telnetlib.Telnet):
                         for exp in expected]
             raise NoMatchError(expected, self._timeout, output)
         return output
+    def debug_read_until_regexp(self, *expected):
+        """Reads output until any of the `expected` regular expressions match.
+
+        This keyword accepts any number of regular expressions patterns or
+        compiled Python regular expression objects as arguments. Text up to
+        and including the first match to any of the regular expressions is
+        returned and logged. If no match is found, this keyword will not fail. How much
+        to wait for the output depends on the [#Configuration|configured timeout].
+
+        If the last given argument is a [#Logging|valid log level], it is used
+        as `loglevel` similarly as with `Read Until` keyword.
+
+        See the documentation of
+        [http://docs.python.org/2/library/re.html|Python `re` module]
+        for more information about the supported regular expression syntax.
+        Notice that possible backslashes need to be escaped in Robot Framework
+        test data.
+
+        Examples:
+        | `Debug Read Until Regexp` | (#|$) |
+        | `Debug Read Until Regexp` | first_regexp | second_regexp |
+        | `Debug Read Until Regexp` | \\\\d{4}-\\\\d{2}-\\\\d{2} | DEBUG |
+        """
+        if not expected:
+            raise RuntimeError('At least one pattern required')
+        if self._is_valid_log_level(expected[-1]):
+            loglevel = expected[-1]
+            expected = expected[:-1]
+        else:
+            loglevel = None
+        success, output = self._read_until_regexp(*expected)
+        self._log(output, loglevel)
+        return success,output
 
     def read_until_prompt(self, loglevel=None):
         """Reads output until the prompt is encountered.
