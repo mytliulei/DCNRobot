@@ -970,9 +970,9 @@ proc SetPortIgnoreLink {cmdstr} {
         set ret 2700
     }
     port set $chasId $port $card
-    ixWriteConfigToHardware portlist
-    #ixWritePortsToHardware portlist
-    return $ret
+    #ixWriteConfigToHardware portlist
+    ixWritePortsToHardware portlist
+    return 0
 }
 
 #connect to ixia

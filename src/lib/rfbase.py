@@ -598,7 +598,7 @@ class PacketBase(object):
         self._ixia_write_cmd.append("icmp set")
         return True
 
-    def build_igmpv1v2(self,version=0x11,maxres=100,cksum=None,group='0.0.0.0',kwargs=None):
+    def build_igmpv1v2(self,version=0x11,maxres=100,chksum=None,group='0.0.0.0',kwargs=None):
         '''build IGMPv1v2 field packet
 
            args:
@@ -612,7 +612,7 @@ class PacketBase(object):
            packet field length
 
            exapmle:
-           | Build Igmpv1v2 | version=0x22 | group=225.1.1.1 |
+           | Build Igmpv1v2 | version=0x16 | group=225.1.1.1 |
         '''
         if issubclass(type(version),basestring):
             if version.startswith('0x'):
@@ -642,10 +642,10 @@ class PacketBase(object):
         else:
             self._packetField.append(cmd)
             if self._ixia_flag:
-                self._build_igmpv1v2_ixia(version,maxres,cksum,group,kwargs)
+                self._build_igmpv1v2_ixia(version,maxres,chksum,group,kwargs)
             return len(p)
 
-    def _build_igmpv1v2_ixia(self,version,maxres,cksum,group,kwargs):
+    def _build_igmpv1v2_ixia(self,version,maxres,chksum,group,kwargs):
         '''
         '''
         cmdlist = []
@@ -667,7 +667,7 @@ class PacketBase(object):
             pass
         cmdlist.append('igmp config -maxResponseTime %s' % maxres)
         cmdlist.append('igmp config -groupIpAddress "%s"' % group)
-        if cksum:
+        if chksum:
             cmdlist.append('igmp config -useValidChecksum false')
         if kwargs and 'mode' in kwargs.keys():
             cmdlist.append('igmp config -mode %s' % kwargs['mode'])

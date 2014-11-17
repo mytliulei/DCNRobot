@@ -979,7 +979,9 @@ class Ixia(object):
         '''
         set port ignore link
 
-        note: this keyword normally should be used when send stream if port down
+        note:
+        - this keyword normally should be used when send stream if port down;
+        - this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
 
         args:
         - chasId: normally should be 1

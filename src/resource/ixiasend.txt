@@ -689,6 +689,16 @@ Make Kwargs
     ...    7). destIpAddrRepeatCount: 目的ip变化数量
     ...
     ...    8). destClass：目的ip的类型：0：classA；1：classB；2：classC；3：classD；4：noClass
+    ...    ---
+    ...    5. Build Icmp:
+    ...
+    ...    *note: not support*
+    ...    ---
+    ...    6. Build Igmpv1v2:
+    ...
+    ...    1). mode: \ group地址变化模式： 1：递增；2：递减；
+    ...
+    ...    2). repeatCount: \ group地址变化次数
     @{kwlist}=    Create List    test    test
     : FOR    ${istr}    IN    @{kwargs}
     \    @{ilist}    String.Split String    ${istr}    =
@@ -807,3 +817,46 @@ Build Icmp
     ${packetlen}=    Ixia.Build Icmp    ${typeid}    ${code}    ${chksum}    ${iden}    ${seq}
     ...    ${kwargs}
     [Return]    ${packetlen}
+
+Build Igmpv1v2
+    [Arguments]    ${version}=${0x11}    ${maxres}=${100}    ${chksum}=${None}    ${group}=0.0.0.0    ${kwargs}=${None}
+    [Documentation]    build IGMPv1v2 field packet
+    ...
+    ...    args:
+    ...    - version \ \ \ = 0x11
+    ...    \ \ \ \ \ \ \ \ \ 0x11: query
+    ...    \ \ \ \ \ \ \ \ \ 0x12: igmpv1 report
+    ...    \ \ \ \ \ \ \ \ \ 0x16: igmpv2 report
+    ...    \ \ \ \ \ \ \ \ \ 0x17: igmpv2 leave
+    ...    - maxres \ \ \ \ = 100
+    ...    - chksum \ \ \ \ = None
+    ...    - group \ \ \ \ \ = 0.0.0.0
+    ...    - kwargs \ \ \ \ = None,the detail spec in the doc of keywrod Make Kwargs
+    ...
+    ...    return:
+    ...    -packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Igmpv1v2 | version=${0x16} | group=225.1.1.1 |
+    ${packetlen}=    Ixia.Build Igmpv1v2    ${version}    ${maxres}    ${chksum}    ${group}    ${kwargs}
+    [Return]    ${packetlen}
+
+Set Port Ignorelink
+    [Arguments]    ${chasId}    ${port}    ${card}    ${flag}
+    [Documentation]    set port ignore link
+    ...
+    ...    note:
+    ...    - this keyword normally should be used when send stream if port down;
+    ...    - this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - flag: \ \ 0: false; ignore link disable
+    ...    \ \ \ \ \ \ \ \ \ \ 1: true; ignore link enable
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Ignorelink    ${chasId}    ${port}    ${card}    ${flag}
+    [Return]    ${rc}
