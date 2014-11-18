@@ -35,7 +35,9 @@ class PacketBase(object):
         self._ixia_packet_cmd = []
         self._ixia_frameType = None
         self._ixia_ipProto_flag = 0
+        self._ixia_ipv6Proto_flag = 0
         self._ixia_ipProto = 0
+        self._ixia_ipv6Proto = 0
         self._ixia_etherType = 0
 
     def _set_ixia_flag(self,flag):
@@ -122,6 +124,16 @@ class PacketBase(object):
                         self._ixia_packetField[istrlen] += protostr
                         break
                     istrlen += 1
+            #add ipv6 next header
+            if self._ixia_ipv6Proto_flag:
+                protostr = '!ipV6 config -nextHeader %s' % self._ixia_ipv6Proto
+                ipmatchre = re.compile(r'ipV6 config -')
+                iv6strlen = 0
+                for istr in self._ixia_packetField:
+                    if ipmatchre.search(istr):
+                        self._ixia_packetField[iv6strlen] += protostr
+                        break
+                    iv6strlen += 1
             #add vlan
             if self._ixia_vlan_flag > 0:
                 if self._ixia_vlan_flag == 1:
@@ -148,7 +160,9 @@ class PacketBase(object):
             self._ixia_write_cmd = []
             self._ixia_frameType = None
             self._ixia_ipProto_flag = 0
+            self._ixia_ipv6Proto_flag = 0
             self._ixia_ipProto = 0
+            self._ixia_ipv6Proto = 0
             self._ixia_etherType = 0
         return 0
 
@@ -678,6 +692,119 @@ class PacketBase(object):
         self._ixia_write_cmd.append("igmp set")
         return True
 
+    def build_ipv6(self,version=6,tc=0,fl=0,plen=None,nh=None,hlim=64,src='::1',dst='::1',kwargs=None):
+        '''build ipv6 field packet
+
+           args:
+           - version = 6
+           - tc      = 0;      traffic class
+           - fl      = 0;      flow label
+           - plen    = None;   payload length
+           - nh      = None;   next header,default 59
+           - hlim    = 64;     hop limit
+           - src     = ::1
+           - dst     = ::1
+
+           return:
+           packet field length
+
+           exapmle:
+           | Build Ipv6 | src=2001::1 | dst=2002::1 |
+        '''
+        if issubclass(type(version),basestring):
+            if version.startswith('0x'):
+                version = int(version,16)
+            else:
+                version = int(version)
+        if issubclass(type(tc),basestring):
+            if tc.startswith('0x'):
+                tc = int(tc,16)
+            else:
+                tc = int(tc)
+        if issubclass(type(fl),basestring):
+            if fl.startswith('0x'):
+                fl = int(fl,16)
+            else:
+                fl = int(fl)
+        if issubclass(type(hlim),basestring):
+            if hlim.startswith('0x'):
+                hlim = int(hlim,16)
+            else:
+                hlim = int(hlim)
+        if plen:
+            if issubclass(type(plen),basestring):
+                if plen.startswith('0x'):
+                    plen = int(plen,16)
+                else:
+                    plen = int(plen)
+        if nh:
+            if issubclass(type(nh),basestring):
+                if nh.startswith('0x'):
+                    nh = int(nh,16)
+                else:
+                    nh = int(nh)
+        cmd = "IPv6(version=%i,tc=%i,fl=%i,hlim=%i,src='%s',dst='%s'" % (version,tc,fl,hlim,src,dst)
+        if nh:
+            cmd += ",nh=%i" % nh
+        if plen:
+            cmd += ",plen=%i" % plen
+        cmd += ")"
+        try:
+            exec('p=%s' % cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_ipv6_ixia(version,tc,fl,plen,nh,hlim,src,dst,kwargs)
+            return len(p)
+
+    def _build_ipv6_ixia(self,version,tc,fl,plen,nh,hlim,src,dst,kwargs):
+        '''
+        '''
+        cmdlist = []
+        #config protocol
+        #cmdlist.append('protocol setDefault')
+        cmdlist.append('protocol config -name ipV6')
+        cmdlist.append('protocol config -appName noType')
+        cmdlist.append('protocol config -ethernetType ethernetII')
+        #config ipv6
+        cmdlist.append('ipV6 setDefault')
+        cmdlist.append('ipV6 config -trafficClass %i' % tc)
+        cmdlist.append('ipV6 config -flowLabel %i' % fl)
+        cmdlist.append('ipV6 config -hopLimit %i' % hlim)
+        #if plen:
+        #    cmdlist.append('ipV6 config -totalLength %s' % iplen)
+        #    cmdlist.append('ipV6 config -lengthOverride false')
+        if nh:
+            cmdlist.append('ipV6 config -nextHeader %i' % nh)
+        else:
+            self._ixia_ipv6Proto_flag = 1
+        cmdlist.append('ipV6 config -sourceAddr "%s"' % src)
+        if kwargs and 'sourceMask' in kwargs.keys():
+            cmdlist.append('ipV6 config -sourceMask "%s"' % kwargs['sourceMask'])
+        if kwargs and 'sourceAddrMode' in kwargs.keys():
+            cmdlist.append('ipV6 config -sourceAddrMode "%s"' % kwargs['sourceAddrMode'])
+        if kwargs and 'sourceAddrRepeatCount' in kwargs.keys():
+            cmdlist.append('ipV6 config -sourceAddrRepeatCount "%s"' % kwargs['sourceAddrRepeatCount'])
+        if kwargs and 'sourceStepSize' in kwargs.keys():
+            cmdlist.append('ipV6 config -sourceStepSize "%s"' % kwargs['sourceStepSize'])
+        cmdlist.append('ipV6 config -destAddr "%s"' % dst)
+        if kwargs and 'destMask' in kwargs.keys():
+            cmdlist.append('ipV6 config -destMask "%s"' % kwargs['destMask'])
+        if kwargs and 'destAddrMode' in kwargs.keys():
+            cmdlist.append('ipV6 config -destAddrMode "%s"' % kwargs['destAddrMode'])
+        if kwargs and 'destAddrRepeatCount' in kwargs.keys():
+            cmdlist.append('ipV6 config -destAddrRepeatCount "%s"' % kwargs['destAddrRepeatCount'])
+        if kwargs and 'destStepSize' in kwargs.keys():
+            cmdlist.append('ipV6 config -destStepSize "%s"' % kwargs['destStepSize'])
+
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        self._ixia_write_cmd.append("ipV6 set")
+        return True
+
     def build_dot1q(self,prio=0,cfi=0,vlan=1,typeid=None,kwargs=None):
         '''
            build 802.1Q field packet
@@ -823,6 +950,8 @@ class PacketBase(object):
                     self._ixia_frameType = p.type
                     if self._ixia_ipProto_flag:
                         self._ixia_ipProto = p.proto
+                    if self._ixia_ipv6Proto_flag:
+                        self._ixia_ipv6Proto = p.nh
             filllen = length - ptklen - 4  # remove crc field
             if filllen < 0:
                 logger.info('packet length is %i, greater than given para' % ptklen)

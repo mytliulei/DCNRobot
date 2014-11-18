@@ -678,9 +678,9 @@ Make Kwargs
     ...
     ...    2). sourceIpAddrMode: 源ip变化模式：1：host递增；2：host递减；5：network递增；6：network递减
     ...
-    ...    3). sourceIpAddrRepeatCount: \ 目的ip变化数量
+    ...    3). sourceIpAddrRepeatCount: \ 源ip变化数量
     ...
-    ...    4). sourceClass: \ 目的ip的类型：0：classA；1：classB；2：classC；3：classD；4：noClass
+    ...    4). sourceClass: \ 源ip的类型：0：classA；1：classB；2：classC；3：classD；4：noClass
     ...
     ...    5). destIpMask: \ 目的ip掩码：举例destIpMask=255.0.0.0
     ...
@@ -699,6 +699,25 @@ Make Kwargs
     ...    1). mode: \ group地址变化模式： 1：递增；2：递减；
     ...
     ...    2). repeatCount: \ group地址变化次数
+    ...    ---
+    ...    7. Build Ipv6:
+    ...
+    ...    1). sourceMask: \ 源ipv6掩码：举例sourceMask=96
+    ...
+    ...    2). sourceAddrMode: 源ipv6变化模式：5：ipV6IncrInterfaceId；6：ipV6DecrInterfaceId；7：ipV6IncrGlobalUnicastTopLevelAggrId；8：ipV6DecrGlobalUnicastTopLevelAggrId；9：ipV6IncrGlobalUnicastNextLevelAggrId；10：ipV6DecrGlobalUnicastNextLevelAggrId；11：ipV6IncrGlobalUnicastSiteLevelAggrId；12：ipV6DecrGlobalUnicastSiteLevelAggrId
+    ...
+    ...    3). sourceAddrRepeatCount: \ 源ipv6变化数量
+    ...
+    ...    4). sourceStepSize: \ 源ipv6地址每次变化的次数
+    ...
+    ...    5). destMask: \ 目的ipv6掩码：举例destMask=96
+    ...
+    ...    6). destAddrMode: \ \ 目的ipv6变化模式：5：ipV6IncrInterfaceId；6：ipV6DecrInterfaceId；7：ipV6IncrGlobalUnicastTopLevelAggrId；8：ipV6DecrGlobalUnicastTopLevelAggrId；9：ipV6IncrGlobalUnicastNextLevelAggrId；10：ipV6DecrGlobalUnicastNextLevelAggrId；11：ipV6IncrGlobalUnicastSiteLevelAggrId；12：ipV6DecrGlobalUnicastSiteLevelAggrId
+    ...
+    ...    7). destAddrRepeatCount: 目的ipv6变化数量
+    ...
+    ...    8). destStepSize：目的ipv6地址每次变化的次数
+    ...    ---
     @{kwlist}=    Create List    test    test
     : FOR    ${istr}    IN    @{kwargs}
     \    @{ilist}    String.Split String    ${istr}    =
@@ -860,3 +879,28 @@ Set Port Ignorelink
     ...    - non zero: error code
     ${rc}=    Ixia.Set Port Ignorelink    ${chasId}    ${port}    ${card}    ${flag}
     [Return]    ${rc}
+
+Build Ipv6
+    [Arguments]    ${version}=${6}    ${tc}=${0}    ${fl}=${0}    ${plen}=${None}    ${nh}=${None}    ${hlim}=${64}
+    ...    ${src}=::1    ${dst}=::1    ${kwargs}=${None}
+    [Documentation]    build ipv6 field packet
+    ...
+    ...    args:
+    ...    - version \ = 6
+    ...    - tc \ \ \ \ \ \ \ \ = 0; \ \ \ \ \ \ \ \ traffic class
+    ...    - fl \ \ \ \ \ \ \ \ \ = 0; \ \ \ \ \ \ \ \ flow label
+    ...    - plen \ \ \ \ \ = None; \ \ payload length
+    ...    - nh \ \ \ \ \ \ \ = None; \ \ \ next header,default 59
+    ...    - hlim \ \ \ \ \ = 64; \ \ \ \ \ \ hop limit
+    ...    - src \ \ \ \ \ \ \ = ::1
+    ...    - dst \ \ \ \ \ \ \ = ::1
+    ...    - kwargs \ \ \ \ = None,the detail spec in the doc of keywrod Make Kwargs
+    ...
+    ...    return:
+    ...    - packet field length
+    ...
+    ...    exapmle:
+    ...    | Build Ipv6 | src=2001::1 | dst=2002::1 |
+    ${packetlen}=    Ixia.Build Ipv6    ${version}    ${tc}    ${fl}    ${plen}    ${nh}
+    ...    ${hlim}    ${src}    ${dst}    ${kwargs}
+    [Return]    ${packetlen}
