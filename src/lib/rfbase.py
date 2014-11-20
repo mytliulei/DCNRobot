@@ -39,6 +39,10 @@ class PacketBase(object):
         self._ixia_ipProto = 0
         self._ixia_ipv6Proto = 0
         self._ixia_etherType = 0
+        self._ixia_ipv6_icmpv6_mld_flag = 0
+        self._ixia_mld_kwargs_flag = 0
+        self._ixia_mld_kwargs_detail = None
+        self._packet_scapy_length = 0
 
     def _set_ixia_flag(self,flag):
         old = self._ixia_flag
@@ -96,9 +100,14 @@ class PacketBase(object):
             self._build_payload(length)
             pktstr = '/'.join(self._packetField)
             cmd = pktstr
+            scapy_length = self._packet_scapy_length
         self._packetList.append(cmd)
         self._packetField = []
+        self._packet_scapy_length = 0
         if self._ixia_flag and not packetstr:
+            #add icmpv6 mld
+            if self._ixia_ipv6_icmpv6_mld_flag:
+                self._create_ixia_ipv6_icmpv6_mld(cmd,scapy_length)
             #add framLength
             self._ixia_packetField[0] += '!stream config -frameSizeType sizeFixed!stream config -framesize %s!stream config -frameSizeMIN %s!stream config -frameSizeMAX %s' % (length,length,length)
             #add frameType
@@ -164,6 +173,9 @@ class PacketBase(object):
             self._ixia_ipProto = 0
             self._ixia_ipv6Proto = 0
             self._ixia_etherType = 0
+            self._ixia_ipv6_icmpv6_mld_flag = 0
+            self._ixia_mld_kwargs_detail = None
+            self._ixia_mld_kwargs_flag = 0
         return 0
 
     def build_ether(self,dst='ff:ff:ff:ff:ff:ff',src='00:00:00:00:00:00',typeid=None,kwargs=None):
@@ -805,6 +817,394 @@ class PacketBase(object):
         self._ixia_write_cmd.append("ipV6 set")
         return True
 
+    def build_icmpv6_mld_query(self,code=0,chksum=None,mrd=10000,reserved=0,mladdr='::',kwargs=None):
+        '''build mld query field packet
+
+           args:
+           - code        = 0
+           - chksum      = None;
+           - mrd         = 10000;      max response delay
+           - reserved    = 0;
+           - mladdr      = ::
+
+           return:
+           packet field length
+
+           exapmle:
+           | Build Icmpv6 Mld Query |
+        '''
+        if issubclass(type(code),basestring):
+            if code.startswith('0x'):
+                code = int(code,16)
+            else:
+                code = int(code)
+        if issubclass(type(mrd),basestring):
+            if mrd.startswith('0x'):
+                mrd = int(mrd,16)
+            else:
+                mrd = int(mrd)
+        if issubclass(type(reserved),basestring):
+            if reserved.startswith('0x'):
+                reserved = int(reserved,16)
+            else:
+                reserved = int(reserved)
+        if chksum:
+            if issubclass(type(chksum),basestring):
+                if chksum.startswith('0x'):
+                    chksum = int(chksum,16)
+                else:
+                    chksum = int(chksum)
+        cmd = "IPv6ExtHdrHopByHop(nh=58,options=RouterAlert())/ICMPv6MLQuery(code=%i,mrd=%i,reserved=%i,mladdr='%s'" % (code,mrd,reserved,mladdr)
+        if chksum:
+            cmd += ",cksum=%i" % chksum
+        cmd += ")"
+        try:
+            exec('p=%s' % cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_icmpv6_mld_query_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
+            return len(p)
+
+    def _build_icmpv6_mld_query_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
+        '''
+        '''
+        cmdlist = []
+        #config ipv6 hopbyhop
+        cmdlist.append('ipV6 clearAllExtensionHeaders')
+        cmdlist.append('ipV6HopByHop clearAllOptions')
+        cmdlist.append('ipV6OptionRouterAlert setDefault')
+        cmdlist.append('ipV6OptionRouterAlert config -length 2')
+        cmdlist.append('ipV6OptionRouterAlert config -routerAlert ipV6RouterAlertMLD')
+        cmdlist.append('ipV6HopByHop addOption ipV6OptionRouterAlert')
+        cmdlist.append('ipV6OptionPADN setDefault')
+        cmdlist.append('ipV6OptionPADN config -length 0')
+        cmdlist.append('ipV6OptionPADN config -value ""')
+        cmdlist.append('ipV6HopByHop addOption ipV6OptionPADN')
+        cmdlist.append('ipV6 addExtensionHeader ipV6HopByHopOptions')
+        ipv6HopbyHopCmd = '!'.join(cmdlist)
+        #look up for ipv6 config
+        ipv6matchre = re.compile(r'ipV6 config -')
+        iv6strlen = 0
+        for istr in self._ixia_packetField:
+            if ipv6matchre.search(istr):
+                self._ixia_packetField[iv6strlen] += '!' + ipv6HopbyHopCmd
+                break
+            iv6strlen += 1
+        #stream config -patternType nonRepeat
+        #stream config -dataPattern userpattern
+        #stream config -pattern $pattern
+        self._ixia_ipv6_icmpv6_mld_flag = 1
+        cmdlist = []
+        mld_kwargs_flag = 0
+        mld_kwargs_addrmask = 128
+        mld_kwargs_addrmode = 'uuuu'
+        mld_kwargs_addrrepeatcount = 1
+        mld_kwargs_addrstepsize = 1
+        if kwargs and 'AddrMask' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['AddrMask']),basestring):
+                if kwargs['AddrMask'].startswith('0x'):
+                    mld_kwargs_addrmask = int(kwargs['AddrMask'],16)
+                else:
+                    mld_kwargs_addrmask = int(kwargs['AddrMask'])
+            else:
+                mld_kwargs_addrmask = kwargs['AddrMask']
+        if kwargs and 'AddrMode' in kwargs.keys():
+            mld_kwargs_flag = 1
+            mld_kwargs_addrmode = kwargs['AddrMode']
+        if kwargs and 'AddrRepeatCount' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['AddrRepeatCount']),basestring):
+                if kwargs['AddrRepeatCount'].startswith('0x'):
+                    mld_kwargs_addrrepeatcount = int(kwargs['AddrRepeatCount'],16)
+                else:
+                    mld_kwargs_addrrepeatcount = int(kwargs['AddrRepeatCount'])
+            else:
+                mld_kwargs_addrrepeatcount = kwargs['AddrRepeatCount']
+        if kwargs and 'StepSize' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['StepSize']),basestring):
+                if kwargs['StepSize'].startswith('0x'):
+                    mld_kwargs_addrmode = int(kwargs['StepSize'],16)
+                else:
+                    mld_kwargs_addrmode = int(kwargs['StepSize'])
+            else:
+                mld_kwargs_addrmode = kwargs['StepSize']
+        if mld_kwargs_flag:
+            self._ixia_mld_kwargs_flag = 1
+            self._ixia_mld_kwargs_detail = {}
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrmask'] = mld_kwargs_addrmask
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrmode'] = mld_kwargs_addrmode
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrrepeatcount'] = mld_kwargs_addrrepeatcount
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrstepsize'] = mld_kwargs_addrstepsize
+            #cmdlist.append('udf setDefault')
+            #cmdlist.append('udf config -enable true')
+        else:
+            self._ixia_mld_kwargs_detail = None
+        return True
+
+    def build_icmpv6_mld_report(self,code=0,chksum=None,mrd=0,reserved=0,mladdr='::',kwargs=None):
+        '''build mld query field packet
+
+           args:
+           - code        = 0
+           - chksum      = None;
+           - mrd         = 0;      max response delay
+           - reserved    = 0;
+           - mladdr      = ::
+
+           return:
+           packet field length
+
+           exapmle:
+           | Build Icmpv6 Mld Report | mladdr=ff3f::1 |
+        '''
+        if issubclass(type(code),basestring):
+            if code.startswith('0x'):
+                code = int(code,16)
+            else:
+                code = int(code)
+        if issubclass(type(mrd),basestring):
+            if mrd.startswith('0x'):
+                mrd = int(mrd,16)
+            else:
+                mrd = int(mrd)
+        if issubclass(type(reserved),basestring):
+            if reserved.startswith('0x'):
+                reserved = int(reserved,16)
+            else:
+                reserved = int(reserved)
+        if chksum:
+            if issubclass(type(chksum),basestring):
+                if chksum.startswith('0x'):
+                    chksum = int(chksum,16)
+                else:
+                    chksum = int(chksum)
+        cmd = "IPv6ExtHdrHopByHop(nh=58,options=RouterAlert())/ICMPv6MLReport(code=%i,mrd=%i,reserved=%i,mladdr='%s'" % (code,mrd,reserved,mladdr)
+        if chksum:
+            cmd += ",cksum=%i" % chksum
+        cmd += ")"
+        try:
+            exec('p=%s' % cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_icmpv6_mld_report_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
+            return len(p)
+
+    def _build_icmpv6_mld_report_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
+        '''
+        '''
+        cmdlist = []
+        #config ipv6 hopbyhop
+        cmdlist.append('ipV6 clearAllExtensionHeaders')
+        cmdlist.append('ipV6HopByHop clearAllOptions')
+        cmdlist.append('ipV6OptionRouterAlert setDefault')
+        cmdlist.append('ipV6OptionRouterAlert config -length 2')
+        cmdlist.append('ipV6OptionRouterAlert config -routerAlert ipV6RouterAlertMLD')
+        cmdlist.append('ipV6HopByHop addOption ipV6OptionRouterAlert')
+        cmdlist.append('ipV6OptionPADN setDefault')
+        cmdlist.append('ipV6OptionPADN config -length 0')
+        cmdlist.append('ipV6OptionPADN config -value ""')
+        cmdlist.append('ipV6HopByHop addOption ipV6OptionPADN')
+        cmdlist.append('ipV6 addExtensionHeader ipV6HopByHopOptions')
+        ipv6HopbyHopCmd = '!'.join(cmdlist)
+        #look up for ipv6 config
+        ipv6matchre = re.compile(r'ipV6 config -')
+        iv6strlen = 0
+        for istr in self._ixia_packetField:
+            if ipv6matchre.search(istr):
+                self._ixia_packetField[iv6strlen] += '!' + ipv6HopbyHopCmd
+                break
+            iv6strlen += 1
+        #stream config -patternType nonRepeat
+        #stream config -dataPattern userpattern
+        #stream config -pattern $pattern
+        self._ixia_ipv6_icmpv6_mld_flag = 1
+        cmdlist = []
+        mld_kwargs_flag = 0
+        mld_kwargs_addrmask = 128
+        mld_kwargs_addrmode = 'uuuu'
+        mld_kwargs_addrrepeatcount = 1
+        mld_kwargs_addrstepsize = 1
+        if kwargs and 'AddrMask' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['AddrMask']),basestring):
+                if kwargs['AddrMask'].startswith('0x'):
+                    mld_kwargs_addrmask = int(kwargs['AddrMask'],16)
+                else:
+                    mld_kwargs_addrmask = int(kwargs['AddrMask'])
+            else:
+                mld_kwargs_addrmask = kwargs['AddrMask']
+        if kwargs and 'AddrMode' in kwargs.keys():
+            mld_kwargs_flag = 1
+            mld_kwargs_addrmode = kwargs['AddrMode']
+        if kwargs and 'AddrRepeatCount' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['AddrRepeatCount']),basestring):
+                if kwargs['AddrRepeatCount'].startswith('0x'):
+                    mld_kwargs_addrrepeatcount = int(kwargs['AddrRepeatCount'],16)
+                else:
+                    mld_kwargs_addrrepeatcount = int(kwargs['AddrRepeatCount'])
+            else:
+                mld_kwargs_addrrepeatcount = kwargs['AddrRepeatCount']
+        if kwargs and 'StepSize' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['StepSize']),basestring):
+                if kwargs['StepSize'].startswith('0x'):
+                    mld_kwargs_addrmode = int(kwargs['StepSize'],16)
+                else:
+                    mld_kwargs_addrmode = int(kwargs['StepSize'])
+            else:
+                mld_kwargs_addrmode = kwargs['StepSize']
+        if mld_kwargs_flag:
+            self._ixia_mld_kwargs_flag = 1
+            self._ixia_mld_kwargs_detail = {}
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrmask'] = mld_kwargs_addrmask
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrmode'] = mld_kwargs_addrmode
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrrepeatcount'] = mld_kwargs_addrrepeatcount
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrstepsize'] = mld_kwargs_addrstepsize
+        else:
+            self._ixia_mld_kwargs_detail = None
+        return True
+
+    def build_icmpv6_mld_done(self,code=0,chksum=None,mrd=0,reserved=0,mladdr='::',kwargs=None):
+        '''build mld query field packet
+
+           args:
+           - code        = 0
+           - chksum      = None;
+           - mrd         = 0;      max response delay
+           - reserved    = 0;
+           - mladdr      = ::
+
+           return:
+           packet field length
+
+           exapmle:
+           | Build Icmpv6 Mld Done | mladdr=ff3f::1 |
+        '''
+        if issubclass(type(code),basestring):
+            if code.startswith('0x'):
+                code = int(code,16)
+            else:
+                code = int(code)
+        if issubclass(type(mrd),basestring):
+            if mrd.startswith('0x'):
+                mrd = int(mrd,16)
+            else:
+                mrd = int(mrd)
+        if issubclass(type(reserved),basestring):
+            if reserved.startswith('0x'):
+                reserved = int(reserved,16)
+            else:
+                reserved = int(reserved)
+        if chksum:
+            if issubclass(type(chksum),basestring):
+                if chksum.startswith('0x'):
+                    chksum = int(chksum,16)
+                else:
+                    chksum = int(chksum)
+        cmd = "IPv6ExtHdrHopByHop(nh=58,options=RouterAlert())/ICMPv6MLDone(code=%i,mrd=%i,reserved=%i,mladdr='%s'" % (code,mrd,reserved,mladdr)
+        if chksum:
+            cmd += ",cksum=%i" % chksum
+        cmd += ")"
+        try:
+            exec('p=%s' % cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_icmpv6_mld_done_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
+            return len(p)
+
+    def _build_icmpv6_mld_done_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
+        '''
+        '''
+        cmdlist = []
+        #config ipv6 hopbyhop
+        cmdlist.append('ipV6 clearAllExtensionHeaders')
+        cmdlist.append('ipV6HopByHop clearAllOptions')
+        cmdlist.append('ipV6OptionRouterAlert setDefault')
+        cmdlist.append('ipV6OptionRouterAlert config -length 2')
+        cmdlist.append('ipV6OptionRouterAlert config -routerAlert ipV6RouterAlertMLD')
+        cmdlist.append('ipV6HopByHop addOption ipV6OptionRouterAlert')
+        cmdlist.append('ipV6OptionPADN setDefault')
+        cmdlist.append('ipV6OptionPADN config -length 0')
+        cmdlist.append('ipV6OptionPADN config -value ""')
+        cmdlist.append('ipV6HopByHop addOption ipV6OptionPADN')
+        cmdlist.append('ipV6 addExtensionHeader ipV6HopByHopOptions')
+        ipv6HopbyHopCmd = '!'.join(cmdlist)
+        #look up for ipv6 config
+        ipv6matchre = re.compile(r'ipV6 config -')
+        iv6strlen = 0
+        for istr in self._ixia_packetField:
+            if ipv6matchre.search(istr):
+                self._ixia_packetField[iv6strlen] += '!' + ipv6HopbyHopCmd
+                break
+            iv6strlen += 1
+        #stream config -patternType nonRepeat
+        #stream config -dataPattern userpattern
+        #stream config -pattern $pattern
+        self._ixia_ipv6_icmpv6_mld_flag = 1
+        cmdlist = []
+        mld_kwargs_flag = 0
+        mld_kwargs_addrmask = 128
+        mld_kwargs_addrmode = 'uuuu'
+        mld_kwargs_addrrepeatcount = 1
+        mld_kwargs_addrstepsize = 1
+        if kwargs and 'AddrMask' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['AddrMask']),basestring):
+                if kwargs['AddrMask'].startswith('0x'):
+                    mld_kwargs_addrmask = int(kwargs['AddrMask'],16)
+                else:
+                    mld_kwargs_addrmask = int(kwargs['AddrMask'])
+            else:
+                mld_kwargs_addrmask = kwargs['AddrMask']
+        if kwargs and 'AddrMode' in kwargs.keys():
+            mld_kwargs_flag = 1
+            mld_kwargs_addrmode = kwargs['AddrMode']
+        if kwargs and 'AddrRepeatCount' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['AddrRepeatCount']),basestring):
+                if kwargs['AddrRepeatCount'].startswith('0x'):
+                    mld_kwargs_addrrepeatcount = int(kwargs['AddrRepeatCount'],16)
+                else:
+                    mld_kwargs_addrrepeatcount = int(kwargs['AddrRepeatCount'])
+            else:
+                mld_kwargs_addrrepeatcount = kwargs['AddrRepeatCount']
+        if kwargs and 'StepSize' in kwargs.keys():
+            mld_kwargs_flag = 1
+            if issubclass(type(kwargs['StepSize']),basestring):
+                if kwargs['StepSize'].startswith('0x'):
+                    mld_kwargs_addrmode = int(kwargs['StepSize'],16)
+                else:
+                    mld_kwargs_addrmode = int(kwargs['StepSize'])
+            else:
+                mld_kwargs_addrmode = kwargs['StepSize']
+        if mld_kwargs_flag:
+            self._ixia_mld_kwargs_flag = 1
+            self._ixia_mld_kwargs_detail = {}
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrmask'] = mld_kwargs_addrmask
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrmode'] = mld_kwargs_addrmode
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrrepeatcount'] = mld_kwargs_addrrepeatcount
+            self._ixia_mld_kwargs_detail['mld_kwargs_addrstepsize'] = mld_kwargs_addrstepsize
+            #cmdlist.append('udf setDefault')
+            #cmdlist.append('udf config -enable true')
+        else:
+            self._ixia_mld_kwargs_detail = None
+        return True
+
     def build_dot1q(self,prio=0,cfi=0,vlan=1,typeid=None,kwargs=None):
         '''
            build 802.1Q field packet
@@ -946,12 +1346,14 @@ class PacketBase(object):
                 return -1
             else:
                 ptklen = len(p)
+                self._packet_scapy_length = ptklen
                 if self._ixia_flag:
                     self._ixia_frameType = p.type
                     if self._ixia_ipProto_flag:
                         self._ixia_ipProto = p.proto
                     if self._ixia_ipv6Proto_flag:
                         self._ixia_ipv6Proto = p.nh
+            #compute filled packet
             filllen = length - ptklen - 4  # remove crc field
             if filllen < 0:
                 logger.info('packet length is %i, greater than given para' % ptklen)
@@ -981,4 +1383,64 @@ class PacketBase(object):
             return Raw()
         else:
             return p
-
+    def _create_ixia_ipv6_icmpv6_mld(self,pktstr,scapylen):
+        '''
+        '''
+        cmd = 'p=' + pktstr
+        try:
+            exec(cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            ptklen = len(p)
+        #config mld icmpv6 packet field
+        if self._ixia_ipv6_icmpv6_mld_flag:
+            mldStr = hexstr(str(p),0,1)
+            cmdlist = []
+            cmdlist.append('stream config -patternType nonRepeat')
+            cmdlist.append('stream config -dataPattern userpattern')
+            pattern = ' '.join(mldStr.split()[scapylen-ptklen-24:scapylen-ptklen])
+            cmdlist.append('stream config -pattern "%s"' % pattern)
+            ipv6Icmpv6MldCmd = '!'.join(cmdlist)
+            self._ixia_packetField[0] += '!' + ipv6Icmpv6MldCmd
+            self._ixia_ipv6_icmpv6_mld_flag = 0
+        #config mld kwargs used by udf1 and udf 2
+        if self._ixia_mld_kwargs_flag:
+            if self._ixia_mld_kwargs_detail:
+                mask = self._ixia_mld_kwargs_detail['mld_kwargs_addrmask']
+                mode = self._ixia_mld_kwargs_detail['mld_kwargs_addrmode']
+                count = self._ixia_mld_kwargs_detail['mld_kwargs_addrrepeatcount']
+                size = self._ixia_mld_kwargs_detail['mld_kwargs_addrstepsize']
+                cmdlist = []
+                cmdlist.append('udf setDefault')
+                cmdlist.append('udf config -enable true')
+                offset1 = scapylen - 24 + 8 + mask/8 - 1
+                initval1 = mldStr.split()[offset1]
+                cmdlist.append('udf config -offset %s' % offset1)
+                cmdlist.append('udf config -initval %s' % initval1)
+                cmdlist.append('udf config -repeat %s' % count)
+                cmdlist.append('udf config -updown %s' % mode)
+                cmdlist.append('udf config -step %s' % size)
+                cmdlist.append('udf set 1')
+                #compute crc
+                offset2 = scapylen - 24 + 2
+                initval21 = mldStr.split()[offset2]
+                initval22 = mldStr.split()[offset2+1]
+                cmdlist.append('udf setDefault')
+                cmdlist.append('udf config -enable true')
+                cmdlist.append('udf config -countertype c16')
+                cmdlist.append('udf config -offset %s' % offset2)
+                cmdlist.append('udf config -initval {%s %s}' % (initval21,initval22))
+                cmdlist.append('udf config -repeat %s' % count)
+                if mode == 'uuuu':
+                    cmdlist.append('udf config -updown dddd')
+                else:
+                    cmdlist.append('udf config -updown uuuu')
+                cmdlist.append('udf config -step %s' % size)
+                cmdlist.append('udf set 2')
+                cmd = '!'.join(cmdlist)
+                self._ixia_packetField.append(cmd)
+                self._ixia_write_cmd.append("none")
+            self._ixia_mld_kwargs_detail = None
+            self._ixia_mld_kwargs_flag = 0
