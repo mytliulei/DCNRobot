@@ -718,7 +718,7 @@ Make Kwargs
     ...
     ...    8). destStepSize：目的ipv6地址每次变化的次数
     ...    ---
-    ...    8. Build Icmpv6 Mld Query/Report/Done
+    ...    8. Build Icmpv6 Mldv1 Query/Report/Done
     ...
     ...    1). AddrMask: \ 组播组地址掩码：默认128，必须是8的倍数
     ...
@@ -914,9 +914,9 @@ Build Ipv6
     ...    ${hlim}    ${src}    ${dst}    ${kwargs}
     [Return]    ${packetlen}
 
-Build Icmpv6 Mld Query
+Build Icmpv6 Mldv1 Query
     [Arguments]    ${code}=${0}    ${chksum}=${None}    ${mrd}=${10000}    ${reserved}=${0}    ${mladdr}=::    ${kwargs}=${None}
-    [Documentation]    build mld query field packet
+    [Documentation]    build mldv1 query field packet
     ...
     ...    args:
     ...    - code \ \ \ \ \ \ \ = 0
@@ -931,13 +931,13 @@ Build Icmpv6 Mld Query
     ...
     ...    exapmle:
     ...    | Build Icmpv6 Mld Query |
-    ${packetlen}=    Ixia.Build Icmpv6 Mld Query    ${code}    ${chksum}    ${mrd}    ${reserved}    ${mladdr}
+    ${packetlen}=    Ixia.Build Icmpv6 Mldv1 Query    ${code}    ${chksum}    ${mrd}    ${reserved}    ${mladdr}
     ...    ${kwargs}
     [Return]    ${packetlen}
 
-Build Icmpv6 Mld Report
+Build Icmpv6 Mldv1 Report
     [Arguments]    ${code}=${0}    ${chksum}=${None}    ${mrd}=${10000}    ${reserved}=${0}    ${mladdr}=::    ${kwargs}=${None}
-    [Documentation]    build mld query field packet
+    [Documentation]    build mldv1 query field packet
     ...
     ...    args:
     ...    - code \ \ \ \ \ \ \ = 0
@@ -952,13 +952,13 @@ Build Icmpv6 Mld Report
     ...
     ...    exapmle:
     ...    | Build Icmpv6 Mld Report | mladdr=ff3f::1 |
-    ${packetlen}=    Ixia.Build Icmpv6 Mld Report    ${code}    ${chksum}    ${mrd}    ${reserved}    ${mladdr}
+    ${packetlen}=    Ixia.Build Icmpv6 Mldv1 Report    ${code}    ${chksum}    ${mrd}    ${reserved}    ${mladdr}
     ...    ${kwargs}
     [Return]    ${packetlen}
 
-Build Icmpv6 Mld Done
+Build Icmpv6 Mldv1 Done
     [Arguments]    ${code}=${0}    ${chksum}=${None}    ${mrd}=${10000}    ${reserved}=${0}    ${mladdr}=::    ${kwargs}=${None}
-    [Documentation]    build mld query field packet
+    [Documentation]    build mldv1 query field packet
     ...
     ...    args:
     ...    - code \ \ \ \ \ \ \ = 0
@@ -973,6 +973,6 @@ Build Icmpv6 Mld Done
     ...
     ...    exapmle:
     ...    | Build Icmpv6 Mld Done | mladdr=ff3f::1 |
-    ${packetlen}=    Ixia.Build Icmpv6 Mld Done    ${code}    ${chksum}    ${mrd}    ${reserved}    ${mladdr}
+    ${packetlen}=    Ixia.Build Icmpv6 Mldv1 Done    ${code}    ${chksum}    ${mrd}    ${reserved}    ${mladdr}
     ...    ${kwargs}
     [Return]    ${packetlen}

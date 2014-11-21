@@ -817,8 +817,8 @@ class PacketBase(object):
         self._ixia_write_cmd.append("ipV6 set")
         return True
 
-    def build_icmpv6_mld_query(self,code=0,chksum=None,mrd=10000,reserved=0,mladdr='::',kwargs=None):
-        '''build mld query field packet
+    def build_icmpv6_mldv1_query(self,code=0,chksum=None,mrd=10000,reserved=0,mladdr='::',kwargs=None):
+        '''build mldv1 query field packet
 
            args:
            - code        = 0
@@ -866,10 +866,10 @@ class PacketBase(object):
         else:
             self._packetField.append(cmd)
             if self._ixia_flag:
-                self._build_icmpv6_mld_query_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
+                self._build_icmpv6_mldv1_query_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
             return len(p)
 
-    def _build_icmpv6_mld_query_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
+    def _build_icmpv6_mldv1_query_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
         '''
         '''
         cmdlist = []
@@ -947,8 +947,8 @@ class PacketBase(object):
             self._ixia_mld_kwargs_detail = None
         return True
 
-    def build_icmpv6_mld_report(self,code=0,chksum=None,mrd=0,reserved=0,mladdr='::',kwargs=None):
-        '''build mld query field packet
+    def build_icmpv6_mldv1_report(self,code=0,chksum=None,mrd=0,reserved=0,mladdr='::',kwargs=None):
+        '''build mldv1 query field packet
 
            args:
            - code        = 0
@@ -996,10 +996,10 @@ class PacketBase(object):
         else:
             self._packetField.append(cmd)
             if self._ixia_flag:
-                self._build_icmpv6_mld_report_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
+                self._build_icmpv6_mldv1_report_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
             return len(p)
 
-    def _build_icmpv6_mld_report_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
+    def _build_icmpv6_mldv1_report_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
         '''
         '''
         cmdlist = []
@@ -1075,8 +1075,8 @@ class PacketBase(object):
             self._ixia_mld_kwargs_detail = None
         return True
 
-    def build_icmpv6_mld_done(self,code=0,chksum=None,mrd=0,reserved=0,mladdr='::',kwargs=None):
-        '''build mld query field packet
+    def build_icmpv6_mldv1_done(self,code=0,chksum=None,mrd=0,reserved=0,mladdr='::',kwargs=None):
+        '''build mldv1 query field packet
 
            args:
            - code        = 0
@@ -1124,10 +1124,10 @@ class PacketBase(object):
         else:
             self._packetField.append(cmd)
             if self._ixia_flag:
-                self._build_icmpv6_mld_done_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
+                self._build_icmpv6_mldv1_done_ixia(code,chksum,mrd,reserved,mladdr,kwargs)
             return len(p)
 
-    def _build_icmpv6_mld_done_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
+    def _build_icmpv6_mldv1_done_ixia(self,code,chksum,mrd,reserved,mladdr,kwargs):
         '''
         '''
         cmdlist = []
