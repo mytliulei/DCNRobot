@@ -108,6 +108,7 @@ Enable Mode
     ...    args:
     ...    - alias 别名
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write Bare    \x03
     ${output}=    Telnet.Read Until Regexp    ${wifi_ac_login_regexp}    ${wifi_ac_prompt}
     ${loginFlag}=    Tools.Is Match From String    ${output}    ${wifi_ac_login_regexp}
@@ -126,6 +127,7 @@ Exec Cmd
     ...    return：
     ...    - output：设备对该命令的响应
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     ${output}=    Telnet.Execute Command    ${cmd}
     [Return]    ${output}
 
@@ -172,6 +174,7 @@ Exec Cmd Until Regexp
     ...    Examples:
     ...    | Exec Cmd Until Regexp | s1 | show version | 1.0 |
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    ${cmd}
     ${output}=    Telnet.Read Until Regexp    ${regexp}
     [Return]    ${output}
@@ -193,7 +196,7 @@ Exec Cmd List
     AC.Enable Mode    ${alias}
     ${output_list}    Create List
     : FOR    ${cmd}    IN    @{cmd_list}
-    \    ${out}=    AC.Exec Cmd    ${alias}    ${cmd}
+    \    ${out}=    Telnet.Execute Command    ${cmd}
     \    Collections.Append To List    ${output_list}    ${out}
     Log List    ${output_list}
     [Return]    ${output_list}
@@ -212,10 +215,10 @@ Exec Cmd List In ConfigMode
     ...    example:
     ...    | Exec Cmd List In ConfigMode | ${s1_alias} | interface ${s1p1} | shutdown |
     AC.Enable Mode    ${alias}
-    AC.Exec Cmd    ${alias}    config
+    Telnet.Execute Command    config
     ${output_list}    Create List
     : FOR    ${cmd}    IN    @{cmd_list}
-    \    ${out}=    AC.Exec Cmd    ${alias}    ${cmd}
+    \    ${out}=    Telnet.Execute Command    ${cmd}
     \    Collections.Append To List    ${output_list}    ${out}
     Log List    ${output_list}
 
@@ -278,7 +281,7 @@ Show Version
     ...    args：
     ...    - ${alias}：Open Console时设置的别名
     AC.Enable Mode    ${alias}
-    ${output}=    AC.Exec Cmd    ${alias}    show version
+    ${output}=    Telnet.Execute Command    show version
     Log    ${output}
     [Return]    ${output}
 
@@ -307,7 +310,7 @@ Get Cpu Mac
     ...    - ${alias}：Open Console时设置的别名
     ...    - ${input}: 获取mac输入的命令 默认为show interface detail | include address is
     AC.Enable Mode    ${alias}
-    ${output}=    AC.Exec Cmd    ${alias}    ${input}
+    ${output}=    Telnet.Execute Command    ${input}
     ${cpuMac}=    Tools.Get Value From String    ${output}    .*?,\\s+address is\\s(.*?)\\s
     Should Not Be Equal    ${cpuMac}    ${None}
     [Return]    ${cpuMac}
@@ -319,11 +322,11 @@ Get Vlan Mac
     ...    args：
     ...    - ${alias}：Open Console时设置的别名
     AC.Enable Mode    ${alias}
-    ${output}=    AC.Exec Cmd    ${alias}    show interface vlan 1
+    ${output}=    Telnet.Execute Command    show interface vlan 1
     ${isIntVlan1}=    Tools.Is Match From String    ${output}    .*? doesn't exist or error
     Run Keyword If    ${isIntVlan1} == ${True}    AC.Exec Cmd List In ConfigMode    ${alias}    interface vlan 1
     Run Keyword If    ${isIntVlan1} == ${True}    Sleep    2
-    ${output}=    AC.Exec Cmd    ${alias}    show interface vlan 1
+    ${output}=    Telnet.Execute Command    show interface vlan 1
     ${vlanMac}=    Tools.Get Value From String    ${output}    .*?,\\s+address is\\s(.*?)\\s
     Should Not Be Equal    ${vlanMac}    ${None}
     Run Keyword If    ${isIntVlan1} == ${True}    AC.Exec Cmd List In ConfigMode    ${alias}    no interface vlan 1
@@ -359,6 +362,7 @@ Enter BootRom From BootRom
     ...    - ${regexp_bootrom}: 进入bootrom的匹配字符，默认为[Boot]:
     ...    - ${timeout}: 最长等待时间，默认为3分钟，超过会报错
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    reboot
     Telnet.Set Timeout    ${timeout}
     Telnet.Read Until Regexp    ${regexp_testram}
@@ -376,6 +380,7 @@ Login
     ...    - ${username}: 用户名，默认为admin
     ...    - ${password}: 密码，默认为admin
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    ${username}
     Telnet.Read Until Regexp    Password:
     Telnet.Write    ${password}
@@ -397,7 +402,7 @@ Exec Cmd List In WirelessMode
     AC.Exec Cmd List In ConfigMode    ${alias}    wireless
     ${output_list}    Create List
     : FOR    ${cmd}    IN    @{cmd_list}
-    \    ${out}=    AC.Exec Cmd    ${alias}    ${cmd}
+    \    ${out}=    Telnet.Execute Command    ${cmd}
     \    Collections.Append To List    ${output_list}    ${out}
     Log List    ${output_list}
 
@@ -418,7 +423,7 @@ Wait For AP Profile Apply OK
     ${matchMac}=    Set Variable If    ${apmacFlag}    ([0-9A-F]{2}-){5}[0-9A-F]    ${apmac}
     Sleep    10
     : FOR    ${index}    IN RANGE    0    ${timeout}    10
-    \    ${output}=    AC.Exec Cmd    ${alias}    ${cmd}
+    \    ${output}=    Telnet.Execute Command    ${cmd}
     \    ${apProfileNum}=    Tools.Find All Num From String    ${output}    (?im)${matchMac}.*?\\s+${profileid}\\s
     \    ${apstatusNum}=    Tools.Find All Num From String    ${output}    (?im)${matchMac}.*?\\s+${profileid}\\s+Managed\\s+Success
     \    Run Keyword If    ${apstatusNum} == ${apProfileNum}    Exit For Loop

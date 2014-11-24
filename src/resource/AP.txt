@@ -80,6 +80,7 @@ Enable Mode
     ...    args:
     ...    - alias 别名
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write Bare    \n
     ${output}=    Telnet.Read Until Regexp    ${wifi_ap_login_regexp}    ${wifi_ap_prompt}
     ${loginFlag}=    Tools.Is Match From String    ${output}    ${wifi_ap_login_regexp}
@@ -143,6 +144,7 @@ Exec Cmd Until Regexp
     ...    Examples:
     ...    | Exec Cmd Until Regexp | s1 | show version | 1.0 |
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    ${cmd}
     ${output}=    Telnet.Read Until Regexp    ${regexp}
     [Return]    ${output}
@@ -164,7 +166,7 @@ Exec Cmd List
     AP.Enable Mode    ${alias}
     ${output_list}    Create List
     : FOR    ${cmd}    IN    @{cmd_list}
-    \    ${out}=    AP.Exec Cmd    ${alias}    ${cmd}
+    \    ${out}=    Telnet.Execute Command    ${cmd}
     \    Collections.Append To List    ${output_list}    ${out}
     Log List    ${output_list}
     [Return]    ${output_list}
@@ -271,6 +273,7 @@ Enter BootRom From BootRom
     ...    - ${regexp_bootrom}: 进入bootrom的匹配字符，默认为Bootloader/>( )?
     ...    - ${timeout}: 最长等待时间，默认为3分钟，超过会报错
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    reset
     Telnet.Set Timeout    ${timeout}
     Telnet.Read Until Regexp    ${regexp_testram}
@@ -288,6 +291,7 @@ Login
     ...    - ${username}: 用户名，默认为admin
     ...    - ${password}: 密码，默认为admin
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    ${username}
     Telnet.Read Until Regexp    Password:
     Telnet.Write    ${password}

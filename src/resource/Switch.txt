@@ -97,6 +97,7 @@ Enable Mode
     ...    args:
     ...    - alias 别名
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write Bare    \x03
     Telnet.Read Until Prompt
     Telnet.Read
@@ -114,6 +115,7 @@ Exec Cmd
     ...    return：
     ...    - output：设备对该命令的响应
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     ${output}=    Telnet.Execute Command    ${cmd}
     [Return]    ${output}
 
@@ -160,6 +162,7 @@ Exec Cmd Until Regexp
     ...    Examples:
     ...    | Exec Cmd Until Regexp | s1 | show version | 1.0 |
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    ${cmd}
     Run Keyword If    ${timeout} is not None    Telnet.Set Timeout    ${timeout}
     ${output}=    Telnet.Read Until Regexp    ${regexp}
@@ -183,7 +186,7 @@ Exec Cmd List
     Switch.Enable Mode    ${alias}
     ${output_list}    Create List
     : FOR    ${cmd}    IN    @{cmd_list}
-    \    ${out}=    Switch.Exec Cmd    ${alias}    ${cmd}
+    \    ${out}=    Telnet.Execute Command    ${cmd}
     \    Collections.Append To List    ${output_list}    ${out}
     Log List    ${output_list}
     [Return]    ${output_list}
@@ -202,10 +205,10 @@ Exec Cmd List In ConfigMode
     ...    example:
     ...    | Exec Cmd List In ConfigMode | ${s1_alias} | interface ${s1p1} | shutdown |
     Switch.Enable Mode    ${alias}
-    Switch.Exec Cmd    ${alias}    config
+    Telnet.Execute Command    config
     ${output_list}    Create List
     : FOR    ${cmd}    IN    @{cmd_list}
-    \    ${out}=    Switch.Exec Cmd    ${alias}    ${cmd}
+    \    ${out}=    Telnet.Execute Command    ${cmd}
     \    Collections.Append To List    ${output_list}    ${out}
     Log List    ${output_list}
 
@@ -268,7 +271,7 @@ Show Version
     ...    args：
     ...    - ${alias}：Open Console时设置的别名
     Switch.Enable Mode    ${alias}
-    ${output}=    Switch.Exec Cmd    ${alias}    show version
+    ${output}=    Telnet.Execute Command    show version
     Log    ${output}
     [Return]    ${output}
 
@@ -297,7 +300,7 @@ Get Cpu Mac
     ...    - ${alias}：Open Console时设置的别名
     ...    - ${input}: 获取mac输入的命令 默认为show interface detail | include address is
     Switch.Enable Mode    ${alias}
-    ${output}=    Switch.Exec Cmd    ${alias}    ${input}
+    ${output}=    Telnet.Execute Command    ${input}
     ${cpuMac}=    Tools.Get Value From String    ${output}    .*?,\\s+address is\\s(.*?)\\s
     Should Not Be Equal    ${cpuMac}    ${None}
     [Return]    ${cpuMac}
@@ -309,11 +312,11 @@ Get Vlan Mac
     ...    args：
     ...    - ${alias}：Open Console时设置的别名
     Switch.Enable Mode    ${alias}
-    ${output}=    Switch.Exec Cmd    ${alias}    show interface vlan 1
+    ${output}=    Telnet.Execute Command    show interface vlan 1
     ${isIntVlan1}=    Tools.Is Match From String    ${output}    .*? doesn't exist or error
     Run Keyword If    ${isIntVlan1} == ${True}    Switch.Exec Cmd List In ConfigMode    ${alias}    interface vlan 1
     Run Keyword If    ${isIntVlan1} == ${True}    Sleep    2
-    ${output}=    Switch.Exec Cmd    ${alias}    show interface vlan 1
+    ${output}=    Telnet.Execute Command    show interface vlan 1
     ${vlanMac}=    Tools.Get Value From String    ${output}    .*?,\\s+address is\\s(.*?)\\s
     Should Not Be Equal    ${vlanMac}    ${None}
     Run Keyword If    ${isIntVlan1} == ${True}    Switch.Exec Cmd List In ConfigMode    ${alias}    no interface vlan 1
@@ -349,6 +352,7 @@ Enter BootRom From BootRom
     ...    - ${regexp_bootrom}: 进入bootrom的匹配字符，默认为[Boot]:
     ...    - ${timeout}: 最长等待时间，默认为3分钟，超过会报错
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    reboot
     Telnet.Set Timeout    ${timeout}
     Telnet.Read Until Regexp    ${regexp_testram}
@@ -443,6 +447,7 @@ Exec Cmd Until Timeout
     [Arguments]    ${alias}    ${cmd}    ${timeout}=${None}
     [Documentation]    该关键字会等待timeout的时间，获取执行命令的返回值，由于没有判断提示符，不能确定命令的输出信息是否完全返回，请慎用
     Telnet.Switch Connection    ${alias}
+    Telnet.Read
     Telnet.Write    ${cmd}
     Run Keyword If    ${timeout} is not None    Sleep    ${timeout}
     ${output}=    Telnet.Read

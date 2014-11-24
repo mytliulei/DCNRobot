@@ -23,7 +23,7 @@ from robot.api import logger
 from robot.version import get_version
 from robot import utils
 
-__version__ = '0.1'
+__version__ = '1.0'
 __author__ = 'liuleic'
 __copyright__ = 'Copyright 2014, DigitalChina Network'
 __license__ = 'Apache License, Version 2.0'
