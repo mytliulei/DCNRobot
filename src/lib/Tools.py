@@ -39,8 +39,8 @@ class Tools(object):
 
         examples:
         | Incr Mac | 00-01-01-01-01-01 | #结果00-01-01-01-01-02 |
-        | Incr Mac | 00-01-01-01-01-01 | step=${2} | #结果00-01-01-01-01-03 |
-        | Incr Mac | 00-01-01-01-01-01 | mask=${3} | #结果00-01-02-01-01-01 |
+        | Incr Mac | 00:01:01:01:01:01 | step=${2} | #结果00:01:01:01:01:03 |
+        | Incr Mac | 00 01 01 01 01 01 | mask=${3} | #结果00 01 02 01 01 01 |
         '''
         if mask > 6:
             logger.info('mask error: should less than 6')
