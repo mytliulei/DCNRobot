@@ -1,9 +1,9 @@
 *** Settings ***
-Resource          ../../resource/Sta.txt
-Resource          ../../resource/AC.txt
-Resource          ../../resource/AP.txt
-Resource          ../../resource/Switch.txt
-Library           ../../lib/Tools.py
+Resource          ../../../resource/Sta.txt
+Resource          ../../../resource/AC.txt
+Resource          ../../../resource/AP.txt
+Resource          ../../../resource/Switch.txt
+Library           ../../../lib/Tools.py
 
 *** Variables ***
 ${ac1_ip}         80.0.0.42

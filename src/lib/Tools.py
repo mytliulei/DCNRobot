@@ -174,7 +174,6 @@ class Tools(object):
                     shortres.append(reslist[i])
             else:
                 shortres.append(reslist[i])
-        
         return ':'.join(shortres)
 
 

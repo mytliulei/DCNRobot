@@ -2,7 +2,6 @@
 Suite Setup       Init Affirm Test
 Suite Teardown    Uninit Affirm Test
 Force Tags        affirm
-Resource          ../../Resource/Switch.txt
 Resource          vars.txt
 
 *** Variables ***

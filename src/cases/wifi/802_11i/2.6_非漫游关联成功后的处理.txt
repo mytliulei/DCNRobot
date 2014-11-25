@@ -1,0 +1,151 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          802_11i_vars.txt
+Resource          802_11i_vars_modifiable.txt
+
+*** Test Cases ***
+2.6.1 在关联AP的管理UWS上查看associated client表，该client被加入到associated client表中
+    Get Dynamic Vars
+    Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_STA1_MAC}\\b.*\\bAuth\\b
+    Should Be Equal    ${Num1}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.2 在关联AP的管理UWS上查看associated client表，该client的关联成功的时间，是否支持802.11n（802.11n capable）属性正确
+    Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Should Be True    ${auth_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b802.11n\\s\\bCapable.*\\s\\bYes\\b
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.3 在关联AP的管理UWS上查看VAP-Client Mapping表，该client和VAP的对应关系正确
+    Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Should Be True    ${auth_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status \ vap ${ap1_vap1_mac}
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_AP1_MAC}\\b\\s*\\b${WIFI_AFFIRM_AP1_MAC}\\s*\\d\\s*\\b${WIFI_AFFIRM_STA1_MAC}
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.4 在关联AP的管理UWS上查看SSID-Client Mapping表，该client和SSID的对应关系正确
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status \ ssid ${network1_ssid}
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\${network1_ssid}\\b\\s*\\b${WIFI_AFFIRM_STA1_MAC}\\b
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.5 在关联AP的管理UWS上查看UWS-Client Mapping表，该client和UWS的对应关系正确
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status \ switch ${ac_wireless_ip}
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b${ac_wireless_ip}\\b\\\s*\\b${WIFI_AFFIRM_STA1_MAC}
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.6 在关联AP的管理UWS上查看该AP关联的client数量，该数量加1
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+    sleep    ${sleep_time}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status
+    ${num1}=    Tools.Get Value From String    ${output}    \\bLocal\\b\\s\\bSwitch\\b.*\\s(\\d)
+    ${numFlag}=    Tools.Is None    ${num1}
+    Run Keyword If    ${numFlag}    Set Test Variable    ${num1}    0
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status
+    ${num2}=    Tools.Get Value From String    ${output}    \\bLocal\\b\\s\\bSwitch\\b.*\\s(\\d)
+    ${numFlag}=    Tools.Is None    ${num2}
+    Should Not Be True    ${numFlag}
+    ${Flag}=    Evaluate    int('${num1}') + 1 == int('${num2}')
+    Should Be True    ${Flag}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.7 在关联AP的管理UWS上查看client关联AP的AP neighbor client表，该client被加入到该表中
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless ap ${WIFI_AFFIRM_AP1_MAC} radio 1 neighbor client status
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_STA1_MAC}\\s*\\d*\\s*\\d*\\s*\\bAssoc\\b
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.8 在关联AP的管理UWS上查看Detected Clients表，该client被加入到该表中，并且被标示为认证成功
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client detected-client status
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_STA1_MAC}\\s*\\bAuthenticated\\b
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.9 关联成功后将会发送关联成功的trap信息
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    AC.Exec Cmd List In ConfigMode    ${ac}    snmp-server enable    snmp-server host ${radius_server_ip} v2c 123456    snmp-server enable trap    snmp-server ena trap wireless
+    AC.Exec Cmd List In WirelessMode    ${ac}    trapflags client-state
+    AC.Exec Cmd List    ${ac}    debug snmp kernel
+    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    ${flag}=    AC.Get Debug Output Until Expect    ${ac}    Wireless Client Authentication
+    Should Be True    ${flag}
+    AC.Exec Cmd List    ${ac}    no debug snmp kernel
+    AC.Exec Cmd List In ConfigMode    ${ac}    no snmp-server enable
+    AC.Exec Cmd List In WirelessMode    ${ac}    no trapflags
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.6.10 如果UWS开启了计费功能，则关联成功后会给radius发送计费报文开始计费
+    Network Wpa Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    AC.Start Debug    ${ac}    debug wireless client-auth radius-info ${WIFI_AFFIRM_STA1_MAC}
+    Sta Wpa Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}    ${cipher_tkip}
+    ${flag}=    AC.Get Debug Output Until Expect    ${ac}    Entering wirelessClientRadiusAccountingStart
+    Should Be True    ${flag}
+    AC.Stop Debug    ${ac}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}

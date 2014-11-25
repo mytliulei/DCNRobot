@@ -1,0 +1,65 @@
+*** Settings ***
+Documentation     测试套名称:驱动测试
+...
+...
+...               测试注意事项说明:
+...               - *执行前需要修改VARS_XXX文件*
+...
+...
+...               测试拓扑:
+...
+...               tp1----s1p1 \ \ \ 主测端口
+...
+...               tp2----s1p2 \ \ \ 辅测端口
+...
+...               s1p3 \ \ \ \ \ \ \ \ \ \ \ \ 辅测端口
+...
+...
+...               已自动化的子功能:
+...               - storm-control
+...
+...
+...               本用例仅针对单个主测端口进行相关功能测试,实际使用时应针对产品硬件设计覆盖以下内容:
+...               - 覆盖所有端口类型
+...               - 100M-Copper,100M-Fiber,1G-Copper,1G-Fiber,10G-Fiber,40G光模块及线缆,Combo-Copper,Combo-Fiber
+...               - 根据芯片覆盖跨芯片,跨板卡,跨堆叠member(部分功能不支持跨芯片,跨板卡,跨堆叠member,用例执行时会根据全局变量CROSS_XXX来判断,若功能不支持则自动跳过,并在log文件中以"WARN"提示)
+Suite Setup       Init Driver Test
+Suite Teardown    Uninit Driver Test
+Force Tags        driver
+Resource          vars_topo.txt
+Resource          ../../../resource/Switch.txt
+Resource          proc.txt
+
+*** Variables ***
+
+*** Keywords ***
+Init Driver Test
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Check Topo
+    Init S1 Config    #初始化S1的配置
+    Sleep    5
+    Close Console    ${s1_alias}
+
+Init S1 Config
+    Comment    开始初始化
+    Show Version    ${s1_alias}
+    ${s1_cpu_mac}=    Get Cpu Mac    ${s1_alias}
+    Set Global Variable    ${S1_CPU_MAC}    ${s1_cpu_mac}
+    ${s1_vlan_mac}=    Get Vlan Mac    ${s1_alias}
+    Set Global Variable    ${S1_VLAN_MAC}    ${s1_vlan_mac}
+    Comment    初始化结束
+
+Uninit Driver Test
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Uninit S1 Config
+    Close Console    ${s1_alias}
+
+Uninit S1 Config
+    Comment    开始恢复配置
+    Comment    恢复完成
+
+Check Topo
+    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p1}
+    Should Be True    ${s1p1_status}    !!interface ${s1p1} \ isn't up!!
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p1} \ isn't up!!

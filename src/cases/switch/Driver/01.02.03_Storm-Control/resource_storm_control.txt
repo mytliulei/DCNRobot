@@ -1,0 +1,286 @@
+*** Settings ***
+Resource          ../proc.txt
+Resource          ../vars_topo.txt
+Resource          ../../../../resource/Switch.txt
+Resource          ../../../../resource/ixiasend.txt
+Resource          ../vars_ixia.txt
+Resource          ../proc.txt
+
+*** Variables ***
+${STATIC_UNICAST_MAC}    00:00:00:01:01:01
+${CMD_STORM_CONTROL}    storm-control
+${CMD_CFG_STORM_CONTROL_MODE}    ${2}    # storm-control命令行风格 1:strom-control broadcast value_xxx 2: storm control broadcast [kbps|pps|..] value_xxx
+${CMD_CFG_NO_STORM_CONTROL_MODE}    ${2}    # no storm-control命令行风格 1:no strom-control 2: no storm control broadcast
+
+*** Keywords ***
+Init Suite Test
+    [Documentation]    初始化storm-control测试套
+    ...
+    ...    Open console
+    ...
+    ...    连接ixia并复位Tp1与Tp2
+    ...
+    ...    通过全局参数,检查是否跨芯片连接,如果是跨芯片则停止运行
+    ...
+    ...    配置在s1p2上静态mac地址,作为已知单播流量使用.
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Log Console    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
+    ##ixia初始化
+    Connect To Ixia    ${testerp1_ip}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Ixia.Set Port Mode Default    @{testerp2}
+    ##测试条件检查及初始配置
+    Comment    只支持测试同芯片端口
+    Run Keyword if    ${CROSS_CHIP}!=${0}    log    不支持跨芯片测试    WARN
+    Pass Execution If    ${CROSS_CHIP}!=${0}    不支持跨芯片测试
+    Comment    配置静态mac，为后面测试已知单播准备。
+    Set Static Mac    ${s1_alias}    ${s1p2}    1    ${STATIC_UNICAST_MAC}
+
+Uninit Suite Test
+    Del Static Mac    ${s1_alias}    ${s1p2}    1    00:00:00:01:01:01
+    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 1
+    Unset Storm Control    ${s1_alias}    ${s1p1}    broadcast
+    Unset Storm Control    ${s1_alias}    ${s1p1}    multicast
+    Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
+    Unset Storm Control    ${s1_alias}    ${s1p3}    broadcast
+    Unset Storm Control    ${s1_alias}    ${s1p3}    multicast
+    Unset Storm Control    ${s1_alias}    ${s1p3}    unicast
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    Log Console    ${s1_alias}    !!END!! TEST SUITE:${SUITE_NAME}
+    Close Console    ${s1_alias}
+
+Send Stream And Check
+    [Arguments]    ${sport_chassis}    ${sport_card}    ${sport_port}    ${dport_chassis}    ${dport_card}    ${dport_port}
+    ...    ${received_type}    ${received_rate}    ${tolerance}=${0.05}    ${clear_tag}=True    ${transmit_tag}=True    ${stop_trans_tag}=True
+    [Documentation]    \“清除计数”-->“发送流量”-->“检查流量”-->"停止流量发送"
+    ...
+    ...    \ args:
+    ...    \- ${sport_chassis} ${sport_card} ${sport_port} #发送端口
+    ...    \- ${dport_chassis} ${dport_card} ${dport_port}#接收端口
+    ...    \- ${received_type}#接收流量单位(bps,pps)
+    ...    \- ${received_rate}#预期接收速率
+    ...    \- ${tolerance}#误差范围,缺省为0.05,即5%的误差
+    ...    \- ${clear_tag} #check前,是否先清除计数，缺省清除
+    ...    \- ${transmit_tag} #check前,是否控制流量发送,缺省发送
+    ...    \- ${stop_trans_tag} #check后,是否停止流量发送,缺省停止发送流量
+    @{sport}=    Set Variable    ${sport_chassis}    ${sport_card}    ${sport_port}
+    @{dport}=    Set Variable    ${dport_chassis}    ${dport_card}    ${dport_port}
+    Run Keyword If    ${transmit_tag}==True    Ixiasend.Start Transmit    @{sport}
+    ${ret}    Check Send Receive    @{sport}    @{dport}    ${received_type}    ${received_rate}    ${tolerance}
+    Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n ${STEP} check stream \ error!
+    #若检查有误, 则debug交换机
+    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p1}
+    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p2}
+    Run Keyword If    ${stop_trans_tag}==True    Ixiasend.Stop Transmit    @{sport}
+    [Return]    ${ret}
+
+Set stream
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_type}    ${stream_rate}    ${stream_rate_mode}
+    ...    ${stream_id}=${1}    ${stream_mode}=${IXIA_StreamMode_continue}    ${reset}=False    ${numPacket}=${1}    ${returnID}=${1}
+    [Documentation]    \ args:
+    ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
+    ...    \- ${stream_type} #流量类型(broadcast,multicast,unicast,dlf)
+    ...    \- ${stream_rate}#流量速率
+    ...    \- ${stream_rate_mode} #流量模式(bps,pps,percent)
+    ...    \- ${stream_id}#发送流序号,缺省为1
+    ...    \- ${stream_mode} #发送模式，continue，stop，next，return to id，缺省为continue
+    ...    \- ${reset} #当reset为True时则reset ixia端口模式，否则不reset; 缺省不reset
+    ${stream_rate_mode_set}=    Set Variable If    '${stream_rate_mode}'=='bps'    ${IXIA_StreamRateMode_bps}    '${stream_rate_mode}'=='pps'    ${IXIA_StreamRateMode_pps}    '${stream_rate_mode}'=='pencent'
+    ...    ${IXIA_StreamRateMode_pencent}
+    @{sport}=    Set Variable    ${tp_chassis}    ${tp_card}    ${tp_port}
+    Run Keyword If    ${reset}==True    Ixia.Set Port Mode Default    @{sport}
+    Run Keyword    Set stream ${stream_type}    @{sport}    ${stream_rate}    ${stream_rate_mode_set}    ${stream_id}    ${stream_mode}
+    ...    ${numPacket}    ${returnID}
+
+[del]Set stream all
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_enable}=${0}
+    [Documentation]    \分别配置广播，组播，未知单播，已知单播流量，对应流1-4
+    ...
+    ...
+    ...    \args:
+    ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
+    ...    \- ${stream_rate}#流量速率
+    ...    \- ${stream_rate_mode} #流量模式(bps,pps,percent)
+    ...    \- ${stream_enable} #是否使能,缺省不使能
+    @{sport}=    Set Variable    ${tp_chassis}    ${tp_card}    ${tp_port}
+    ${stream_rate_mode_set}=    Set Variable If    '${stream_rate_mode}'=='bps'    ${IXIA_StreamRateMode_bps}    '${stream_rate_mode}'=='pps'    ${IXIA_StreamRateMode_pps}    '${stream_rate_mode}'=='pencent'
+    ...    ${IXIA_StreamRateMode_pencent}
+    Ixia.Set Port Mode Default    @{sport}
+    #设置流量    #发送端口    #发送速率    #发送流量单位(bps,pps)    #Stream ID
+    Set stream broadcast    @{sport}    ${stream_rate}    ${stream_rate_mode_set}    1    ${stream_enable}
+    Set stream multicast    @{sport}    ${stream_rate}    ${stream_rate_mode_set}    2    ${stream_enable}
+    Set stream dlf    @{sport}    ${stream_rate}    ${stream_rate_mode_set}    3    ${stream_enable}
+    Set stream unicast    @{sport}    ${stream_rate}    ${stream_rate_mode_set}    4    ${stream_enable}
+
+Set stream broadcast
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_id}
+    ...    ${stream_mode}=${IXIA_StreamMode_continue}    ${numPacket}=${1}    ${returnID}=${1}
+    [Documentation]    设置广播流
+    [Timeout]
+    Ixiasend.Build Ether    dst=ff:ff:ff:ff:ff:ff    src=00:00:00:00:0a:0a
+    Ixiasend.Build Ip    dst=10.1.1.1    src=20.1.1.1
+    Ixiasend.Build Packet    ${64}
+    Ixiasend.Set Stream Packet    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+Set stream dlf
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_id}
+    ...    ${stream_mode}=${IXIA_StreamMode_continue}    ${numPacket}=${1}    ${returnID}=${1}
+    [Documentation]    设置广播流
+    [Timeout]
+    Ixiasend.Build Ether    dst=00:00:00:02:02:02    src=00:00:00:00:0d:0d
+    Ixiasend.Build Ip    dst=10.1.1.1    src=20.1.1.1
+    Ixiasend.Build Packet    ${64}
+    Ixiasend.Set Stream Packet    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+Set stream multicast
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_id}
+    ...    ${stream_mode}=${IXIA_StreamMode_continue}    ${numPacket}=${1}    ${returnID}=${1}
+    [Documentation]    设置广播流
+    [Timeout]
+    Ixiasend.Build Ether    dst=01:00:5e:01:01:01    src=00:00:00:00:0b:0b
+    Ixiasend.Build Ip    dst=225.1.1.1    src=20.1.1.2
+    Ixiasend.Build Packet    ${64}
+    Ixiasend.Set Stream Packet    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+Set stream unicast
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_id}
+    ...    ${stream_mode}=${IXIA_StreamMode_continue}    ${numPacket}=${1}    ${returnID}=${1}
+    [Documentation]    设置广播流
+    [Timeout]
+    Ixiasend.Build Ether    dst=${STATIC_UNICAST_MAC}    src=00:00:00:00:0c:0c
+    Ixiasend.Build Ip    dst=10.1.1.1    src=20.1.1.1
+    Ixiasend.Build Packet    ${64}
+    Ixiasend.Set Stream Packet    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+Set stream ip
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_id}
+    ...    ${stream_mode}=${IXIA_StreamMode_continue}    ${numPacket}=${1}    ${returnID}=${1}    ${dst_mac}=FF:FF:FF:FF:FF:FF    ${src_mac}=00:00:00:00:01:01    ${type_id}=${None}
+    ...    ${dst_ip}=1.1.1.1    ${src_ip}=2.2.2.2    ${pkt_length}=${64}    ${reset}=False
+    [Documentation]    设置IP流
+    [Timeout]
+    ${stream_rate_mode_set}=    Set Variable If    '${stream_rate_mode}'=='bps'    ${IXIA_StreamRateMode_bps}    '${stream_rate_mode}'=='pps'    ${IXIA_StreamRateMode_pps}    '${stream_rate_mode}'=='pencent'
+    ...    ${IXIA_StreamRateMode_pencent}
+    Run Keyword If    ${reset}==True    Ixia.Set Port Mode Default    ${tp_chassis}    ${tp_card}    ${tp_port}
+    Ixiasend.Build Ether    dst=${dst_mac}    src=${src_mac}    typeid=${type_id}
+    Ixiasend.Build Ip    dst=${dst_ip}    src=${src_ip}
+    Ixiasend.Build Packet    ${pkt_length}
+    Ixiasend.Set Stream Packet    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode_set}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+Set Storm Control
+    [Arguments]    ${alias}    ${port}    ${cfg_type}    ${cfg_value}
+    [Documentation]    \args:
+    ...    \- port #配置端口
+    ...    \- cfg_type#抑制类型
+    ...    \- cfg_value#抑制值
+    Comment    配置广播抑制
+    ${cfg_storm_control_config}=    Set Variable if    ${CMD_CFG_STORM_CONTROL_MODE}==${1}    ${CMD_STORM_CONTROL} ${cfg_type} ${cfg_value}    ${CMD_CFG_STORM_CONTROL_MODE}==${2} and '${STREAM_TYPE}'=='bps'    ${CMD_STORM_CONTROL} ${cfg_type} kbps ${cfg_value}    ${CMD_CFG_STORM_CONTROL_MODE}==${2} and '${STREAM_TYPE}'=='pps'
+    ...    ${CMD_STORM_CONTROL} ${cfg_type} pps ${cfg_value}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_storm_control_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    ${check_result}=    Check set error    ${ret}
+    Run Keyword If    '${check_result}'!='None'    Fail    the Device may be don't support the "${cfg_storm_control_config}" \ or Set error.    TAG_CFG_ERROR
+    ${scaled_value}=    Tools.Get Value From String    ${ret}    scaled to (\\d+)
+    ${scaled_value}=    Set Variable if    '${scaled_value}'!='None'    ${scaled_value}    ${cfg_value}
+    #对于单位为bps，预期速率为自调整抑制值*1000(即kbps)
+    Run Keyword If    '${STREAM_TYPE}'=='bps'    Return From Keyword    ${${scaled_value}*1000}
+    Run Keyword If    '${STREAM_TYPE}'=='pps'    Return From Keyword    ${scaled_value}
+    [Return]    ${expect_rate}
+
+Unset Storm Control
+    [Arguments]    ${alias}    ${port}    ${type}=${EMPTY}
+    ${cfg_command}=    Set Variable if    ${CMD_CFG_NO_STORM_CONTROL_MODE}==${1}    no ${CMD_STORM_CONTROL}    ${CMD_CFG_NO_STORM_CONTROL_MODE}==${2}    no ${CMD_STORM_CONTROL} ${type}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${cfg_command}
+
+Set Storm Control Fail
+    [Arguments]    ${alias}    ${port}    ${cfg_type}    ${cfg_value}
+    [Documentation]    \args:
+    ...    \- port #配置端口
+    ...    \- cfg_type#抑制类型
+    ...    \- cfg_value#抑制值
+    ...    \- other #保留
+    ${cfg_storm_control_config}=    Set Variable if    ${CMD_CFG_STORM_CONTROL_MODE}==${1}    ${CMD_STORM_CONTROL} ${cfg_type} ${cfg_value}    ${CMD_CFG_STORM_CONTROL_MODE}==${2} and '${STREAM_TYPE}'=='bps'    ${CMD_STORM_CONTROL} ${cfg_type} kbps ${cfg_value}    ${CMD_CFG_STORM_CONTROL_MODE}==${2} and '${STREAM_TYPE}'=='pps'
+    ...    ${CMD_STORM_CONTROL} ${cfg_type} pps ${cfg_value}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_storm_control_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword If    ${check_result} ==False    Fail    May be set Storm Control sussessful and check no error!
+    [Return]    ${check_result}
+
+Unset Storm Control Fail
+    [Arguments]    ${alias}    ${port}    ${type}=${EMPTY}
+    [Documentation]    \args:
+    ...    \- port #配置端口
+    ...    \- cfg_type#抑制类型
+    ...    \- cfg_value#抑制值
+    ...    \- type #部分设备在删除storm-control时需要指定类型.
+    ${cfg_command}=    Set Variable if    ${CMD_CFG_NO_STORM_CONTROL_MODE}==${1}    no ${CMD_STORM_CONTROL}    ${CMD_CFG_NO_STORM_CONTROL_MODE}==${2}    no ${CMD_STORM_CONTROL} ${type}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_command}
+    Exec Cmd    ${alias}    show run interface ${port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword If    '${check_result}'!='True'    Fail    May be unset Storm Control sussessful and check no error!
+    [Return]    ${check_result}
+
+Check Set Storm Control
+    [Arguments]    ${alias}    ${port}    ${cfg_type}    ${loglevel}=WARN
+    ${cfg_command}=    Set Variable    ${CMD_STORM_CONTROL} ${cfg_type}
+    ${ret}=    Exec Cmd    ${alias}    show run interface ${port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    ${cfg_command}
+    Run Keyword If    ${check_result} !=True    log    Can not find "${cfg_command}" in Show run interface ${port}    ${loglevel}
+    [Return]    ${check_result}
+
+Check set error
+    [Arguments]    ${str}    ${level}=WARN
+    ${check_result}=    Set Variable    None
+    ${ret}=    Tools.Get Value From String    ${str}    (Invalid input|error)
+    ${check_result}=    Set Variable if    '${ret}'=='Invalid input'    Warn    '${ret}'=='error'    Error
+    Run Keyword if    '${check_result}'=='Warn'    log    the Device may be not support this Command    ${level}
+    Run Keyword if    '${check_result}'=='Error'    log    an Error was occurred！    ${level}
+    [Return]    ${check_result}    # 返回错误类型，None表示没有错误
+
+Set Port Channel Member
+    [Arguments]    ${alias}    ${port}    ${channel_name}    ${mode}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd Until Timeout    ${alias}    port-group ${channel_name} mode ${mode}    timeout=5 seconds
+    ${check_result}=    Tools.Is Match From String    ${ret}    (different from Port-Channel|not existing)
+    Exec Cmd    ${alias}    show run interface ${port}
+    Run Keyword If    ${check_result}    Fail    May be set port-channel error!
+    [Return]    ${check_result}
+
+Set Port Channel Member Fail
+    [Arguments]    ${alias}    ${port}    ${channel_name}    ${mode}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd Until Timeout    ${alias}    port-group ${channel_name} mode ${mode}    timeout=5 seconds
+    ${check_result}=    Tools.Is Match From String    ${ret}    different from Port-Channel
+    Exec Cmd    ${alias}    show run interface ${port}
+    Run Keyword If    ${check_result} !=True    Fail    May be set port-channel sussessful and check no error!
+    [Return]    ${check_result}
+
+Unset Port Channel Member
+    [Arguments]    ${alias}    ${port}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    no port-group
+
+Check Port Channel Member
+    [Arguments]    ${alias}    ${port}    ${channel_name}
+    Exec Cmd List    ${alias}    show run interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    show interface port-channel ${channel_name}
+    ${check_result_channel}=    Tools.Is Match From String    ${ret}    ${port}
+    ${ret}=    Exec Cmd    ${alias}    show interface ${port}
+    ${check_result_port}=    Tools.Is Match From String    ${ret}    LAG port:Port-Channel${channel_name}
+    Run Keyword unless    ${check_result_channel} or ${check_result_port}    log    Can not find port-channel member "${port}"    WARN
+    ${check_result}=    Evaluate    ${check_result_channel} or ${check_result_port}
+    [Return]    ${check_result}

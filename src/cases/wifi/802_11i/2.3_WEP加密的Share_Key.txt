@@ -1,0 +1,245 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          802_11i_vars.txt
+Resource          802_11i_vars_modifiable.txt
+
+*** Test Cases ***
+2.3.1 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=111111111a    key1=222222222b
+    ...    key2=333333333c    key3=444444444d    txkey=0    keytype=1
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.2 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key1，key5，key6，key7，能够关联上AP，可以ping通AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=111111111a    key1=2222222222
+    ...    key2=3333333333    key3=4444444444    txkey=0    keytype=1
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.3 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key5，key1，key6，key7，不能关联上AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111111111    key1=111111111a
+    ...    key2=3333333333    key3=4444444444    txkey=0    keytype=1
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.4 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key5，key2，key3，key4，不能关联上AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111111111    key1=222222222b
+    ...    key2=333333333c    key3=444444444d    txkey=0    keytype=1
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.5 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_2}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=111111111a    key1=222222222b
+    ...    key2=333333333c    key3=444444444d    txkey=1    keytype=1
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.6 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key5，key2，key6，key7，能够关联上AP，可以ping通AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_2}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111111111    key1=222222222b
+    ...    key2=3333333333    key3=4444444444    txkey=1    keytype=1
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.7 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key2，key5，key6，key7，不能关联上AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_2}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=222222222b    key1=2222222222
+    ...    key2=3333333333    key3=4444444444    txkey=1    keytype=1
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.8 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key1，key5，key3，key4，不能关联上AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_2}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=111111111a    key1=2222222222
+    ...    key2=333333333c    key3=444444444d    txkey=1    keytype=1
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.9 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_3}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111a    key1=2222b
+    ...    key2=3333c    key3=4444d    txkey=2    keytype=0
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.10 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key5，key6，key3，key7，能够关联上AP，可以ping通AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_3}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=11111    key1=22222
+    ...    key2=3333c    key3=44444    txkey=2    keytype=0
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.11 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key7，key5，key6，key3，不能关联上AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_3}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=11111    key1=22222
+    ...    key2=33333    key3=3333c    txkey=2    keytype=0
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.12 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key1，key2，key5，key4，不能关联上AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_3}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111a    key1=2222b
+    ...    key2=33333    key3=4444d    txkey=2    keytype=0
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.13 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111a    key1=2222b
+    ...    key2=3333c    key3=4444d    txkey=3    keytype=0
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.14 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key5，key6，key7，key4，能够关联上AP，可以ping通AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=11111    key1=22222
+    ...    key2=33333    key3=4444d    txkey=3    keytype=0
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.15 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key7，key5，key4，key6，不能关联上AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=11111    key1=22222
+    ...    key2=4444d    key3=55555    txkey=3    keytype=0
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.16 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key1，key2，key3，key6，不能关联上AP
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111a    key1=2222b
+    ...    key2=3333c    key3=55555    txkey=3    keytype=0
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.17 AP设置为WEP认证模式时，client使用开放式认证，关联失败
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.18 AP设置为WEP认证模式时，client使用WPA-PSK认证，密码和设置tx-key一致，关联失败
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    4444d    ${cipher_tkip}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.19 AP设置为WEP认证模式时，client使用WPA2-PSK认证，密码和设置tx-key一致，关联失败
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    4444d    ${cipher_ccmp}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.20 AP设置为WEP认证模式时，client使用wpa-802.1x认证，关联失败
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_tkip}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.3.21 AP设置为WEP认证模式时，client使用wpa2-802.1x认证，关联失败
+    Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_ccmp}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}

@@ -1,5 +1,6 @@
 *** Settings ***
-Resource          ../../resource/Switch.txt
+Resource          ../../../resource/Switch.txt
+Resource          ../../../lib/Tools.py
 
 *** Variables ***
 ${s1_ip}          172.16.11.51

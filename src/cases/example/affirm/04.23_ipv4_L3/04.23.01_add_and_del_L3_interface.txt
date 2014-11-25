@@ -2,9 +2,7 @@
 Suite Setup       Init Test Case    ${s1_ip}    ${s1_port}    ${s1_alias}    ${s2_ip}    ${s2_port}    ${s2_alias}
 Suite Teardown    Uninit Test Case    ${s1_alias}    ${s2_alias}
 Force Tags        P1
-Resource          ../../../resource/Switch.txt
 Resource          ../vars.txt
-Library           ../../../lib/Tools.py
 
 *** Variables ***
 ${ip1}            200.1.1.1

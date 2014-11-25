@@ -1,0 +1,212 @@
+*** Settings ***
+Resource          ../../../resource/AC.txt
+Resource          ../../../resource/AP.txt
+Resource          ../../../resource/Sta.txt
+Resource          ../../../resource/Switch.txt
+Resource          802_11i_vars_modifiable.txt
+
+*** Variables ***
+${ac}             ac
+${ap}             ap
+${sta}            sta
+${sta_username}    root
+${sta_password}    123456
+${ap_profile}     1
+${ap_network}     1
+${radius_server_ip}    100.1.1.254
+${ac_wireless_ip}    10.1.1.1
+${radius_server_name}    wlan
+${radius_username1}    liuyje
+${radius_password1}    admin@123
+${radius_username2}    denghao
+${radius_password2}    admin@123
+${wpa_wpa2 key}    12345678
+${cipher_tkip}    TKIP
+${cipher_ccmp}    CCMP
+${wep_key_type_hex}    hex
+${wep_key_type_ascii}    ascii
+${wep_txkey_1}    1
+${wep_txkey_2}    2
+${wep_txkey_3}    3
+${wep_txkey_4}    4
+
+*** Keywords ***
+Init Test Case
+    [Documentation]    初始化打开AC、AP、Sta的console连接
+    AP.Open Console    ${ap_console_ip}    ${ap_console_port}    ${ap}
+    Sta.Open SSH Connection    ${sta_ip}    ${sta}    ${sta_username}    ${sta_password}    ${sta_port}
+    AC.Open Console    ${ac_console_ip}    ${ac_console_port}    ${ac}
+
+Uninit Test Case
+    [Documentation]    关闭AC、AP、Sta的console连接
+    AC.Close Console    ${ac}
+    AP.Close Console    ${ap}
+    Sta.Close SSH Connection    ${sta}
+
+Init AC Config
+    [Documentation]    AC初始化配置：
+    ...    1、配置AC三层接口地址，分别为vlan10和vlan100，并分别配置ipv4地址池；
+    ...    2、AP从vlan10获取地址与AC建立集群，sta vlan为vlan100
+    ...    3、开启无线功能，配置ap profile，AC、AP建立集群
+    ...    4、show wireless ap status检查基础配置是否成功
+    AC.Set WatchDog Disable    ${ac}
+    AC.Exec Cmd List In ConfigMode    ${ac}    no int vlan 1    vlan 10    vlan 100    exit
+    AC.Exec Cmd List In ConfigMode    ${ac}    int vlan 10    ip address 10.1.1.1 255.255.255.0    exit
+    AC.Exec Cmd List In ConfigMode    ${ac}    int vlan 100    ip address 100.1.1.1 255.255.255.0    exit
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap_port}    switch mode trunk    switch trunk native vlan 10    exit
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_radius_port}    switch access vlan 100    exit
+    AC.Exec Cmd List In ConfigMode    ${ac}    service dhcp    ip dhcp pool vlan10    network-address 10.1.1.1 255.255.255.0    default-router 10.1.1.1    exit
+    AC.Exec Cmd List In ConfigMode    ${ac}    ip dhcp pool vlan100    network-address 100.1.1.1 255.255.255.0    default-router 100.1.1.1    exit
+    AC.Exec Cmd List In ConfigMode    ${ac}    ip dhcp excluded-address 10.1.1.1    ip dhcp excluded-address 100.1.1.1    ip dhcp conflict ping-detection enable
+    sleep    30sec
+    AC.Exec Cmd List In WirelessMode    ${ac}    enable    no auto-ip-assign    static-ip 10.1.1.1    client roam-timeout 1
+    Get Dynamic Vars
+    AC.Exec Cmd List In WirelessMode    ${ac}    ap profile ${ap_profile}    hwtype ${WIFI_AFFIRM_HWTYPE1}    radio 2    no enable    end
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    vlan 100    ssid ${network1_ssid}    exit
+    Add ap database    ${ac}    ${WIFI_AFFIRM_AP1_MAC}
+    AC.Exec Cmd List In WirelessMode    ${ac}    discovery ip-list ${WIFI_AFFIRM_AP1_IP}
+    Sleep    1min
+    ${output}=    AC.Exec Cmd List    ${ac}    show wireless ap status
+
+Add ap database
+    [Arguments]    ${ac}    ${apmac}
+    [Documentation]    功能：添加AP database
+    ...    参数：AP 的mac地址，在本功能测试模块中，AP的database在Get Dynamic Vars关键字中动态获取，无须手工指定
+    AC.Exec Cmd List In WirelessMode    ${ac}    ap database ${apmac}    exit
+
+Get Dynamic Vars
+    [Documentation]    功能：获取动态变量。包括：sta的mac地址、ap hwtype、ac vlan mac、ap mac、ap ip几个参数
+    ...    参数：无
+    Comment    获取sta1 wlan card mac
+    ${output}=    Sta.Execute Command    ${sta}    ifconfig -v ${sta1_netcard}
+    ${sta1mac}=    Tools.Get Value From String    ${output}    (?m)ether\\s([^\\s]+)\\s
+    Should Not Be Equal    ${sta1mac}    ${None}
+    ${sta1mac}=    Tools.Convert Macaddress Format    ${sta1mac}
+    Set Global Variable    ${WIFI_AFFIRM_STA1_MAC}    ${sta1mac}
+    Comment    获取ap1 device type
+    ${output}=    AP.Exec Cmd    ${ap}    get system device-type
+    ${ap1type}=    Tools.Get Value From String    ${output}    (?m)^(\\d+)\\s
+    Should Not Be Equal    ${ap1type}    ${None}
+    Set Global Variable    ${WIFI_AFFIRM_HWTYPE1}    ${ap1type}
+    Comment    获取ac1 vlan mac
+    ${ac1Vlanmac}=    AC.Get Vlan Mac    ${ac}
+    Set Global Variable    ${WIFI_AFFIRM_AC1_VLANMAC}    ${ac1Vlanmac}
+    Comment    获取ap1 mac
+    ${ap1mac}=    AP.Get Management Mac    ${ap}
+    ${ap1mac}=    Tools.Convert Macaddress Format    ${ap1mac}
+    Set Global Variable    ${WIFI_AFFIRM_AP1_MAC}    ${ap1mac}
+    Comment    获取ap1 ip
+    ${ap1ip}=    AP.Get AP ipaddr    ${ap}
+    Set Global Variable    ${WIFI_AFFIRM_AP1_IP}    ${ap1ip}
+
+Network Open
+    [Arguments]    ${ac}    ${ap_network}
+    [Documentation]    功能：配置ap为open接入方式
+    ...    参数：network_id
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    security mode none    end
+
+Wireless Ap Profile Apply
+    [Arguments]    ${ap_profile}
+    [Documentation]    功能：通过AC给AP下发配置。参数：profile_id
+    AC.Enable Mode    ${ac}
+    Telnet.Write    wireless ap profile apply ${ap_profile}
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Prompt
+    Run Keyword Unless    ${writeFlag}    Telnet.Read
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+
+Network Wep Open
+    [Arguments]    ${ac}    ${ap_network}    ${wep_key_type}    ${wep_tx_key}
+    [Documentation]    功能：配置AP为wep open接入方式。
+    ...    参数：ac、network_id、wep key类型（hex或ascii）、transmit key
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    security mode static-wep    wep authentication open-system
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    wep key type ${wep_key_type}    wep key length 64
+    Run Keyword If    '${wep_key_type}'=='hex'    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    wep key 1 111111111a    wep key 2 222222222b
+    ...    wep key 3 333333333c    wep key 4 444444444d
+    Run Keyword Unless    '${wep_key_type}'=='hex'    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    wep key 1 1111a    wep key 2 2222b
+    ...    wep key 3 3333c    wep key 4 4444d
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    wep tx-key ${wep_tx_key}    end
+
+Network Wep Share Key
+    [Arguments]    ${ac}    ${ap_network}    ${wep_key_type}    ${wep_tx_key}
+    [Documentation]    功能：配置AP为wep share key接入方式。
+    ...    参数：ac、network_id、wep key类型（hex或ascii）、transmit key
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    security mode static-wep    wep authentication shared-key
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    wep key type ${wep_key_type}    wep key length 64
+    Run Keyword If    '${wep_key_type}'=='hex'    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    wep key 1 111111111a    wep key 2 222222222b
+    ...    wep key 3 333333333c    wep key 4 444444444d
+    Run Keyword Unless    '${wep_key_type}'=='hex'    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    wep key 1 1111a    wep key 2 2222b
+    ...    wep key 3 3333c    wep key 4 4444d
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    wep tx-key ${wep_tx_key}    end
+
+Globle Radius Config
+    [Arguments]    ${ac}    ${radius_ip}    ${ac_wireless_ip}    ${radius_server_name}
+    [Documentation]    功能：配置radius相关配置。
+    ...    参数：ac、radius ip地址、nas-ipv4、radius server name
+    AC.Exec Cmd List In ConfigMode    ${ac}    radius source-ipv4 ${ac_wireless_ip}    radius-server key 0 test    radius-server authentication host ${radius_server_ip}    radius-server accounting host ${radius_server_ip}
+    AC.Exec Cmd List In ConfigMode    ${ac}    aaa-accounting enable    aaa enable    radius nas-ipv4 ${ac_wireless_ip}
+    AC.Exec Cmd List In ConfigMode    ${ac}    aaa group server radius ${radius_server_name}    server ${radius_server_ip}    exit
+
+Network Wpa Psk
+    [Arguments]    ${ac}    ${ap_network}    ${key}    ${cipher}
+    [Documentation]    功能：配置AP为wpa-psk接入方式。
+    ...    参数：ac、network_id、密钥、加密方式（tkip或ccmp）
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    security mode wpa-personal    wpa ciphers ${cipher}    wpa versions wpa    wpa key ${wpa_wpa2 key}
+    AC.Exec Cmd List In WirelessMode    ${ac}    end
+
+Network Wpa2 Psk
+    [Arguments]    ${ac}    ${ap_network}    ${key}    ${cipher}
+    [Documentation]    功能：配置AP为wpa2-psk接入方式。
+    ...    参数：ac、network_id、密钥、加密方式（tkip或ccmp）
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    security mode wpa-personal    wpa ciphers ${cipher}    wpa versions wpa2    wpa key ${wpa_wpa2 key}
+    AC.Exec Cmd List In WirelessMode    ${ac}    end
+
+Network Wpa Enterprise
+    [Arguments]    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher}
+    [Documentation]    功能：配置AP为wpa-enterprise接入方式。
+    ...    参数：ac、network_id、radius server name、加密方式（tkip或ccmp）
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    security mode wpa-enterprise    wpa ciphers ${cipher}    wpa versions wpa
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    radius accounting    radius server-name auth ${radius_server_name}    radius server-name acct ${radius_server_name}    end
+
+Network Wpa2 Enterprise
+    [Arguments]    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher}
+    [Documentation]    功能：配置AP为wpa2-enterprise接入方式。
+    ...    参数：ac、network_id、radius server name、加密方式（tkip或ccmp）
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    security mode wpa-enterprise    wpa ciphers ${cipher}    wpa versions wpa2
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    radius accounting    radius server-name auth ${radius_server_name}    radius server-name acct ${radius_server_name}    end
+
+Network Wpa/Wpa2 Enterprise
+    [Arguments]    ${ac}    ${ap_network}    ${radius_server_name}
+    [Documentation]    功能：配置AP为wpa/wpa2-enterprise混合接入方式。
+    ...    参数：ac、network_id、radius server name
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    security mode wpa-enterprise    wpa ciphers    wpa versions wpa wpa2
+    AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    radius accounting    radius server-name auth ${radius_server_name}    radius server-name acct ${radius_server_name}    end
+
+Init All Config
+    [Documentation]    功能：初始化所有配置
+    AP.Open Console    ${ap_console_ip}    ${ap_console_port}    ${ap}
+    Sta.Open SSH Connection    ${sta_ip}    ${sta}    ${sta_username}    ${sta_password}    ${sta_port}
+    AC.Open Console    ${ac_console_ip}    ${ac_console_port}    ${ac}
+    AP.Factory Reset    ${ap}
+    AC.Set Default    ${ac}
+    AC.Write Config    ${ac}
+    AC.Reload AC    ${ac}
+    Init AC Config
+    Globle Radius Config    ${ac}    ${radius_server_ip}    ${ac_wireless_ip}    ${radius_server_name}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    AC.Close Console    ${ac}
+    AP.Close Console    ${ap}
+    Sta.Close SSH Connection    ${sta}
+
+Uninit All Config
+    [Documentation]    功能：在所有测试例执行完后恢复初始配置
+    AP.Open Console    ${ap_console_ip}    ${ap_console_port}    ${ap}
+    AC.Open Console    ${ac_console_ip}    ${ac_console_port}    ${ac}
+    AP.Factory Reset    ${ap}
+    AP.Close Console    ${ap}
+    AC.Set Default    ${ac}
+    AC.Write Config    ${ac}
+    AC.Reload AC    ${ac}
+    AC.Close Console    ${ac}

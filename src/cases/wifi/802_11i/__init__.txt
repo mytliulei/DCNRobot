@@ -1,0 +1,11 @@
+*** Settings ***
+Documentation     测试拓扑:
+...               Radius Server-------------（1/0/1）AC（1/0/6）-----------AP~~~Client
+...               使用说明：
+...               1、不要自行任何修改keyword、测试case、Resource的实现，如果有异议请提bug按照正规流程跟踪；
+...               2、变量分成两种，802_11i_vars.txt和802_11i_vars_modifiable.txt，其中前者不建议修改，后者可以根据实际测试环境进行修改；
+...               3、搭建测试拓扑时端口号与本拓扑描述要一致；
+Suite Setup       Init All Config
+Suite Teardown    Uninit All Config
+Resource          802_11i_vars.txt
+Resource          802_11i_vars_modifiable.txt

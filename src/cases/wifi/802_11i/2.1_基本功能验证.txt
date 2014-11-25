@@ -1,0 +1,102 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          802_11i_vars.txt
+Resource          802_11i_vars_modifiable.txt
+
+*** Test Cases ***
+2.1.1 无线系统采用开放认证方式时，client使用OPEN方式能够认证成功
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.1.2 无线系统采用WEP方式时，client使用WEP能够认证成功
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111a    keytype=0
+    Run Keyword If    ${auth_result}==False    Sta Wep Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111a
+    ...    keytype=0
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.1.3无线系统采用WPA-PSK方式时，client使用WPA-PSK能够认证成功
+    Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.1.4 无线系统采用WPA-ENTERPRISE方式时，client使用WPA-ENTERPRISE能够认证成功
+    Network Wpa Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_ccmp}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    sleep    10s
+    ${auth_result}=    Sta Wpa Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_ccmp}
+    Run Keyword If    ${auth_result}==False    Sta Wpa Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}
+    ...    ${radius_password1}    ${cipher_ccmp}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.1.5 无线系统采用WPA2-PSK方式时，client使用WPA2-PSK能够认证成功
+    Network Wpa2 Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    sleep    ${sleep_time}
+    ${auth_result}=    Sta Wpa2 Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.1.6 无线系统采用WPA2-ENTERPRISE方式时，client使用WPA2-ENTERPRISE能够认证成功
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_ccmp}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_ccmp}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.1.7 当客户端进行需要radius配合的认证时，AP会将认证消息封装到radius-proxy-command消息中发送给UWS
+    Network Wpa Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    AC.Start Debug    ${ac}    debug wireless client-auth packet receive ${WIFI_AFFIRM_AP1_MAC}
+    Sta Wpa Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}    ${cipher_tkip}
+    ${flag}=    AC.Get Debug Output Until Expect    ${ac}    WIRELESS_AUTH_RADIUS_PROXY_COMMAND_MSG_PKT
+    Should Be True    ${flag}
+    AC.Stop Debug    ${ac}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}

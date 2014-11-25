@@ -1,0 +1,105 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          802_11i_vars.txt
+Resource          802_11i_vars_modifiable.txt
+
+*** Test Cases ***
+2.2.2 client使用开放式认证+WEP加密，使用错误的密钥可以关联成功，但无法进行通信
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=1111111110    keytype=1
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Not Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.2.3 client使用开放式认证+WEP加密，使用正确的密钥可以关联成功，能够进行正常通信（能ping通AP）
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=111111111a    keytype=1
+    Run Keyword If    ${auth_result}==False    Sta Wep Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=111111111a
+    ...    keytype=1
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.2.4 client使用WEP认证，使用正确的密钥无法关联成功
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=111111111a
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.2.5 client使用wpa-psk认证，使用正确的密钥无法关联成功
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    111111111a    ${cipher_tkip}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.2.6 client使用wpa2-psk认证，使用正确的密钥无法关联成功
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    111111111a    ${cipher_ccmp}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.2.7client使用wpa-enterprise认证，使用正确的密钥无法关联成功
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_tkip}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.2.8client使用wpa2-enterprise认证，使用正确的密钥无法关联成功
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_ccmp}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.2.9 当client成功关联到AP时，UWS将会收到AP发送的client Authentication消息（debug查看）
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    AC.Start Debug    ${ac}    debug wireless client-auth packet dump ${WIFI_AFFIRM_AP1_MAC}
+    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    ${flag}=    AC.Get Debug Output Until Expect    ${ac}    wireless_auth_client
+    Should Be True    ${flag}
+    AC.Stop Debug    ${ac}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.2.10 当client关联到AP失败时，查看Detected Clients表，该client会被加入到该表中，但状态被标识为detected
+    Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    111111111a    ${cipher_ccmp}
+    Should Not Be True    ${auth_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client detected-client status
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_STA1_MAC} \\s*\\bDetected\\b
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
