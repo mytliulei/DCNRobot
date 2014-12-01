@@ -1,0 +1,221 @@
+*** Settings ***
+Documentation     从远端服务器获取running-config文件并配置为running-config测试
+Suite Setup       Init Load Config Suite
+Suite Teardown    Uninit Load Config Suite
+Resource          ../resource_multi_img_multi_config.txt
+
+*** Variables ***
+${config_file_from_remote_server}    remote_server_config.cfg    # 远端服务器上配置文件
+${config_file_more_than_one_m}    config_file_1m.cfg    # 大于1M的配置文件
+${receive_data_timeout}    receive data timeout
+${load_config_end_regexp}    Loading running-config end    # 配置传输完成
+
+*** Test Cases ***
+Load Config From Remote Server.5.2.5.1
+    [Documentation]    通过TFTP或者FTP服务器，利用load running-config form WORD功能加载running-config文件到当前交换机，待出现Begin to receive …后show run来看此时交换机的配置应该变为远端服务器上配置文件的配置。
+    [Tags]    Load Config From Remote Server
+    [Setup]    Init STEP
+    Tools.Comment    Step1    通过tftp下载配置文件到交换机
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Load Config From Remote Server By Tftp    ${SERVER_IP}    ${config_file_from_remote_server}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    show running-config，存在新增的配置以及load running-config from命令行
+    Log Step Start    ${s1_alias}
+    ${command_list}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    ip igmp snooping    load running-config from tftp://${SERVER_IP}/${config_file_from_remote_server}
+    Check Running-config    ${command_list}    5    show running-config
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Load Config Test
+
+Load Config From Remote Server.5.2.5.2
+    [Documentation]    在配置命令时，配置一个错误的ip地址、关闭ftp或tftp服务器软件、或配置一个错误的文件名等等，观察交换机是否有错误提示打印信息，此时交换机应该无法成功加载配置
+    [Tags]    Load Config From Remote Server
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1_alias}    通过shutdown连接服务器的端口模拟关闭服务器软件
+    ${command_list}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    ip igmp snooping    monitor session 1 source interface Ethernet1/0/1
+    ...    monitor session 1 destination interface Ethernet1/0/2
+    Exec Cmd List In ConfigMode    ${s2_alias}    @{command_list}
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    shutdown
+    Sleep    5
+    ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
+    Should Not Be True    ${s2p2_status}    !!interface ${s2p2} \ is up!!
+    Load Config From Remote Server Fail By Tftp    ${SERVER_IP}    ${config_file_from_remote_server}    ${SERVER_IS_UNREACHABLE}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no load running-config
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    配置错误的ip地址，下载配置文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    no shutdown
+    Sleep    20
+    ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
+    Should Be True    ${s2p2_status}    !!interface ${s2p2} \ isn't up!!
+    Load Config From Remote Server Fail By Tftp    ${NOT_EXIESTED_SERVER_IP}    ${config_file_from_remote_server}    ${SERVER_IS_UNREACHABLE}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no load running-config
+    Check Running-config Fail    ${command_list}    6    show running-config
+    ##
+    Tools.Comment    Step3    源配置文件不存在
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Load Config From Remote Server Fail By Tftp    ${SERVER_IP}    111.cfg    ${SOURCE_FILE_IS_NOT_EXISED}
+    Check Running-config Fail    ${command_list}    6    show running-config
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Load Config Test
+
+Load Config From Remote Server.5.2.5.3
+    [Documentation]    在加载配置的过程中关掉ftp或者tftp软件或断开连接等后，交换机应该无法成功加载配置文件
+    [Tags]    Load Config From Remote Server
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1_alias}    升级加载配置文件
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Enable Mode    ${s1_alias}
+    Exec Cmd    ${s1_alias}    config
+    Telnet.Write    load running-config from tftp://${server_ip}/${config_file_more_than_one_m}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    通过shutdown连接服务器的端口模拟关闭服务器软件
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    shutdown
+    ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
+    Should Not Be True    ${s2p2_status}    !!interface ${s2p2} \ is up!!
+    Sleep    1 minutes
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    : FOR    ${index}    IN RANGE    1    20
+    \    Telnet.Write    ${EMPTY}
+    Enable Mode    ${s1_alias}
+    Telnet.Read
+    ${check_command_line}    Create List
+    : FOR    ${index}    IN RANGE    2    102
+    \    Collections.Append To List    ${check_command_line}    ip access-list extended acl_${index}
+    Check Running-config Fail    ${check_command_line}    100    show running-config
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Load Config Test For Reload
+
+Load Config From Remote Server.5.2.5.5
+    [Documentation]    load一个大于1M的配置文件，交换机能成功加载该配置且系统无异常反应
+    [Tags]    Load Config From Remote Server
+    [Setup]    Init STEP
+    Tools.Comment    Step1    TP1发送目的mac递增${packets_number_send}个的未知单播包${packets_number_send}个，流量为100Mbps，TP2和TP3都可以收到${packets_number_send}个数据包
+    Log Step Start    ${s1_alias}
+    Init Ixia
+    Set stream    @{testerp1}    dlf    ${stream_rate}    ${packets_number_send}    ${stream_type}    00-00-00-00-00-01
+    Exec Cmd List    ${s1_alias}    clear counters
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${packets_number_send}
+    Check Port Counter    ${s1p1}    ${packets_number_send}
+    ##
+    Tools.Comment    Step2    通过tftp下载一个大于1M的配置文件到交换机
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Exec Cmd    ${s1_alias}    config
+    Load Config From Remote Server By Tftp    ${SERVER_IP}    ${config_file_more_than_one_m}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    s1 show cpu 使用率，低于80%
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${check_cpu_utili}=    Exec Cmd    ${s1_alias}    show cpu utilization
+    ${cpu_utili}=    Get Value From String    ${check_cpu_utili}    Last 30 second CPU USAGE:\\s(.*)\%
+    ${ret}    Evaluate    ${cpu_utili}>=80
+    Run Keyword If    ${ret}    Fail    The cpu is over 80%!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    TP2能收到${packets_number_send}个数据包，${s1p1}能收到{packets_number_send}-${da_number}个数据包
+    Log Step Start    ${s1_alias}
+    ${receive_packets}    Evaluate    ${packets_number_send}-${da_number}
+    Exec Cmd List    ${s1_alias}    clear counters
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${packets_number_send}
+    Check Port Counter    ${s1p1}    ${receive_packets}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    TP2和${s1p1}都只能收到${packets_number_send_deny}-${da_number_deny}个数据包
+    Log Step Start    ${s1_alias}
+    Set stream    @{testerp1}    dlf    ${stream_rate}    ${packets_number_send_deny}    ${stream_type}    00-00-01-00-00-01
+    ${receive_packets}    Evaluate    ${packets_number_send_deny}-${da_number_deny}
+    Exec Cmd List    ${s1_alias}    clear counters
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${receive_packets}
+    Check Port Counter    ${s1p1}    ${receive_packets}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Load Config Test For Reload
+
+Load Config From Remote Server.5.2.5.6
+    [Documentation]    以另一台相同型号交换机作为ftp server，去load其文件系统内的配置文件，能够成功加载该配置且交换机无异常反应
+    [Tags]    Load Config From Remote Server
+    [Setup]    Init STEP
+    Tools.Comment    Step1    s2开启ftp服务器
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Exec Cmd List In ConfigMode    ${s2_alias}    ftp-server enable    interface vlan 1    ip address ${s2_server_ip} 255.255.255.0    exit    ip ftp username admin password 0 admin
+    Check Ping    ${s2_server_ip}
+    ${command_list}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    ip igmp snooping
+    Exec Cmd List In ConfigMode    ${s2_alias}    @{command_list}
+    Write Config    ${s2_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    s1从s2上下载配置文件
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${s2_server_ip}
+    Load Config From Remote Server By Ftp    ${s2_server_ip}    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Sleep    20
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    s1 show running-config，配置正确
+    Log Step Start    ${s1_alias}
+    Check Running-config    ${command_list}    4    show running-config
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    s1 show cpu 使用率，低于80%
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${check_cpu_utili}=    Exec Cmd    ${s1_alias}    show cpu utilization
+    ${cpu_utili}=    Get Value From String    ${check_cpu_utili}    Last 30 second CPU USAGE:\\s(.*)\%
+    ${ret}    Evaluate    ${cpu_utili}>=80
+    Run Keyword If    ${ret}    Fail    The cpu is over 80%!
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Load Config Test
+
+*** Keywords ***
+Init Load Config Suite
+    [Documentation]    初始化Load Config测试套
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Open Console    ${s2_ccm_ip}    ${s2_ccm_port}    ${s2_alias}
+    Enable Mode    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    watchdog disable    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Log Console    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
+
+Uninit Load Config Test
+    [Arguments]    ${alias}=${s1_alias}
+    [Documentation]    初始化配置
+    Enable Mode    ${alias}
+    Exec Cmd List    ${alias}    config    no monitor session 1 source interface ${s1p1}    no monitor session 1 destination interface ${s1p2}    no ip dhcp snooping enable    no ip igmp snooping
+    ...    no spanning-tree    no access-list 1    no mac-address-table static address 00-00-00-00-00-01 vlan 10 interface ${s1p1}    no ipv6 mld snooping    watchdog disable    no load running-config
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    no shutdown    exit    no ip igmp snooping    no access-list 1
+    ...    no ipv6 mld snooping    no interface vlan 1    no spanning-tree
+    Sleep    1 minutes
+    ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
+    Should Be True    ${s2p2_status}    !!interface ${s2p2} \ is not up!!
+
+Uninit Load Config Suite
+    [Documentation]    关闭串口
+    Close Console    ${s1_alias}
+    Close Console    ${s2_alias}
+
+Uninit Load Config Test For Reload
+    [Arguments]    ${alias}=${s1_alias}
+    Enable Mode    ${alias}
+    Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
+    Reload Switch Without Write    ${alias}
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    no shutdown

@@ -1,0 +1,323 @@
+*** Settings ***
+Documentation     多配置文件测试例
+Suite Setup       Init Multi Config Suite
+Suite Teardown    Uninit Multi Config Suite
+Resource          ../resource_multi_img_multi_config.txt
+
+*** Variables ***
+
+*** Test Cases ***
+multi_config.5.2.2.1
+    [Documentation]    通过boot startup-config文件可以正确地设置系统下次启动时的配置文件，通过show boot-files可以看到下次系统启动时的配置文件设置成功
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    img模式下设置startup-config为startup1.cfg
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    img模式下设置startup-config为null
+    Log Step Start    ${s1_alias}
+    Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.2
+    [Documentation]    设置启动时使用的配置文件后,系统默认使用设置的配置文件恢复配置
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    修改配置，并保存当前配置文件为startup1.cfg
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    spanning-tree
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Exec Cmd    ${s1_alias}    no spanning-tree
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    重启后以startup1.cfg配置文件恢复配置，端口s1p1加入vlan101，spanning使能
+    Log Step Start    ${s1_alias}
+    ${command_line}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config    ${command_line}    2    show running-config
+    Check Running-config    ${command_line}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_CURRENT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.3
+    [Documentation]    设置启动时使用的配置文件后,系统启动时找不到配置文件时,则使用出厂配置文件启动，启动后show boot-files看到此次启动文件为NULL，但下次启动时的配置文件没有变化，仍然是用户配置的
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    将启动配置文件设置为startup1.cfg
+    Log Step Start    ${s1_alias}
+    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    ipv6 mld snooping
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    将启动配置文件startup1.cfg删除
+    Log Step Start    ${s1_alias}
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    重启后，show boot-files看到此次启动文件为NULL，但下次启动时的配置文件仍然是startup1.cfg
+    Log Step Start    ${s1_alias}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_CURRENT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    show running-config,不存在上述配置
+    Log Step Start    ${s1_alias}
+    Check Running-config Fail    ${command_line}    4    show running-config
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.4
+    [Documentation]    设置启动时使用的配置文件后,系统启动时如果可以找到配置文件,但配置文件不是一个合法的startup-config文件,则使用出厂配置文件启动，启动后show boot-files看到此次启动文件为之前保存的非法文件的名称
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    下载一个非法的配置文件到交换机
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Updata In Img By    ${UPDATA_TYPE}    ${SERVER_IP}    ${INVALID_STARTUP_CONFIG_NAME}    ${BOOT_STARTUP1_CFG}
+    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    当前启动配置文件为startup1.cfg
+    Log Step Start    ${s1_alias}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_CURRENT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    show running-config,不存在上述配置
+    Log Step Start    ${s1_alias}
+    Check Running-config Fail    ${command_line}    3    show running-config
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.5
+    [Documentation]    系统保存一个名为null.cfg的配置恢复文件，并且null.cfg不同于null。然后配置启动文件名为startup1.cfg，而startup1.cfg文件不存在。系统应该以null文件恢复配置
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    保存当前配置为null.cfg
+    Log Step Start    ${s1_alias}
+    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    ipv6 mld snooping
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+    Write Running-Config    ${BOOT_NULL_CFG}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    配置当前启动配置文件为startup1.cfg
+    Log Step Start    ${s1_alias}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    重启后，当前启动配置为null
+    Log Step Start    ${s1_alias}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_CURRENT_STARTUP_CONFIG}
+    Check Running-config Fail    ${command_line}    4    show running-config
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.6
+    [Documentation]    系统保存一个名为null.cfg的配置恢复文件，并且null.cfg不同于null。设置下次启动时的配置恢复文件为null.cfg。交换机重启后以null.cfg进行配置恢复，而不是以出厂配置即null进行配置恢复
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    保存当前配置为null.cfg
+    Log Step Start    ${s1_alias}
+    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    ipv6 mld snooping
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+    Write Running-Config    ${BOOT_NULL_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    配置当前启动配置文件为null.cfg
+    Log Step Start    ${s1_alias}
+    Boot Startup-config With Postfix    ${BOOT_NULL_CFG}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    重启后，当前启动配置为null.cfg
+    Log Step Start    ${s1_alias}
+    Check Running-config    ${command_line}    4    show running-config
+    Check Boot-files startup-config    ${BOOT_NULL_CFG}    ${BOOT_CURRENT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.7
+    [Documentation]    show running-config显示的是此时交换机的配置
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    修改配置
+    Log Step Start    ${s1_alias}
+    ${command_line}    Create List    monitor session 1 source interface ${s1p1}    monitor session 1 destination interface ${s1p2}    spanning-tree    ip dhcp snooping enable    ip igmp snooping
+    ...    ipv6 mld snooping    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2    access-list 1 deny any-source
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    show running-config查看配置，存在上述配置
+    Log Step Start    ${s1_alias}
+    ${check_command_line}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    interface Vlan1    ip address ${HOST_IP} 255.255.255.0
+    ...    ip igmp snooping    ipv6 mld snooping    ip route 100.1.0.0/16 100.1.1.2    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}
+    Check Running-config    ${check_command_line}    11    show running-config
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    新增配置，show running-config，存在新增的配置
+    Log Step Start    ${s1_alias}
+    ${check_command_line}    Create List    mac-address-table static address 00-00-00-00-00-01 vlan 10 interface ${s1p1}
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{check_command_line}
+    Check Running-config    ${check_command_line}    1    show running-config
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.8
+    [Documentation]    show startup-config显示的是最近一次所保存的配置
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    修改配置
+    Log Step Start    ${s1_alias}
+    ${command_line}    Create List    monitor session 1 source interface ${s1p1}    monitor session 1 destination interface ${s1p2}    spanning-tree    ip dhcp snooping enable    ip igmp snooping
+    ...    ipv6 mld snooping    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2    access-list 1 deny any-source
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+    Write Config    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    show startup.cfg查看配置，存在上述配置
+    Log Step Start    ${s1_alias}
+    ${check_command_line}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    interface Vlan1    ip address ${HOST_IP} 255.255.255.0
+    ...    ip igmp snooping    ipv6 mld snooping    ip route 100.1.0.0/16 100.1.1.2    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}
+    Check Running-config    ${check_command_line}    11    show startup-config ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    新增配置，show running-config startup.cfg查看，不存在新增的配置
+    Log Step Start    ${s1_alias}
+    ${check_command_line}    Create List    mac-address-table static address 00-00-00-00-00-01 vlan 10 interface ${s1p1}
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{check_command_line}
+    Check Running-config Fail    ${check_command_line}    1    show startup-config ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Write Config    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    保存配置，show running-config startup.cfg查看，存在新增的配置
+    Log Step Start    ${s1_alias}
+    Check Running-config    ${check_command_line}    1    show startup-config ${BOOT_STARTUP_CONFIG_DEFAULT}
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.11
+    [Documentation]    bootrom下可以配置系统启动的配置文件，配置功能正确
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    img下保存配置文件为null.cfg和startup1.cfg
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Write Running-Config    ${BOOT_NULL_CFG}
+    Enter BootRom From Img    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    boot下设置启动配置文件为null.cfg
+    Log Step Start    ${s1_alias}
+    Boot Startup-config With Postfix    ${BOOT_NULL_CFG}
+    Check Boot-files startup-config    ${BOOT_NULL_CFG}    ${BOOT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    boot下设置启动配置文件为startup1.cfg
+    Log Step Start    ${s1_alias}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Reboot From Bootrom    ${s1_alias}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.12
+    [Documentation]    bootrom下可以配置系统启动的配置文件为null，即出厂配置，配置生效
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    修改配置，保存
+    Log Step Start    ${s1_alias}
+    ${command_line}    Create List    monitor session 1 source interface ${s1p1}    monitor session 1 destination interface ${s1p2}    spanning-tree    ip dhcp snooping enable    ip igmp snooping
+    ...    ipv6 mld snooping    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2    access-list 1 deny any-source
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+    Write Config    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    img模式下进入bootrom模式
+    Log Step Start    ${s1_alias}
+    Enter BootRom From Img    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    boot下设置启动配置为null
+    Log Step Start    ${s1_alias}
+    Boot Startup-config In Bootrom Without Postfix    ${BOOT_NULL}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_STARTUP_CONFIG}
+    Reboot From Bootrom    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    show running-config查看，不存在上述配置
+    Log Step Start    ${s1_alias}
+    ${check_command_line}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    interface Vlan1    ip address ${HOST_IP} 255.255.255.0
+    ...    ip igmp snooping    ipv6 mld snooping    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}    ip route 100.1.0.0/16 100.1.1.2
+    Check Running-config Fail    ${check_command_line}    11    show running-config
+    [Teardown]    Uninit Multi Config Test
+
+multi_config.5.2.2.13
+    [Documentation]    配置启动配置文件时,只能为.cfg为后缀的文件或null,其它文件配置无效,提示错误信息
+    [Tags]    Multi Config
+    [Setup]    Init STEP
+    Tools.Comment    Step1    生成startup1.cfg和null.cfg文件
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Write Running-Config    ${BOOT_NULL_CFG}
+    Log Step End    ${s1_alias}
+    Tools.Comment    Step2    配置启动文件为startup1，提示错误信息，show boot-files没变
+    Log Step Start    ${s1_alias}
+    Boot Startup-config In Img Without Postfix    startup1
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    Tools.Comment    Step3    配置启动文件为NULL，可以配置成功
+    Log Step Start    ${s1_alias}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Multi Config Test
+
+*** Keywords ***
+Init Multi Config Suite
+    [Documentation]    初始化多配置文件测试套
+    ...    设置启动配置为NULL
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Switch.Enable Mode    ${s1_alias}    #设备进入Enable模式，同时执行terminal length 0，以防止--more--
+    Switch.Exec Cmd    ${s1_alias}    exec-timeout 0
+    Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
+    Log Console    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
+
+Uninit Multi Config Test
+    Enable Mode    ${s1_alias}
+    Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    Delete Files    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Delete Files    ${BOOT_NULL_CFG}
+    ${command_line}    Create List    no monitor session 1 source interface ${s1p1}    no monitor session 1 destination interface ${s1p2}    no spanning-tree    no ip dhcp snooping enable    watchdog disable
+    ...    no ip route 100.1.0.1 255.255.0.0    no access-list 1    no mac-address-table static address 00-00-00-00-00-01 vlan 10 interface ${s1p1}    no vlan 101    no ip igmp snooping    no ipv6 mld snooping
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+
+Uninit Multi Config Suite
+    [Documentation]    关闭串口
+    Close Console    ${s1_alias}

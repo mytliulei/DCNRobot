@@ -1,0 +1,14 @@
+*** Variables ***
+${IXIA_StreamRateMode_bps}    2
+${IXIA_StreamRateMode_pps}    1
+${IXIA_StreamRateMode_pencent}    0
+${IXIA_StreamMode_continue}    0
+${IXIA_StreamMode_stop}    1
+${IXIA_StreamMode_next}    2
+${IXIA_StreamMode_return}    3
+${stream_type}    pps    # 发送流量类型，包括bps和pps
+${stream_rate}    100000000    # 发送流量速率100Mbps
+${da_number}      15000    # 目的mac递增个数
+${da_number_deny}    100    # deny掉的mac个数
+${packets_number_send}    30000    # 配置静态mac后，发送报文数
+${packets_number_send_deny}    200    # 配置deny规则后，打入数据包数

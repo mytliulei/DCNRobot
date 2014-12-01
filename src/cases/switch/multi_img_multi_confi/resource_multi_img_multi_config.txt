@@ -1,0 +1,483 @@
+*** Settings ***
+Resource          vars_topo.txt
+Library           Collections
+Resource          vars_globle.txt
+Resource          ../../../resource/Switch.txt
+Resource          vars_ixia.txt
+Resource          ../../../resource/ixiasend.txt
+Resource          proc.txt
+
+*** Variables ***
+
+*** Keywords ***
+Updata In Img By
+    [Arguments]    ${updata_type}    ${server_ip}    ${source_file_name}    ${dest_file_name}
+    [Documentation]    在img下升级img，可以通过ftp或tftp方式
+    Run Keyword    Updata In Img By ${updata_type}    ${server_ip}    ${source_file_name}    ${dest_file_name}
+
+Updata In Img By Tftp
+    [Arguments]    ${server_ip}    ${source_file_name}    ${dest_file_name}    ${begin_to_receive}=${BEGIN_TO_RECEIVE}    ${timeout}=20 minutes    ${updata_success}=${UPDATA_SUCCESS_REGEXP}
+    [Documentation]    通过tftp方式在img下升级img
+    ...    ${server_ip}：tftp服务器ip地址
+    ...    ${source_file_name}：img文件名
+    ...    ${dest_file_name}：write img文件名
+    Enable Mode    ${s1_alias}
+    Telnet.Write    copy tftp://${server_ip}/${source_file_name} ${dest_file_name}
+    Telnet.Set Timeout    ${timeout}
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    ${begin_to_receive}    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Regexp    ${begin_to_receive}
+    Telnet.Read Until Regexp    ${updata_success}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Updata In Img By Ftp
+    [Arguments]    ${server_ip}    ${source_file_name}    ${dest_file_name}    ${username}=${USERNAME_FTP}    ${password}=${PASSWORD_FTP}    ${timeout}=20 minutes
+    ...    ${updata_success}=${UPDATA_SUCCESS_REGEXP}
+    [Documentation]    通过ftp方式在img下升级img
+    ...    ftp服务器用户名密码默认为admin/admin
+    Enable Mode    ${s1_alias}
+    Telnet.Write    copy ftp://${usrename}:${password}@${server_ip}/${source_file_name} ${dest_file_name}
+    Telnet.Set Timeout    ${timeout}
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#    Opening data connection for ${source_file_name}
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Regexp    Opening data connection for ${source_file_name}
+    Run Keyword If    ${writeFlag}==False    Should Contain    ${output}    Opening data connection for ${source_file_name}
+    Telnet.Read Until Regexp    ${updata_success}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Force Updata In Img By Tftp
+    [Arguments]    ${server_ip}    ${source_file_name}    ${dest_file_name}    ${begin_to_receive}=${BEGIN_TO_RECEIVE}    ${timeout}=20 minutes    ${updata_success}=${UPDATA_SUCCESS_REGEXP}
+    [Documentation]    通过tftp方式在img下升级img
+    ...    ${server_ip}：tftp服务器ip地址
+    ...    ${source_file_name}：img文件名
+    ...    ${dest_file_name}：write img文件名
+    Enable Mode    ${s1_alias}
+    Telnet.Write    fcopy tftp://${server_ip}/${source_file_name} ${dest_file_name}
+    Telnet.Set Timeout    ${timeout}
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#    ${begin_to_receive}
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Regexp    ${begin_to_receive}
+    Run Keyword If    ${writeFlag}==False    Should Contain    ${output}    ${begin_to_receive}
+    Telnet.Read Until Regexp    ${updata_success}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Boot
+    [Arguments]    ${boot_type}    ${boot_file_name}    ${img_boot_priority}
+    [Documentation]    img模式下设置img或startup-config启动配置
+    Run Keyword    Boot ${boot_type}    ${boot_file_name}    ${img_boot_priority}
+
+Boot Img
+    [Arguments]    ${img_name}    ${img_boot_priority}
+    [Documentation]    img模式下设置img启动顺序
+    ...    img_boot_priority:启动顺序
+    Enable Mode    ${s1_alias}
+    ${set_result}=    Exec Cmd    ${s1_alias}    boot img ${img_name} ${img_boot_priority}
+    ${flag}=    Tools.Is Match From String    ${img_name}    img
+    ${set_response_regexp_a}=    Set Variable If    ${flag}==True    ${img_name} will be used as the ${img_boot_priority} img file at the next time
+    ${set_response_regexp_b}=    Set Variable If    ${flag}==False    ${SET_IMG_BOOT_WITHOUT_POSTFIX_IN_IMG}
+    ${set_response_regexp_c}=    Set Variable If    ${flag}==False    ${SET_IMG_BOOT_WITHOUT_POSTFIX_IN_BOOT}
+    ${check_result_a}    Tools.Is Match From String    ${set_result}    ${set_response_regexp_a}
+    ${check_result_b}    Tools.Is Match From String    ${set_result}    ${set_response_regexp_b}
+    ${check_result_c}    Tools.Is Match From String    ${set_result}    ${set_response_regexp_c}
+    ${check_result_b_and_c}    Evaluate    ${check_result_b} or ${check_result_c}
+    Run Keyword If    ${check_result_a} ==False    Fail    Set ${img_name} as boot ${img_boot_priority} fail!
+    Run Keyword If    ${check_result_b_and_c} ==False    Fail    Set boot img without postfix fail!
+
+Check Boot-files img
+    [Arguments]    ${boot_check_regexp}    ${number_check}
+    [Documentation]    查询设置img启动配置是否成功
+    ...    primary:${boot_primary_img_name}
+    ...    backup:${boot_back_img_name}
+    ...    current booted:${boot_primary_img_name}
+    Enable Mode    ${s1_alias}
+    ${ret}=    Exec Cmd    ${s1_alias}    show boot-files
+    ${boot_priority}=    Create List    ${BOOT_PRIMARY_IMG}    ${BOOT_BACKUP_IMG}    ${BOOT_CURRENT_IMG}
+    ${boot_pri_resl_list}=    Create List
+    : FOR    ${index}    IN RANGE    ${number_check}
+    \    ${boot_pri_resl}=    Tools.Get Value From String    ${ret}    .*?@{boot_priority}[${index}](.*)\\s+
+    \    Collections.Append To List    ${boot_pri_resl_list}    ${boot_pri_resl}
+    : FOR    ${index}    IN RANGE    ${number_check}
+    \    ${check_result}=    Tools.Is Match From String    @{boot_pri_resl_list}[${index}]    @{boot_check_regexp}[${index}]
+    \    Run Keyword If    ${check_result}==False    Fail    Set boot img fail!
+    [Return]    ${check_result}
+
+Check Running-config
+    [Arguments]    ${check_config_command}    ${number_config_command}    ${check_command_line}    ${timeout}=60 minutes    # 需要查询的配置命令
+    [Documentation]    show running-config配置是否成功下发
+    Enable Mode    ${s1_alias}
+    Telnet.Set Timeout    ${timeout}
+    Telnet.Write    ${check_command_line}
+    ${set_result}    Telnet.Read Until Prompt
+    Telnet.Set Timeout    ${sw_timeout}
+    : FOR    ${index}    IN RANGE    ${number_config_command}
+    \    ${check_result}=    Tools.Is Match From String    ${set_result}    @{check_config_command}[${index}]
+    \    Run Keyword If    ${check_result}==False    Fail    There is not @{check_config_command}[${index}]!
+
+Check Version
+    [Arguments]    ${boot_img_name}    ${alias}=${s1_alias}
+    [Documentation]    设置启动img是否成功
+    ...    boot_img_name:设置的启动img名称
+    Enable Mode    ${alias}
+    ${ret}=    Exec Cmd    ${alias}    Show Version
+    ${img_version}=    Tools.Is Match From String    ${ret}    ${boot_img_name}
+    Run Keyword If    ${img_version}== False    Fail    The boot img version is wrong!
+    [Return]    ${img_version}
+
+Check Ping
+    [Arguments]    ${server_ip}
+    [Documentation]    ping服务器
+    Enable Mode    ${s1_alias}
+    ${ret}=    Exec Cmd    ${s1_alias}    ping ${server_ip}
+    Sleep    10
+    ${ret}=    Exec Cmd    ${s1_alias}    ping ${server_ip}
+    Sleep    10
+    ${check_result}=    Tools.Get Value From String    ${ret}    .*?Success rate is\\s(.*?)\\spercent
+    Log    ${check_result}
+    Run Keyword If    ${check_result}==0    Fail    The server is not alive
+    [Return]    ${check_result}
+
+Check Boot Primary Fail
+    [Arguments]    ${number_boot_fail_regexp}    ${boot_fail_regexp}    ${timeout}=10 minutes
+    [Documentation]    第一、二img都启动失败
+    Telnet.Set Timeout    ${timeout}
+    : FOR    ${index}    IN RANGE    ${number_boot_fail_regexp}
+    \    Telnet.Read Until Regexp    @{boot_fail_regexp}[${index}]
+    Telnet.Read Until Regexp    ${sw_regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Check Boot-files startup-config
+    [Arguments]    ${boot_startup_config_name}    ${check_startup_config_regexp}
+    [Documentation]    查询startup-config启动配置是否成功
+    ...    设置启动配置为${boot_startup_config_name}
+    ...    设置启动配置查询字段:${check_startup_config_regexp}
+    Enable Mode    ${s1_alias}
+    Telnet.Write    show boot-files
+    ${ret}    Telnet.Read Until Prompt
+    ${boot_startup_resl}=    Tools.Get Value From String    ${ret}    .*?${check_startup_config_regexp}(.*)\\s+
+    ${check_result_startup}=    Tools.Is Match From String    ${boot_startup_resl}    ${boot_startup_config_name}
+    Run Keyword If    ${check_result_startup}== False    Fail    Set ${boot_startup_config_name} as boot startup-config fail!
+
+Write Running-Config
+    [Arguments]    ${boot_startup_config_name}
+    [Documentation]    保存当前配置到${boot_startup_config_name}
+    Switch.Enable Mode    ${s1_alias}
+    Telnet.Write    write running-config ${boot_startup_config_name}
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]:    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]:
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Prompt
+    Run Keyword Unless    ${writeFlag}    Telnet.Read
+
+Boot Startup-config In Bootrom Without Postfix
+    [Arguments]    ${boot_startup_config_name}
+    [Documentation]    bootrom下设置启动配置文件
+    ...    bootrom下设置启动配置文件，配置文件不带后缀.cfg，分为null和startup1两种情况
+    Enable Mode    ${s1_alias}
+    ${set_result}=    Exec Cmd    ${s1_alias}    boot startup-config ${boot_startup_config_name}
+    ${flag}=    Tools.Is Match From String    ${boot_startup_config_name}    ${BOOT_NULL}
+    ${set_response_regexp_a}=    Set Variable If    ${flag}==False    ${SET_STARTUP_CONFIG_WITHOUT_POSTFIX_IN_BOOT}
+    ${set_response_regexp_b}=    Set Variable If    ${flag}==True    ${BOOT_NULL_REGEXP}
+    ${check_result_a}    Tools.Is Match From String    ${set_result}    ${set_response_regexp_a}
+    Log    ${check_result_a}
+    ${check_result_b}=    Tools.Is Match From String    ${set_result}    ${set_response_regexp_b}
+    Log    ${check_result_b}
+    Run Keyword If    ${check_result_a} ==False    Fail    Set ${startup_config_name} as boot startup-config fail!
+    Run Keyword If    ${check_result_b}==False    Fail    Set boot startup null fail!
+
+Boot Startup-config In Img Without Postfix
+    [Arguments]    ${boot_startup_config_name}
+    [Documentation]    设置启动配置文件，配置文件不带后缀.cfg，包括startup1和null两种情况
+    Enable Mode    ${s1_alias}
+    ${set_result}=    Exec Cmd    ${s1_alias}    boot startup-config ${boot_startup_config_name}
+    ${flag}    Tools.Is Match From String    ${boot_startup_config_name}    ${BOOT_NULL}
+    Run Keyword If    ${flag}==False    Should Contain    ${set_result}    ${SET_STARTUP_CONFIG_WITHOUT_POSTFIX_IN_IMG}
+    Run Keyword If    ${flag}==True    Should Contain    ${set_result}    NULL(factory config) will be used as the startup-config file at the next time!
+
+Boot Startup-config With Postfix
+    [Arguments]    ${boot_startup_config_name}
+    [Documentation]    设置启动配置文件带后缀，img和bootrom下相同
+    Enable Mode    ${s1_alias}
+    ${set_result}=    Exec Cmd    ${s1_alias}    boot startup-config ${boot_startup_config_name}
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${boot_startup_config_name} ${BOOT_STARTUP_CONFIG_REGEXP}
+    Log    ${check_result}
+    Run Keyword If    ${check_result} ==False    Fail    Set ${boot_startup_config_name} as boot startup-config fail!
+
+Reboot From Bootrom
+    [Arguments]    ${alias}    ${wait}=60    ${regexp_reload}=${sw_regexp_reload}    ${timeout}=20 minutes
+    [Documentation]    从bootrom模式reboot重启
+    Telnet.Switch Connection    ${alias}
+    Telnet.Write    reboot
+    Telnet.Set Timeout    ${timeout}
+    Telnet.Read Until Regexp    ${regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    ${wait}
+    Telnet.Read
+    Switch.Enable Mode    ${alias}
+    Switch.Set Exec TimeOut    ${alias}
+
+Delete Files
+    [Arguments]    ${delete_file}    ${alias}=${s1_alias}    ${level}=WARN    ${timeout}=20 minutes
+    Enable Mode    ${alias}
+    Telnet.Write    delete ${delete_file}
+    Telnet.Set Timeout    ${timeout}
+    ${output}=    Telnet.Read Until Regexp    \\(Y/N\\)    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#    Can't find file "flash:/${delete_file}
+    Telnet.Set Timeout    ${sw_timeout}
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\(Y/N\\)
+    ${ret}=    Tools.Is Match From String    ${output}    Can't find file "flash:/${delete_file}
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${ret}    Log    There is not ${delete_file},please check!
+    Telnet.Read
+
+Write Running-config To Default
+    [Arguments]    ${alias}
+    Switch.Enable Mode    ${alias}
+    Telnet.Write    write running-con
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]:    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]:
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Prompt
+    Run Keyword Unless    ${writeFlag}    Telnet.Read
+
+Set Default And Reload
+    [Arguments]    ${alias}
+    [Documentation]    恢复出厂配置
+    Set Default    ${alias}
+    Reload Switch    ${alias}
+
+Write Running-Config Error
+    [Arguments]    ${alias}    ${boot_startup_config_name}
+    [Documentation]    保存当前配置到错误的配置文件名或错误的设备名
+    Enable Mode    ${alias}
+    ${set_result}    Exec Cmd    ${alias}    write running-config ${boot_startup_config_name}
+    [Teardown]    ${set_result}
+
+Check Running-config Fail
+    [Arguments]    ${check_config_command}    ${number_config_command}    ${check_command_line}    ${timeout}=20 minutes
+    [Documentation]    查询不到相关配置
+    Enable Mode    ${s1_alias}
+    Telnet.Set Timeout    ${timeout}
+    Telnet.Write    ${check_command_line}
+    ${ret}    Telnet.Read Until Regexp    end
+    Telnet.Set Timeout    ${sw_timeout}
+    : FOR    ${index}    IN RANGE    ${number_config_command}
+    \    ${check_result}=    Tools.Is Match From String    ${ret}    @{check_config_command}[${index}]
+    \    Run Keyword If    ${check_result}==True    Fail    There is @{check_config_command}[${index}]!
+
+Write Running-Config To Existed File
+    [Arguments]    ${alias}    ${existed_file_name}    ${command_line}    ${command_line_times}    # 保存当前配置到已存在的文件名，输入y、n或者\r，以及输入次数
+    Enable Mode    ${alias}
+    Telnet.Write    write running-config ${existed_file_name}
+    ${output}=    Telnet.Read Until Regexp    Confirm to overwrite the existed destination file \\[Y/N\\]:
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]:
+    Run Keyword If    ${writeFlag}==False    Fail    There is not yes or no mention!
+    : FOR    ${index}    IN RANGE    ${command_line_times}
+    \    Run Keyword If    ${writeFlag}    Telnet.Write    ${command_line}
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Prompt
+    Run Keyword Unless    ${writeFlag}    Telnet.Read
+
+Reload Switch Without Write
+    [Arguments]    ${alias}    ${write}=${True}    ${wait}=60    ${regexp_reload}=${sw_regexp_reload}    ${timeout}=20 minutes
+    [Documentation]    不保存配置，重启交换机
+    Enable Mode    ${alias}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    ${timeout}
+    Telnet.Read Until Regexp    ${regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    ${wait}
+    Telnet.Read
+    Switch.Enable Mode    ${alias}
+    Switch.Set Exec TimeOut    ${alias}
+
+Updata In Img By Tftp Fail
+    [Arguments]    ${server_ip}    ${source_file_name}    ${dest_file_name}    ${error_code}    ${begin_to_receive}=${BEGIN_TO_RECEIVE}    ${timeout}=5 minutes
+    [Documentation]    升级失败，包括ping不通服务器，源文件不存在，目标文件名错误三种情况
+    Telnet.Write    copy tftp://${server_ip}/${source_file_name} ${dest_file_name}
+    Telnet.Set Timeout    ${timeout}
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Regexp    ${begin_to_receive}
+    Run Keyword If    ${writeFlag}==False    Should Contain    ${output}    ${begin_to_receive}
+    Run Keyword If    ${writeFlag}==False    Should Contain    ${output}    ${error_code}
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Regexp    ${error_code}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Load Config From Remote Server By Tftp
+    [Arguments]    ${server_ip}    ${source_file_name}    ${begin_to_receive}=${BEGIN_TO_RECEIVE}    ${timeout}=60 minutes    ${load_config_end}=${load_config_end_regexp}
+    [Documentation]    从远程服务器下载配置
+    Enable Mode    ${s1_alias}
+    Exec Cmd    ${s1_alias}    config
+    Telnet.Write    load running-config from tftp://${server_ip}/${source_file_name}
+    Telnet.Set Timeout    ${timeout}
+    Telnet.Read Until Regexp    ${begin_to_receive}
+    Telnet.Read Until Regexp    ${load_config_end}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Load Config From Remote Server Fail By Tftp
+    [Arguments]    ${server_ip}    ${source_file_name}    ${error_code}    ${begin_to_receive}=${BEGIN_TO_RECEIVE}    ${timeout}=10 minutes
+    [Documentation]    升级失败，包括ping不通服务器，源文件不存在，目标文件名错误三种情况
+    Enable Mode    ${s1_alias}
+    Exec Cmd    ${s1_alias}    config
+    Telnet.Write    load running-config from tftp://${server_ip}/${source_file_name}
+    Telnet.Set Timeout    ${timeout}
+    Telnet.Read Until Regexp    ${error_code}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Load Config From Remote Server By Ftp
+    [Arguments]    ${server_ip}    ${source_file_name}    ${username}=${USERNAME_FTP}    ${password}=${PASSWORD_FTP}    ${timeout}=60 minutes    ${load_config_end}=${load_config_end_regexp}
+    [Documentation]    通过ftp从远程服务器上下载配置
+    Enable Mode    ${s1_alias}
+    Exec Cmd    ${s1_alias}    config
+    Telnet.Write    load running-config from ftp://${username}:${password}@${server_ip}/${source_file_name}
+    Telnet.Set Timeout    ${timeout}
+    ${output}=    Telnet.Read Until Regexp    226 transfer complete
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Regexp    226 transfer complete
+    Telnet.Read Until Regexp    ${load_config_end}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Check Boot Backup Fail
+    [Arguments]    ${number_boot_fail_regexp}    ${boot_fail_regexp}    ${timeout}=10 minutes
+    [Documentation]    第一和第二启动img都失败
+    Telnet.Set Timeout    ${timeout}
+    : FOR    ${index}    IN RANGE    ${number_boot_fail_regexp}
+    \    Telnet.Read Until Regexp    @{boot_fail_regexp}[${index}]
+    Telnet.Set Timeout    ${sw_timeout}
+
+Boot From Error
+    [Arguments]    ${alias}=${s1_alias}    ${regexp_testram}=Testing RAM    ${regexp_bootrom}=\\[Boot\\]    ${timeout}=3 minutes
+    [Documentation]    交换机出现异常后进入boot，然后修改nos.img启动
+    Telnet.Set Timeout    ${timeout}
+    Telnet.Write    \x02
+    Telnet.Read Until Regexp    ${regexp_bootrom}
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    Exec Cmd    ${alias}    boot img ${BOOT_BACKUP_IMG_NAME} Primary
+
+Copy img
+    [Arguments]    ${alias}    ${nos1}    ${nos2}    ${timeout}=20 minutes    ${updata_success}=${UPDATA_SUCCESS_REGEXP}    ${begin_to_receive}=Begin to write local file, please wait
+    [Documentation]    copy nos1.img nos2.img
+    Telnet.Write    copy ${nos1} ${nos2}
+    Telnet.Set Timeout    ${timeout}
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    ${begin_to_receive}    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    Run Keyword If    ${writeFlag}    Telnet.Read Until Regexp    ${begin_to_receive}
+    Telnet.Read Until Regexp    ${updata_success}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Show Switch Information
+    [Arguments]    ${alias}=${s1_alias}
+    Switch.Enable Mode    ${alias}
+    ${output}=    Switch.Exec Cmd List    ${alias}    show versi    show vendor
+    Log    ${output}
+
+Send Stream And Check
+    [Arguments]    ${sport_chassis}    ${sport_card}    ${sport_port}    ${dport_chassis}    ${dport_card}    ${dport_port}
+    ...    ${received_type}    ${received_packets}    ${tolerance}=${0.01}    ${clear_tag}=True    ${transmit_tag}=False    ${stop_trans_tag}=False
+    [Documentation]    \“清除计数”-->“发送流量”-->“检查流量”-->"停止流量发送"
+    ...
+    ...    \ args:
+    ...    \- ${sport_chassis} ${sport_card} ${sport_port} #发送端口
+    ...    \- ${dport_chassis} ${dport_card} ${dport_port}#接收端口
+    ...    \- ${received_type}#接收流量单位(bps,pps)
+    ...    \- ${received_packets}#预期接收包数
+    ...    \- ${tolerance}#误差范围,缺省为0.01,即1%的误差
+    ...    \- ${clear_tag} #check前,是否先清除计数，缺省清除
+    ...    \- ${transmit_tag} #check前,是否控制流量发送,缺省发送
+    ...    \- ${stop_trans_tag} #check后,是否停止流量发送,缺省停止发送流量
+    @{sport}=    Set Variable    ${sport_chassis}    ${sport_card}    ${sport_port}
+    @{dport}=    Set Variable    ${dport_chassis}    ${dport_card}    ${dport_port}
+    Run Keyword If    ${transmit_tag}==True    Ixiasend.Start Transmit    @{sport}
+    ${ret}    Check Send Receive    @{sport}    @{dport}    ${received_type}    ${received_packets}    ${tolerance}
+    Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n ${STEP} check stream \ error!
+    #若检查有误, 则debug交换机
+    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p1}
+    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p2}
+    Run Keyword If    ${stop_trans_tag}==True    Ixiasend.Stop Transmit    @{sport}
+    [Return]    ${ret}
+
+Set stream
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_type}    ${stream_rate}    ${dmac_number}
+    ...    ${stream_rate_mode}    ${dmac}    ${stream_id}=${1}    ${stream_mode}=${IXIA_StreamMode_stop}    ${reset}=True    ${numPacket}=${packets_number_send}
+    ...    ${returnID}=${1}
+    [Documentation]    \ args:
+    ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
+    ...    \- ${stream_type} #流量类型(broadcast,multicast,unicast,dlf)
+    ...    \- ${stream_rate}#流量速率
+    ...    \- ${stream_rate_mode} #流量模式(bps,pps,percent)
+    ...    \- ${stream_id}#发送流序号,缺省为1
+    ...    \- ${stream_mode} #发送模式，continue，stop，next，return to id，缺省为continue
+    ...    \- ${reset} #当reset为True时则reset ixia端口模式，否则不reset; 缺省不reset
+    ${stream_rate_mode_set}=    Set Variable If    '${stream_rate_mode}'=='bps'    ${IXIA_StreamRateMode_bps}    '${stream_rate_mode}'=='pps'    ${IXIA_StreamRateMode_pps}    '${stream_rate_mode}'=='pencent'
+    ...    ${IXIA_StreamRateMode_pencent}
+    @{sport}=    Set Variable    ${tp_chassis}    ${tp_card}    ${tp_port}
+    Run Keyword If    ${reset}==True    Ixia.Set Port Mode Default    @{sport}
+    Run Keyword    Set stream ${stream_type}    @{sport}    ${stream_rate}    ${da_number}    ${stream_rate_mode_set}    ${dmac}
+    ...    ${stream_id}    ${stream_mode}    ${numPacket}    ${returnID}
+
+Set stream dlf
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${dmac_number}    ${stream_rate_mode}
+    ...    ${dmac}    ${stream_id}    ${stream_mode}=${IXIA_StreamMode_stop}    ${numPacket}=${packets_number_send}    ${returnID}=${1}
+    [Documentation]    设置广播流
+    [Timeout]
+    ${dict}    Make Kwargs    daRepeatCounter=0    numDA=${packets_number_send}
+    Ixiasend.Build Ether    ${dmac}    00:00:00:00:0d:01    kwargs=${dict}
+    Ixiasend.Build Packet    ${64}
+    Ixiasend.Set Stream Packet By Api    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+Set stream unicast
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_id}
+    ...    ${stream_mode}=${IXIA_StreamMode_continue}    ${numPacket}=${1}    ${returnID}=${1}
+    [Documentation]    设置广播流
+    [Timeout]
+    Ixiasend.Build Ether    dst=${STATIC_UNICAST_MAC}    src=00:00:00:00:0c:0c
+    Ixiasend.Build Ip    dst=10.1.1.1    src=20.1.1.1
+    Ixiasend.Build Packet    ${64}
+    Ixiasend.Set Stream Packet By Api    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+Set stream ip
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_id}
+    ...    ${stream_mode}=${IXIA_StreamMode_continue}    ${numPacket}=${1}    ${returnID}=${1}    ${dst_mac}=FF:FF:FF:FF:FF:FF    ${src_mac}=00:00:00:00:01:01    ${type_id}=${None}
+    ...    ${dst_ip}=1.1.1.1    ${src_ip}=2.2.2.2    ${pkt_length}=${64}    ${reset}=False
+    [Documentation]    设置IP流
+    [Timeout]
+    ${stream_rate_mode_set}=    Set Variable If    '${stream_rate_mode}'=='bps'    ${IXIA_StreamRateMode_bps}    '${stream_rate_mode}'=='pps'    ${IXIA_StreamRateMode_pps}    '${stream_rate_mode}'=='pencent'
+    ...    ${IXIA_StreamRateMode_pencent}
+    Run Keyword If    ${reset}==True    Ixia.Set Port Mode Default    ${tp_chassis}    ${tp_card}    ${tp_port}
+    Ixiasend.Build Ether    dst=${dst_mac}    src=${src_mac}    typeid=${type_id}
+    Ixiasend.Build Ip    dst=${dst_ip}    src=${src_ip}
+    Ixiasend.Build Packet    ${pkt_length}
+    Ixiasend.Set Stream Packet By Api    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode_set}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+Init Ixia
+    ##ixia初始化
+    Connect To Ixia    ${testerp1_ip}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Ixia.Set Port Mode Default    @{testerp2}
+
+Check Port Counter
+    [Arguments]    ${port}    ${input_output_packets}    ${packets_stat}=${OUTPUT_PACKETS}    ${packets_stat_regexp}=${OUTPUT_COUNTER_REGEXP}    ${alias}=${s1_alias}    ${tolerance}=${0.01}
+    [Documentation]    查看端口收发包数统计
+    Enable Mode    ${alias}
+    ${output}    Exec Cmd    ${alias}    show interface ${port} | begin Statistics
+    ${received_packets}=    Tools.Get Value From String    ${output}    .*?${packets_stat_regexp}\\s+(.*)\\s+${packets_stat}
+    ${ret}=    Evaluate    ${input_output_packets}*(1-${tolerance})<${received_packets}<${input_output_packets}*(1+${tolerance})
+    Log    ${input_output_packets}*(1-${tolerance})<${received_packets}<${input_output_packets}*(1+${tolerance})
+    Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n ${STEP} check stream \ error!
+    ##
+    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p1}
+    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p3}

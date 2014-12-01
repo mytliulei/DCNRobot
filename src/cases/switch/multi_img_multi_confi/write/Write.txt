@@ -1,0 +1,571 @@
+*** Settings ***
+Documentation     write扩展测试例
+Suite Setup       Init Write Suite
+Suite Teardown    Uninit Write Suite
+Resource          ../resource_multi_img_multi_config.txt
+
+*** Variables ***
+${write_config_regexp}    Write running-config to current startup-config successful    # 保存配置
+${boot_flash_startup1_cfg}    flash:/startup1.cfg
+${boot_flash_startup_cfg}    flash:/startup.cfg
+${longer_config_file_name}    12345678901234567890123456789012345678901234567890123456789012345678901234567.cfg
+
+*** Test Cases ***
+Write.5.2.3.1
+    [Documentation]    用户使用出厂配置进行系统启动,并且没有设置下次启动的配置文件时，在交换机上进行配置后执行write后重启交换机,配置保留成功,默认保存的文件名为flash:/startup.cfg。并且将下次启动使用的配置恢复文件设置为flash:/startup.cfg
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    恢复出厂配置
+    Log Step Start    ${s1_alias}
+    Set Default    ${s1_alias}
+    Reload Switch    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    修改配置
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    spanning-tree
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    并保存,提示保存到startup.cfg
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    write
+    Should Contain    ${set_result}    ${write_config_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir存在startup.cfg文件，重启
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    配置保留成功，默认保存为flash;/startup.cfg,存在上述配置
+    Log Step Start    ${s1_alias}
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Check Running-config    ${config_command}    2    show running-config
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step6    下次启动使用的配置恢复文件设置为flash:/startup.cfg
+    Log Step Start    ${s1_alias}
+    Check Boot-files startup-config    ${BOOT_STARTUP_CONFIG_DEFAULT}    ${BOOT_STARTUP_CONFIG}
+    Check Boot-files startup-config    ${BOOT_STARTUP_CONFIG_DEFAULT}    ${BOOT_CURRENT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.2
+    [Documentation]    用户使用出厂配置进行系统启动,并且没有设置下次启动的配置文件时，在交换机上进行配置后执行write running flash:/startup.cfg后重启交换机,交换机以null配置进行配置恢复
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    恢复出厂配置
+    Log Step Start    ${s1_alias}
+    Set Default    ${s1_alias}
+    Reload Switch    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    修改配置
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    spanning-tree
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    并保存
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${boot_flash_startup_cfg}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir存在startup.cfg文件，以null启动配置文件，重启
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    show running-config没有上述配置
+    Log Step Start    ${s1_alias}
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config Fail    ${config_command}    2    show running-config
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step6    下次启动使用的配置恢复文件设置为NULL
+    Log Step Start    ${s1_alias}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_STARTUP_CONFIG}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_CURRENT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.3
+    [Documentation]    用户使用出厂配置进行系统启动,在交换机上进行配置后执行write running flash:/startup1.cfg后重启交换机,交换机下次仍以出厂配置进行系统恢复,此次启动使用的是NULL
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    恢复出厂配置
+    Log Step Start    ${s1_alias}
+    Set Default    ${s1_alias}
+    Reload Switch    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    修改配置
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    spanning-tree
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    并保存
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${boot_flash_startup1_cfg}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir存在startup1.cfg文件，重启
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    show running-config没有上述配置
+    Log Step Start    ${s1_alias}
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config Fail    ${config_command}    2    show running-config
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step6    下次启动使用的配置恢复文件设置为NULL
+    Log Step Start    ${s1_alias}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_STARTUP_CONFIG}
+    Check Boot-files startup-config    ${BOOT_NULL}    ${BOOT_CURRENT_STARTUP_CONFIG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.4
+    [Documentation]    系统以startup.cfg配置恢复,然后通过boot startup-config配置下次启动的配置文件为startup1.cfg(与startup.cfg不同),执行write后重启交换机,交换机以startup1.cfg恢复配置,与启动前的running-config一致
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    修改配置，保存重启
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    Write Running-config    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    并保存当前配置到startup1.cfg，设置启动配置文件为startup1.cfg，修改配置，保存当前配置
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    spanning-tree
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Write Config    ${s1_alias}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    交换机以startup1.cfg恢复配置,与启动前的running-config一致
+    Log Step Start    ${s1_alias}
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config    ${config_command}    2    show running-config
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.5
+    [Documentation]    系统以startup.cfg配置恢复,然后通过boot startup-config配置下次启动的配置文件为startup1.cfg(与startup.cfg不同),执行write running后重启交换机,交换机以startup1.cfg恢复配置,与启动前的running-config一致
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    修改配置，保存重启
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    Write Running-config    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    并保存当前配置到startup1.cfg，设置启动配置文件为startup1.cfg，修改配置，保存当前配置
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Exec Cmd List In ConfigMode    ${s1_alias}    spanning-tree
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Write Running-config To Default    ${s1_alias}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    交换机以startup1.cfg恢复配置,与启动前的running-config一致
+    Log Step Start    ${s1_alias}
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config    ${config_command}    2    show running-config
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.6
+    [Documentation]    系统以startup.cfg配置恢复,然后通过boot startup-config配置下次启动的配置文件为startup1.cfg(与startup.cfg不同),执行write running startup.cfg后重启交换机,交换机以startup1.cfg恢复配置,与启动前的running-config不同
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    修改配置，保存重启
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    Write Running-config    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    并保存当前配置到startup1.cfg，设置启动配置文件为startup1.cfg，修改配置，保存当前配置
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Exec Cmd List In ConfigMode    ${s1_alias}    spanning-tree
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
+    Check Boot-files startup-config    ${BOOT_STARTUP1_CFG}    ${BOOT_STARTUP_CONFIG}
+    Write Running-config    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    交换机以startup1.cfg恢复配置,与启动前的running-config不一致
+    Log Step Start    ${s1_alias}
+    ${config_command}    Create List    switchport access vlan 101
+    Check Running-config    ${config_command}    1    show startup-config ${BOOT_STARTUP1_CFG}
+    ${config_command}    Create List    spanning-tree
+    Check Running-config Fail    ${config_command}    1    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.7
+    [Documentation]    当执行write <startup-config-file-name>参数中指定的设备不存在或文件名不正确时，提示错误信息并退出
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    将当前配置保存到错误的路径abc:/，提示错误
+    Log Step Start    ${s1_alias}
+    ${error_config_regexp}    Create List    File name error!    file name is invalid
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    write running-config abc:/abc.cfg
+    : FOR    ${index}    IN RANGE    2
+    \    ${check_result}=    Tools.Is Match From String    ${set_result}    @{error_config_regexp}[${index}]
+    \    Run Keyword If    ${check_result}==False    Fail    Set running-config to error path error!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir不存在abc.cfg配置文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    abc.cfg    There is the error config file abc.cfg!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step7    将当前配置保存到超长文件名，提示错误
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    write running-config ${longer_config_file_name}
+    : FOR    ${index}    IN RANGE    2
+    \    ${check_result}=    Tools.Is Match From String    ${set_result}    @{error_config_regexp}[${index}]
+    \    Run Keyword If    ${check_result}==False    Fail    Set running-config to super long file name error!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step8    dir不存在${longer_config_file_name}配置文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${longer_config_file_name}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.8
+    [Documentation]    当执行write <startup-config-file-name>设备及文件名正确,并且文件不存在时,在正确的路径下将running-config保存为相应的startup-config
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    dir 不存在startup1.cfg
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Run Keyword If    ${check_result}==True    Fail    There is ${BOOT_STARTUP1_CFG} config file !
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    将当前配置保存到flash:/startup1.cfg
+    ${set_result}    Exec Cmd    ${s1_alias}    write running-config ${boot_flash_startup1_cfg}
+    ${check_result}=    Tools.Is Match From String    ${set_result}    Write running-config to ${boot_flash_startup1_cfg} on switch successful
+    Run Keyword If    ${check_result}==False    Fail    Set running-config to ${boot_flash_startup1_cfg} error!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    dir存在startup1.cfg配置文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Run Keyword If    ${check_result}==False    Fail    There is not ${BOOT_STARTUP1_CFG} config file !
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    将当前配置保存到startup1.cfg
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    write running-config ${BOOT_STARTUP1_CFG}
+    ${check_result}=    Tools.Is Match From String    ${set_result}    Write running-config to ${BOOT_STARTUP1_CFG} on switch successful
+    Run Keyword If    ${check_result}==False    Fail    Set running-config to ${BOOT_STARTUP1_CFG} error!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    dir存在startup1.cfg配置文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Run Keyword If    ${check_result}==False    Fail    There is not ${BOOT_STARTUP1_CFG} config file !
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.9
+    [Documentation]    当执行write <startup-config-file-name>设备及文件名正确,并且文件存在时,通过Y/N确认是否覆盖原来的文件,如果选项则Y,则用running-config更新相应的startup-config
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    将当前配置保存到 ${BOOT_STARTUP1_CFG}
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir存在${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Run Keyword If    ${check_result}==False    Fail    There is not ${BOOT_STARTUP1_CFG} config file !
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    修改配置，并保存到${BOOT_STARTUP1_CFG}
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    spanning-tree
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Write Running-Config To Existed File    ${s1_alias}    ${BOOT_STARTUP1_CFG}    Y    1
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    ${BOOT_STARTUP1_CFG}存在上述配置
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.10
+    [Documentation]    当执行write <startup-config-file-name>设备及文件名正确,并且文件存在时,通过Y/N确认是否覆盖原来的文件,如果选项则N,则原来的相应的startup-config没有被覆盖和更新
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    将当前配置保存到 ${BOOT_STARTUP1_CFG}
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir存在${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Run Keyword If    ${check_result}==False    Fail    There is not ${BOOT_STARTUP1_CFG} config file !
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    修改配置，并保存到${BOOT_STARTUP1_CFG}
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    spanning-tree
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Write Running-Config To Existed File    ${s1_alias}    ${BOOT_STARTUP1_CFG}    N    1
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    ${BOOT_STARTUP1_CFG}不存在上述配置
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config Fail    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.11
+    [Documentation]    执行write操作需要用户确认时，如果用户无输入，即默认选择相当于N，即write操作无效
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    将当前配置保存到 ${BOOT_STARTUP1_CFG}
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir存在${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Run Keyword If    ${check_result}==False    Fail    There is not ${BOOT_STARTUP1_CFG} config file !
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    修改配置，并保存到${BOOT_STARTUP1_CFG}
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}    exit    spanning-tree
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config
+    Should Contain    ${set_result}    spanning-tree
+    Write Running-Config To Existed File    ${s1_alias}    ${BOOT_STARTUP1_CFG}    ${EMPTY}    3
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    ${BOOT_STARTUP1_CFG}不存在上述配置
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config Fail    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.3.12
+    [Documentation]    执行write时，如果加有目的文件名，则目的文件的后缀必须是.cfg，否则提示错误信息，write失败
+    [Tags]    Write
+    [Setup]    Init STEP
+    Tools.Comment    Step1    将当前配置保存到错误的文件名flash:/abc.cf，提示错误
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    write running-config flash:/abc.cf
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${WRITE_RUNNING_CONFIG_WITHOUT_POSTFIX_IN_IMG}
+    Run Keyword If    ${check_result}==False    Fail    Set running-config to error config file error!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir不存在abc.cf和abc.cfg配置文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    abc.cf
+    Should Not Contain    ${set_result}    abc.cfg
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    将当前配置保存到错误的文件名abc.cf，提示错误
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    write running-config abc.cf
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${WRITE_RUNNING_CONFIG_WITHOUT_POSTFIX_IN_IMG}
+    Run Keyword If    ${check_result}==False    Fail    Set running-config to error config file error!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir不存在abc.cfg和abc.cf配置文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    abc.cf
+    Should Not Contain    ${set_result}    abc.cfg
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    将当前配置保存到错误的文件名abc，提示错误
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    write running-config \ abc
+    ${check_result}=    Tools.Is Match From String    ${set_result}    ${WRITE_RUNNING_CONFIG_WITHOUT_POSTFIX_IN_IMG}
+    Run Keyword If    ${check_result}==False    Fail    Set running-config to error config file error!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step6    dir不存在abc.cfg和abc配置文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    abc
+    Should Not Contain    ${set_result}    abc.cfg
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit Write Test
+
+Write.5.2.4.1
+    [Documentation]    在交换机中自行添加配置，配置镜像、三层接口、静态路由、静态mac、mstp、组播、MPLS、BFD、ACL、QOS、DHCP、ARP等，ipv4和ipv6同时配置。使得write running-config startup.cfg后的配置文件大于或等于1M,通过boot startup-config startup.cfg 设置启动文件为startup.cfg文件，重启交换机后show run和show startup-config的结果一样，且所有配置生效
+    [Tags]    Write
+    [Setup]    Init STEP
+    [Timeout]
+    Tools.Comment    Step1    TP1发送目的mac递增${packets_number_send}个的未知单播包${packets_number_send}个，流量为100Mbps，TP2和TP3都可以收到${packets_number_send}个数据包
+    Log Step Start    ${s1_alias}
+    Init Ixia
+    Set stream    @{testerp1}    dlf    ${stream_rate}    ${packets_number_send}    ${stream_type}    00-00-00-00-00-01
+    Exec Cmd List    ${s1_alias}    clear counters
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${packets_number_send}
+    Check Port Counter    ${s1p1}    ${packets_number_send}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    修改配置，配置静态mac，将${da_number}条流量转发到${s1p3}，然后配置acl规则，deny掉其中${da_number_deny}条流量
+    Log Step Start    ${s1_alias}
+    ${command_line}    Create List
+    Collections.Append To List    ${command_line}    firewall enable    ip dhcp snooping enable    ip igmp snooping    vlan 1-512    interface vlan 1
+    ...    ip address ${HOST_IP} 255.255.255.0    exit    class-map 1    match vlan 1    exit    policy-map 1
+    ...    class 1    drop    exit    exit
+    Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
+    ${packets_static_number}    Evaluate    ${da_number}+1
+    : FOR    ${index}    IN RANGE    1    ${packets_static_number}
+    \    ${mac_address}    Tools.Incr Mac    00-00-00-00-00-00    ${index}
+    \    Telnet.Write    mac-address-table static address ${mac_address} vlan 1 interface ${s1p3}
+    \    SLeep    50 ms
+    Telnet.Read
+    ${packets_number_deny}    Evaluate    ${da_number_deny}+1
+    : FOR    ${index}    IN RANGE    1    ${packets_number_deny}
+    \    ${mac_address}    Tools.Incr Mac    00-00-01-00-00-00    ${index}
+    \    Telnet.Write    access-list 1100 deny 00-00-00-00-0d-01 ff-ff-ff-ff-ff-ff ${mac_address} ff-ff-ff-ff-ff-00
+    \    SLeep    50 ms
+    Telnet.Read
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    mac access-group 1100 in
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    保存当前配置到startup.cfg
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Boot Startup-config With Postfix    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Reload Switch Without Write    ${s1_alias}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    TP2能收到${packets_number_send}个数据包，${s1p1}能收到{packets_number_send}-${da_number}个数据包
+    Log Step Start    ${s1_alias}
+    ${receive_packets}    Evaluate    ${packets_number_send}-${da_number}
+    Exec Cmd List    ${s1_alias}    clear counters
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${packets_number_send}
+    Check Port Counter    ${s1p1}    ${receive_packets}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    TP2和${s1p1}都只能收到${packets_number_send_deny}-${da_number_deny}个数据包
+    Log Step Start    ${s1_alias}
+    Set stream    @{testerp1}    dlf    ${stream_rate}    ${packets_number_send_deny}    ${stream_type}    00-00-01-00-00-01
+    ${receive_packets}    Evaluate    ${packets_number_send_deny}-${da_number_deny}
+    Exec Cmd List    ${s1_alias}    clear counters
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${receive_packets}
+    Check Port Counter    ${s1p1}    ${receive_packets}
+    Log Step End    ${s1_alias}
+    [Teardown]
+
+*** Keywords ***
+Init Write Suite
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
+    Exec Cmd List In ConfigMode    ${s1_alias}    watchdog disable
+    Log Console    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
+
+Uninit Write Test
+    [Arguments]    ${alias}=${s1_alias}
+    [Documentation]    恢复初始配置
+    Enable Mode    ${alias}
+    Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
+    Exec Cmd List    ${alias}    config    no vlan 101    no spanning-tree    interface ${s1p1}    switchport access vlan 1
+    ...    exit    watchdog disable
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    Delete Files    ${BOOT_STARTUP_CONFIG_DEFAULT}
+
+Uninit Write For 5.2.4.1 Test
+    [Arguments]    ${alias}=${s1_alias}
+    [Documentation]    5.2.4.1初始化配置
+    Set Default And Reload    ${alias}
+    Enable Mode    ${alias}
+    Exec Cmd List    ${alias}    config    watchdog disable
+
+Uninit Write Suite
+    [Documentation]    关闭串口
+    Close Console    ${s1_alias}

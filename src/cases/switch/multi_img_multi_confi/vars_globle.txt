@@ -1,0 +1,50 @@
+*** Variables ***
+${UPDATA_TYPE}    tftp    # 默认升级方式为tftp
+${BOOT_PRIMARY_IMG}    primary img    # 第一启动
+${BOOT_BACKUP_IMG}    backup img    # 第二启动
+${BOOT_CURRENT_IMG}    Current booted img    # 当前启动img
+${BOOT_CURRENT_STARTUP_CONFIG}    Current booted startup-config    # 当前启动配置文件
+${BOOT_STARTUP_CONFIG}    startup-config
+${UPDATA_SUCCESS_REGEXP}    Write ok    #升级成功
+${USERNAME_FTP}    admin    #FTP服务器用户名
+${PASSWORD_FTP}    admin    #FTP服务器密码
+${BOOT_PRIMARY_NOT_EXIST_REGEXP}    primary img file does not exist!
+${BOOT_BACKUP_NOT_EXIST_REGEXP}    backup img file does not exist!
+${BOOT_STARTUP1_CFG}    startup1.cfg
+${BOOT_NULL_CFG}    null.cfg
+${BOOT_NULL}      NULL
+${SET_IMG_BOOT_WITHOUT_POSTFIX_IN_BOOT}    Set img file flash:/${BOOT_IMG_NAME_WITHOUT_POSTFIX} failed!    # bootrom下设置启动img文件名不带后缀.img，提示信息
+${BOOT_IMG_NAME_WITHOUT_POSTFIX}    nos1    # img文件名不带后缀
+${SET_IMG_BOOT_WITHOUT_POSTFIX_IN_IMG}    The postfix of file name should be .img    # img下设置启动img文件名不带后缀.img，提示信息
+${BACKUP_SOURCE_IMG_NAME}    QSW-3450-28T(TX)-AC-10.9.88-vendor_7.0.3.5\\(R0288.0017\\)_nos.img    #back img源文件名
+${BOOT_TYPE_IMG}    img    #设置启动img
+${BOOT_TYPE_STARTUP-CONFIG}    startup-config    #设置启动配置文件
+${BOOT_PRIMARY_IMG_NAME}    nos1.img    #primary启动img
+${BOOT_BACKUP_IMG_NAME}    nos2.img    #backup启动img
+${BOOT_IMG_DEFAULT}    nos.img    #默认img名称
+${PRIMARY_IMG_VERSION}    7.0.3.5\\(R0228.0017\\)    #primary启动img版本号
+${BACKUP_IMG_VERSION}    7.0.3.5\\(R0228.0017\\)    #backup启动img版本号
+${OTHER_DEVICE_FILE}    other_device_img_file_nos.img    # 其它设备型号的img
+${DESTORY_IMG_NAME}    destory_img_file_nos.img    # 损坏的img
+${BOOT_STARTUP_CONFIG_REGEXP}    will be used as the startup-config file    # 设置boot startup-config返回字符串
+${BOOT_NULL_REGEXP}    default factory-config will be used    # 以空配置文件启动
+${SET_STARTUP_CONFIG_WITHOUT_POSTFIX_IN_IMG}    The postfix of startup-config file name must be .cfg    # img模式下设置启动配置文件，但是配置文件不带后缀.cfg，错误提示
+${SET_STARTUP_CONFIG_WITHOUT_POSTFIX_IN_BOOT}    File name should be 'startup-config' or end with '.cfg'    # boot模式下设置启动配置文件，但是配置文件不带后缀.cfg，错误提示
+${INVALID_STARTUP_CONFIG_NAME}    invalid_startup_config.cfg    # 非法的startup文件
+${BOOT_MODE}      img    # 测试操作模式
+${BOOT_STARTUP_CONFIG_DEFAULT}    startup.cfg    # 默认保存为startup.cfg
+${WRITE_RUNNING_CONFIG_WITHOUT_POSTFIX_IN_IMG}    The postfix of startup configuration file name should be .cfg    # 保存当前配置到配置到文件，但是配置文件不带后缀.cfg
+${BEGIN_TO_RECEIVE}    Begin to receive file, please wait
+${SERVER_IS_UNREACHABLE}    No route to    # 连不上服务器
+${SOURCE_FILE_IS_NOT_EXISED}    TFTP server return error, ErrCode is 0, ErrMsg is    # 源文件不存在，提示信息
+${FILE_WITHOUT_POSTFIX}    Source and destination file should have same extension!    # 源或目标文件名不带后缀，错误提示
+${BOOT_PRIMARY_INFOR_REGEXP}    Loading flash:/${BOOT_PRIMARY_IMG_NAME}    # 加载第一启动nos.img
+${BOOT_BACKUP_INFOR_REGEXP}    Loading backup img file flash:/${BOOT_BACKUP_IMG_NAME}    # 加载第二启动nos.img
+${BOOT_PRIMARY_FAIL_OTHER_IMG_REGEXP}    ERROR: can't get kernel image!    # 加载其它设备的img，提示错误信息
+${BOOT_IMG_OTHER_NAME}    nos3.img
+${NOT_EXIESTED_SERVER_IP}    100.1.1.250
+${CRC_ERROR_REGEXP}    Bad Data CRC    # crc校验错误
+${OUTPUT_COUNTER_REGEXP}    Output packets statistics:    # 发包统计
+${INPUT_COUNTER_REGEXP}    Input packets statistics:    # 收包统计
+${INPUT_PACKETS}    input packets
+${OUTPUT_PACKETS}    output packets

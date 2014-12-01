@@ -1,0 +1,104 @@
+*** Settings ***
+Documentation     测试套名称:多IMG多配置文件测试
+...
+...
+...               测试注意事项说明:
+...               - *执行前需要修改VARS_XXX文件*
+...               - *本测试套需要用到tftp或者tfp升级方式，ftp用户名和密码为admin/admin，根据自己需要在服务器上开启
+...
+...               测试拓扑:
+...
+...               \ testerp1 \ testerp2
+...               \ \ \ \ \| \ \ \ \ \ \ \ \ \ \ \ \|
+...               +----------+-----------+
+...               | \ \ \ s1p2 \ \ \ \ \ s1p3 \ |
+...               | \ \ \ \ \ \ \ \ \ s1 \ \ \ \ \ \ \ \ \ \ \ |
+...               | \ \ \ \ \ \ \ \ s1p1 \ \ \ \ \ \ \ \ |
+...               +-----+----------+-----+
+...               +-----+----------+----+
+...               | \ \ \ \ \ \ \ \ s2p1 \ \ \ \ \ \ \ \ |
+...               | \ \ \ \ \ \ \ \ \ s2 \ \ \ \ \ \ \ \ \ \ |
+...               | \ \ \ \ \ \ \ \ s2p2 \ \ \ \ \ \ \ \ |
+...               +----------+-----------+
+...               |
+...               PC
+...
+...
+...               本用例执行前请满足如下条件:
+...               - 跑该脚本前，请确保flash中只有1个img，名称为nos.img
+...               - 如果跑Load Config From Remote Server.5.2.5.6，辅助测试设备s2需要和s1相同型号
+...               - 确保服务器上有对应的nos.img（nos.ing包括destory_img_file_nos.img、other_device_img_file_nos.img）和配置文件（remote_server_config.cfg、config_file_1m.cfg、invalid_startup_config.cfg）
+...               - destory_img_file_nos.img为被破坏的img，通过修改img的16进制文件实现，但是必须修改数据部分，测试之前先试下，否则即使修改了数据也有可能起来
+...               - other_device_img_file_nos.img为其它设备的img，比如5750等设备的
+...               - remote_server_config.cfg 至少需要配置ip dhcp snooping enable、spanning-tree、access-list 1 deny any-source、ip igmp snooping这4条命令行
+...               - invalid_startup_config.cfg 为非法的配置文件，例如word文件
+...               - config_file_1m.cfg在10.1.145.36服务器上下载
+Force Tags        driver    #Suite Setup    Init Multi Img Multi Confi Suite    #Suite Teardown    Uninit Multi Img Multi Confi Suite
+Resource          ../../../resource/Switch.txt
+Resource          proc.txt
+Resource          resource_multi_img_multi_config.txt
+Resource          vars_topo.txt
+Resource          vars_ixia.txt
+
+*** Variables ***
+
+*** Keywords ***
+Init Multi Img Multi Confi Suite
+    [Documentation]    执行测试例前恢复出厂设置，nos.img重命名为nos1.img
+    ...    copy 出来一个nos2.img
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Open Console    ${s2_ccm_ip}    ${s2_ccm_port}    ${s2_alias}
+    Delete Files    ${BOOT_STARTUP_CONFIG_DEFAULT}    ${s2_alias}
+    Delete Files    ${BOOT_STARTUP_CONFIG_DEFAULT}    ${s1_alias}
+    Delete Files    ${BOOT_BACKUP_IMG_NAME}
+    Set Default    ${s1_alias}
+    Reload Switch    ${s1_alias}
+    Set Default    ${s2_alias}
+    Reload Switch    ${s2_alias}
+    Enable Mode    ${s1_alias}
+    Check Topo
+    Init Ixia
+    Exec Cmd    ${s1_alias}    rename ${BOOT_IMG_DEFAULT} ${BOOT_PRIMARY_IMG_NAME}
+    Copy img    ${s1_alias}    ${BOOT_PRIMARY_IMG_NAME}    ${BOOT_BACKUP_IMG_NAME}
+    Exec Cmd List    ${s1_alias}    config    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Boot    ${BOOT_TYPE_IMG}    ${BOOT_PRIMARY_IMG_NAME}    primary
+    Boot    ${BOOT_TYPE_IMG}    ${BOOT_BACKUP_IMG_NAME}    backup
+    Sleep    5
+    Enable Mode    ${s1_alias}
+    Show Switch Information    ${s1_alias}
+    Enable Mode    ${s2_alias}
+    Show Switch Information    ${s2_alias}
+    Close Console    ${s1_alias}
+    Close Console    ${s2_alias}
+
+Uninit Multi Img Multi Confi Suite
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Open Console    ${s2_ccm_ip}    ${s2_ccm_port}    ${s2_alias}
+    Enable Mode    ${s1_alias}
+    Exec Cmd    ${s1_alias}    Show Version
+    Enable Mode    ${s2_alias}
+    Exec Cmd    ${s2_alias}    Show Version
+    Exec Cmd    ${s1_alias}    rename ${BOOT_PRIMARY_IMG_NAME} ${BOOT_IMG_DEFAULT}
+    Boot Img    ${BOOT_IMG_DEFAULT}    primary
+    Delete Files    ${BOOT_NULL_CFG}
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    Delete Files    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    Delete Files    ${BOOT_NULL_CFG}    ${s2_alias}
+    Delete Files    ${BOOT_STARTUP1_CFG}    ${s2_alias}
+    Delete Files    ${BOOT_STARTUP_CONFIG_DEFAULT}    ${s2_alias}
+    Delete Files    ${BOOT_BACKUP_IMG_NAME}
+    Close Console    ${s1_alias}
+    Close Console    ${s2_alias}
+
+Check Topo
+    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p1}
+    Should Be True    ${s1p1_status}    !!interface ${s1p1} \ isn't up!!
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p2} \ isn't up!!
+    ${s1p3_status}=    CheckPortStatus    ${s1_alias}    ${s1p3}
+    Should Be True    ${s1p1_status}    !!interface ${s1p1} \ isn't up!!
+    ${s2p1_status}=    CheckPortStatus    ${s2_alias}    ${s2p1}
+    Should Be True    ${s2p1_status}    !!interface ${s2p1} \ isn't up!!
+    ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
+    Should Be True    ${s2p2_status}    !!interface ${s2p2} \ isn't up!!
