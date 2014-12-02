@@ -14,8 +14,6 @@ Resource          802_11i_vars_modifiable.txt
     Should Be True    ${auth_result}
     ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
     Should Not Be True    ${dhip_result}
-    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
-    Should Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
 2.2.3 client使用开放式认证+WEP加密，使用正确的密钥可以关联成功，能够进行正常通信（能ping通AP）

@@ -29,6 +29,8 @@ ${wep_txkey_1}    1
 ${wep_txkey_2}    2
 ${wep_txkey_3}    3
 ${wep_txkey_4}    4
+${ap2}            ap2
+${ap2_profile}    2
 
 *** Keywords ***
 Init Test Case
@@ -36,12 +38,14 @@ Init Test Case
     AP.Open Console    ${ap_console_ip}    ${ap_console_port}    ${ap}
     Sta.Open SSH Connection    ${sta_ip}    ${sta}    ${sta_username}    ${sta_password}    ${sta_port}
     AC.Open Console    ${ac_console_ip}    ${ac_console_port}    ${ac}
+    AP.Open Console    ${ap2_console_ip}    ${ap2_console_port}    ${ap2}
 
 Uninit Test Case
     [Documentation]    关闭AC、AP、Sta的console连接
     AC.Close Console    ${ac}
     AP.Close Console    ${ap}
     Sta.Close SSH Connection    ${sta}
+    AP.Close Console    ${ap2}
 
 Init AC Config
     [Documentation]    AC初始化配置：
@@ -54,18 +58,22 @@ Init AC Config
     AC.Exec Cmd List In ConfigMode    ${ac}    int vlan 10    ip address 10.1.1.1 255.255.255.0    exit
     AC.Exec Cmd List In ConfigMode    ${ac}    int vlan 100    ip address 100.1.1.1 255.255.255.0    exit
     AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap_port}    switch mode trunk    switch trunk native vlan 10    exit
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    switch mode trunk    switch trunk native vlan 10    shut    exit
     AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_radius_port}    switch access vlan 100    exit
     AC.Exec Cmd List In ConfigMode    ${ac}    service dhcp    ip dhcp pool vlan10    network-address 10.1.1.1 255.255.255.0    default-router 10.1.1.1    exit
     AC.Exec Cmd List In ConfigMode    ${ac}    ip dhcp pool vlan100    network-address 100.1.1.1 255.255.255.0    default-router 100.1.1.1    exit
     AC.Exec Cmd List In ConfigMode    ${ac}    ip dhcp excluded-address 10.1.1.1    ip dhcp excluded-address 100.1.1.1    ip dhcp conflict ping-detection enable
     sleep    30sec
-    AC.Exec Cmd List In WirelessMode    ${ac}    enable    no auto-ip-assign    static-ip 10.1.1.1    client roam-timeout 1
+    AC.Exec Cmd List In WirelessMode    ${ac}    enable    no auto-ip-assign    static-ip 10.1.1.1    client roam-timeout 10
     Get Dynamic Vars
     AC.Exec Cmd List In WirelessMode    ${ac}    ap profile ${ap_profile}    hwtype ${WIFI_AFFIRM_HWTYPE1}    radio 2    no enable    end
+    AC.Exec Cmd List In WirelessMode    ${ac}    ap profile ${ap2_profile}    hwtype ${WIFI_AFFIRM_HWTYPE2}    radio 2    no enable    end
     AC.Exec Cmd List In WirelessMode    ${ac}    network ${ap_network}    vlan 100    ssid ${network1_ssid}    exit
     Add ap database    ${ac}    ${WIFI_AFFIRM_AP1_MAC}
+    Add ap database    ${ac}    ${WIFI_AFFIRM_AP2_MAC}
     AC.Exec Cmd List In WirelessMode    ${ac}    discovery ip-list ${WIFI_AFFIRM_AP1_IP}
-    Sleep    1min
+    BuiltIn.Comment    AC.Exec Cmd List In WirelessMode    ${ac}    discovery ip-list ${WIFI_AFFIRM_AP2_IP}
+    Sleep    40s
     ${output}=    AC.Exec Cmd List    ${ac}    show wireless ap status
 
 Add ap database
@@ -77,27 +85,40 @@ Add ap database
 Get Dynamic Vars
     [Documentation]    功能：获取动态变量。包括：sta的mac地址、ap hwtype、ac vlan mac、ap mac、ap ip几个参数
     ...    参数：无
-    Comment    获取sta1 wlan card mac
+    BuiltIn.Comment    获取sta1 wlan card mac
     ${output}=    Sta.Execute Command    ${sta}    ifconfig -v ${sta1_netcard}
     ${sta1mac}=    Tools.Get Value From String    ${output}    (?m)ether\\s([^\\s]+)\\s
     Should Not Be Equal    ${sta1mac}    ${None}
     ${sta1mac}=    Tools.Convert Macaddress Format    ${sta1mac}
     Set Global Variable    ${WIFI_AFFIRM_STA1_MAC}    ${sta1mac}
-    Comment    获取ap1 device type
+    BuiltIn.Comment    获取ap1 device type
     ${output}=    AP.Exec Cmd    ${ap}    get system device-type
     ${ap1type}=    Tools.Get Value From String    ${output}    (?m)^(\\d+)\\s
     Should Not Be Equal    ${ap1type}    ${None}
     Set Global Variable    ${WIFI_AFFIRM_HWTYPE1}    ${ap1type}
-    Comment    获取ac1 vlan mac
+    BuiltIn.Comment    获取ac1 vlan mac
     ${ac1Vlanmac}=    AC.Get Vlan Mac    ${ac}
     Set Global Variable    ${WIFI_AFFIRM_AC1_VLANMAC}    ${ac1Vlanmac}
-    Comment    获取ap1 mac
+    BuiltIn.Comment    获取ap1 mac
     ${ap1mac}=    AP.Get Management Mac    ${ap}
     ${ap1mac}=    Tools.Convert Macaddress Format    ${ap1mac}
     Set Global Variable    ${WIFI_AFFIRM_AP1_MAC}    ${ap1mac}
-    Comment    获取ap1 ip
+    Set Global Variable    ${WIFI_AFFIRM_AP1_VAP0_MAC}    ${ap1mac}
+    BuiltIn.Comment    获取ap1 ip
     ${ap1ip}=    AP.Get AP ipaddr    ${ap}
     Set Global Variable    ${WIFI_AFFIRM_AP1_IP}    ${ap1ip}
+    BuiltIn.Comment    ap2 device type
+    ${output}=    AP.Exec Cmd    ${ap2}    get system device-type
+    ${ap2type}=    Tools.Get Value From String    ${output}    (?m)^(\\d+)\\s
+    Should Not Be Equal    ${ap2type}    ${None}
+    Set Global Variable    ${WIFI_AFFIRM_HWTYPE2}    ${ap2type}
+    BuiltIn.Comment    获取ap2 mac
+    ${ap2mac}=    AP.Get Management Mac    ${ap2}
+    ${ap2mac}=    Tools.Convert Macaddress Format    ${ap2mac}
+    Set Global Variable    ${WIFI_AFFIRM_AP2_MAC}    ${ap2mac}
+    BuiltIn.Comment    获取ap2 ip
+    BuiltIn.Comment    ${ap2ip}=    AP.Get AP ipaddr    ${ap2}
+    BuiltIn.Comment    Set Global Variable    ${WIFI_AFFIRM_AP2_IP}    ${ap2ip}
 
 Network Open
     [Arguments]    ${ac}    ${ap_network}
@@ -115,7 +136,6 @@ Wireless Ap Profile Apply
     Run Keyword If    ${writeFlag}    Telnet.Write    Y
     Run Keyword If    ${writeFlag}    Telnet.Read Until Prompt
     Run Keyword Unless    ${writeFlag}    Telnet.Read
-    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
 
 Network Wep Open
     [Arguments]    ${ac}    ${ap_network}    ${wep_key_type}    ${wep_tx_key}
@@ -187,26 +207,43 @@ Network Wpa/Wpa2 Enterprise
 Init All Config
     [Documentation]    功能：初始化所有配置
     AP.Open Console    ${ap_console_ip}    ${ap_console_port}    ${ap}
+    AP.Open Console    ${ap2_console_ip}    ${ap2_console_port}    ${ap2}
     Sta.Open SSH Connection    ${sta_ip}    ${sta}    ${sta_username}    ${sta_password}    ${sta_port}
     AC.Open Console    ${ac_console_ip}    ${ac_console_port}    ${ac}
-    AP.Factory Reset    ${ap}
-    AC.Set Default    ${ac}
-    AC.Write Config    ${ac}
-    AC.Reload AC    ${ac}
+    BuiltIn.Comment    AP.Factory Reset    ${ap}
+    BuiltIn.Comment    AC.Set Default    ${ac}
+    BuiltIn.Comment    AC.Write Config    ${ac}
+    BuiltIn.Comment    AC.Reload AC    ${ac}
     Init AC Config
     Globle Radius Config    ${ac}    ${radius_server_ip}    ${ac_wireless_ip}    ${radius_server_name}
     AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
     AC.Close Console    ${ac}
     AP.Close Console    ${ap}
     Sta.Close SSH Connection    ${sta}
+    AP.Close Console    ${ap2}
 
 Uninit All Config
     [Documentation]    功能：在所有测试例执行完后恢复初始配置
     AP.Open Console    ${ap_console_ip}    ${ap_console_port}    ${ap}
+    AP.Open Console    ${ap2_console_ip}    ${ap2_console_port}    ${ap2}
     AC.Open Console    ${ac_console_ip}    ${ac_console_port}    ${ac}
-    AP.Factory Reset    ${ap}
+    BuiltIn.Comment    AP.Factory Reset    ${ap}
     AP.Close Console    ${ap}
-    AC.Set Default    ${ac}
-    AC.Write Config    ${ac}
-    AC.Reload AC    ${ac}
+    AP.Close Console    ${ap2}
+    BuiltIn.Comment    AC.Set Default    ${ac}
+    BuiltIn.Comment    AC.Write Config    ${ac}
+    BuiltIn.Comment    AC.Reload AC    ${ac}
     AC.Close Console    ${ac}
+
+Disconnect Client
+    [Arguments]    ${sta_mac}
+    [Documentation]    在AC上解除某一个client的关联
+    AC.Exec Cmd List    ${ac}    wireless client disassociate ${sta_mac}
+
+Get AP_Client Num
+    [Arguments]    ${ap_mac}    ${radio_num}
+    ${output}=    AC.Exec Cmd    ${ac}    show wireless ap ${ap_mac} radio ${radio_num} status
+    log    ${output}
+    ${Client_Num}=    Tools.Get Value From String    ${output}    (?m)^\\bAuthenticated\\b\\s\\bClients\\.*\\s(.*?)\\s
+    Should Not Be Equal    ${Client_Num}    ${None}
+    [Return]    ${Client_Num}

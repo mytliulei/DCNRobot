@@ -2,14 +2,17 @@
 
 *** Variables ***
 ${ac_console_ip}    172.16.31.46
-${ac_console_port}    ${10001}
+${ac_console_port}    ${10005}
 ${ap_console_ip}    172.16.31.41
-${ap_console_port}    ${10004}
+${ap_console_port}    ${10007}
 ${sta_ip}         172.16.31.66
 ${sta_port}       ${22}
 ${sta1_netcard}    wls35u1
 ${network1_ssid}    liuyje-11i-auto-ii
-${ap1_vap1_mac}    00-03-0f-26-18-e0
-${ac_ap_port}     1/0/10
-${ac_radius_port}    1/0/9
+${ap1_vap1_mac}    00-03-0f-89-e0-00
+${ac_ap_port}     1/0/12
+${ac_radius_port}    1/0/1
 ${sleep_time}     20sec
+${ap2_console_ip}    172.16.31.41
+${ap2_console_port}    ${10003}
+${ac_ap2_port}    1/0/14

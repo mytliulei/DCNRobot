@@ -6,6 +6,6 @@ Documentation     测试拓扑:
 ...               2、变量分成两种，802_11i_vars.txt和802_11i_vars_modifiable.txt，其中前者不建议修改，后者可以根据实际测试环境进行修改；
 ...               3、搭建测试拓扑时端口号与本拓扑描述要一致；
 Suite Setup       Init All Config
-Suite Teardown    Uninit All Config
+Suite Teardown
 Resource          802_11i_vars.txt
 Resource          802_11i_vars_modifiable.txt

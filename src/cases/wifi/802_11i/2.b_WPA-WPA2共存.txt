@@ -1,0 +1,62 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          802_11i_vars.txt
+Resource          802_11i_vars_modifiable.txt
+
+*** Test Cases ***
+2.11.1 设置认证加密方式为wpa，可以通过命令wpa version wpa wpa2将系统配置为wpa和wpa2共存的模式，show wireless network可见
+    Network Wpa/Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless network ${ap_network}
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\bWPA\\s\\bVersions\.*\\sWPA/WPA2\\b
+    Should Be Equal    ${Num}    ${1}
+
+2.11.2 当设置为wpa和wpa2共存，client使用wpa方式可以成功关联（正确用户名密码）
+    Network Wpa/Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_tkip}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.11.3 当设置为wpa和wpa2共存，client使用wpa2方式可以成功关联（正确用户名密码）
+    Network Wpa/Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_tkip}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.11.4 设置AP为wpa和wpa2共存，client使用open方式时，关联失败
+    Network Wpa/Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.11.5 设置AP为wpa和wpa2共存，client使用wep方式时（密码一致），关联失败
+    Network Wpa/Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=admin@123
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}

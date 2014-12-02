@@ -1,0 +1,87 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          802_11i_vars.txt
+Resource          802_11i_vars_modifiable.txt
+
+*** Test Cases ***
+2.9.1 client使用wpa-enterprise方式，使用正确的用户名密码时，能够关联成功，AP和client相互通信能够正常加解密
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_tkip}
+    Run Keyword If    ${auth_result}==False    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}
+    ...    ${radius_password1}    ${cipher_tkip}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.9.2 client使用wpa-enterprise方式，使用错误的用户名，正确的密码时，关联失败
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    liuyje1    ${radius_password1}
+    ...    ${cipher_tkip}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.9.3 client使用wpa-enterprise方式，使用正确的用户名，错误的密码时，关联失败
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    11111111
+    ...    ${cipher_tkip}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.9.4 client使用wpa-psk方式，使用正确的用户名密码时，关联失败
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    admin@123    ${cipher_tkip}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.9.5 client使用open方式时，关联失败
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.9.6 client使用wep方式时（密码一致），关联失败
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wep Shared Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=admin@123
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.9.7 client使用wpa2-psk方式时（用户名密码一致），关联失败
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    key0=admin@123    ${cipher_tkip}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.9.8 client使用wpa2-enterprise方式时（用户名密码一致），关联失败
+    Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa2 Eap Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${radius_username1}    ${radius_password1}
+    ...    ${cipher_ccmp}
+    Should Not Be True    ${auth_result}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}

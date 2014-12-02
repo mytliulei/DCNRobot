@@ -9,7 +9,7 @@ Resource          802_11i_vars_modifiable.txt
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
-    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}    ${WIFI_AFFIRM_AP1_MAC}
     ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
     Should Be True    ${auth_result}
     ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
@@ -100,3 +100,6 @@ Resource          802_11i_vars_modifiable.txt
     Should Be True    ${flag}
     AC.Stop Debug    ${ac}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.1.8 Temp
+    Get Dynamic Vars

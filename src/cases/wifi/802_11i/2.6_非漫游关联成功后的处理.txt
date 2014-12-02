@@ -23,12 +23,12 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num1}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.2 在关联AP的管理UWS上查看associated client表，该client的关联成功的时间，是否支持802.11n（802.11n capable）属性正确
-    Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
+2.6.2 在关联AP的管理UWS上查看associated client表，该client是否支持802.11n（802.11n capable）属性正确
+    Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
     AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
-    ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${wpa_wpa2 key}    ${cipher_ccmp}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
     Should Be True    ${auth_result}
     ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
     log    ${output}
@@ -43,7 +43,7 @@ Resource          802_11i_vars_modifiable.txt
     AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
     ${auth_result}=    Sta Wpa Psk Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}    ${wpa_wpa2 key}    ${cipher_ccmp}
     Should Be True    ${auth_result}
-    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status \ vap ${ap1_vap1_mac}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status vap ${WIFI_AFFIRM_AP1_VAP0_MAC}
     log    ${output}
     ${Num}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_AP1_MAC}\\b\\s*\\b${WIFI_AFFIRM_AP1_MAC}\\s*\\d\\s*\\b${WIFI_AFFIRM_STA1_MAC}
     Should Be Equal    ${Num}    ${1}
@@ -56,7 +56,7 @@ Resource          802_11i_vars_modifiable.txt
     AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
     ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
     Should Be True    ${auth_result}
-    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status \ ssid ${network1_ssid}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status ssid ${network1_ssid}
     log    ${output}
     ${Num}=    Tools.Find All Num From String    ${output}    \\${network1_ssid}\\b\\s*\\b${WIFI_AFFIRM_STA1_MAC}\\b
     Should Be Equal    ${Num}    ${1}
@@ -69,7 +69,7 @@ Resource          802_11i_vars_modifiable.txt
     AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
     ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
     Should Be True    ${auth_result}
-    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status \ switch ${ac_wireless_ip}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status switch ${ac_wireless_ip}
     log    ${output}
     ${Num}=    Tools.Find All Num From String    ${output}    \\b${ac_wireless_ip}\\b\\\s*\\b${WIFI_AFFIRM_STA1_MAC}
     Should Be Equal    ${Num}    ${1}

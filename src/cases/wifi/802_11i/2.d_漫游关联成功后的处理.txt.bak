@@ -1,0 +1,231 @@
+*** Settings ***
+Suite Setup       Init Test Case
+Suite Teardown    Uninit Test Case
+Resource          802_11i_vars.txt
+Resource          802_11i_vars_modifiable.txt
+
+*** Test Cases ***
+2.7.1 在AC上查看associated client表，该client在该UWS的associated client表中
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}    ${WIFI_AFFIRM_AP1_MAC}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    AC.Exec Cmd List    ${ac}    show wireless client status
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    no shut
+    sleep    10s
+    Comment    获取ap2 ip
+    ${ap2ip}=    AP.Get AP ipaddr    ${ap2}
+    Set Global Variable    ${WIFI_AFFIRM_AP2_IP}    ${ap2ip}
+    AC.Exec Cmd List In WirelessMode    ${ac}    discovery ip-list ${WIFI_AFFIRM_AP2_IP}
+    sleep    20s
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap2_profile}    ${WIFI_AFFIRM_AP2_MAC}
+    Comment    AC.Exec Cmd List In ConfigMode    ${ac}    int \ e ${ac_ap_port}    shut
+    AP.Reboot AP    ${ap}
+    sleep    20s
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_STA1_MAC}\\b.*\\bAuth\\b
+    Should Be Equal    ${Num1}    ${1}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.7.2 在AC上查看associated client表，该client的STBC Capable和802.11n Capable正确
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\bAP MAC Address\\b\.*\\s\\b${WIFI_AFFIRM_AP1_MAC}\\b
+    Run Keyword If    ${Num1}==1    AP.Reboot AP    ${ap}
+    Run Keyword If    ${Num1}==0    AP.Reboot AP    ${ap2}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\b802.11n Capable\\b\.*\\s\\bYes\\b
+    Should Be Equal    ${Num1}    ${1}
+    ${Num2}=    Tools.Find All Num From String    ${output}    \\bSTBC Capable\\b\.*\\s\\bNo\\b
+    Should Be Equal    ${Num1}    ${1}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.7.3 在AC上查看client关联AP的AP neighbor client表，该client被加入到该表中
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\bAP MAC Address\\b\.*\\s\\b${WIFI_AFFIRM_AP1_MAC}\\b
+    Run Keyword If    ${Num1}==1    AP.Reboot AP    ${ap}
+    Run Keyword If    ${Num1}==0    AP.Reboot AP    ${ap2}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${assoi_ap}=    Tools.Get Value From String    ${output}    (?m)^\\bAP\\s\\bMAC\\s\\bAddress\\.*\\s(.*?)\\s
+    Should Not Be Equal    ${assoi_ap}    ${None}
+    Telnet.Write    clear wireless ap neighbors
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Read
+    AC.Enable Mode    ${ac}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless ap ${assoi_ap} radio 1 neighbor client status
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_STA1_MAC}\\b
+    Should Be Equal    ${Num1}    ${1}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.7.4 在AC上查看Roam history表，会添加此次漫游事件到该表
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    shut
+    AP.Factory Reset    ${ap2}
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    no shut
+    sleep    2min
+    AC.Exec Cmd    ${ac}    show wireless ap status
+    AP.Reboot AP    ${ap}
+    AP.Reboot AP    ${ap2}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client detected-client roam-history
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b${WIFI_AFFIRM_STA1_MAC}\\b
+    Should Be Equal    ${Num}    ${1}
+    ${lossvalue}=    Check Sta Ping    ${sta}    ${radius_server_ip}
+    Should Not Be Equal    ${lossvalue}    ${100}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.7.5 在AC上查看VAP-Client Mapping表，该client和VAP的对应关系正确更新
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\bAP MAC Address\\b\.*\\s\\b${WIFI_AFFIRM_AP1_MAC}\\b
+    Run Keyword If    ${Num1}==1    AP.Reboot AP    ${ap}
+    Run Keyword If    ${Num1}==0    AP.Reboot AP    ${ap2}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${assoi_vap}=    Tools.Get Value From String    ${output}    (?m)^\\bVAP\\s\\bMAC\\s\\bAddress\\.*\\s(.*?)\\s
+    Should Not Be Equal    ${assoi_vap}    ${None}
+    ${assoi_ap}=    Tools.Get Value From String    ${output}    (?m)^\\bAP\\s\\bMAC\\s\\bAddress\\.*\\s(.*?)\\s
+    Should Not Be Equal    ${assoi_ap}    ${None}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status vap ${assoi_vap}
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b${assoi_vap}\\b\\s*\\b${assoi_ap}\\s*\\d\\s*\\b${WIFI_AFFIRM_STA1_MAC}
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.7.6 在AC上查看SSID-Client Mapping表，该client和SSID的对应关系正确更新
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\bAP MAC Address\\b\.*\\s\\b${WIFI_AFFIRM_AP1_MAC}\\b
+    Run Keyword If    ${Num1}==1    AP.Reboot AP    ${ap}
+    Run Keyword If    ${Num1}==0    AP.Reboot AP    ${ap2}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status ssid ${network1_ssid}
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\${network1_ssid}\\b\\s*\\b${WIFI_AFFIRM_STA1_MAC}\\b
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.7.7 在AC上查看UWS-Client Mapping表，该client和UWS的对应关系正确更新
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\bAP MAC Address\\b\.*\\s\\b${WIFI_AFFIRM_AP1_MAC}\\b
+    Run Keyword If    ${Num1}==1    AP.Reboot AP    ${ap}
+    Run Keyword If    ${Num1}==0    AP.Reboot AP    ${ap2}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status switch ${ac_wireless_ip}
+    log    ${output}
+    ${Num}=    Tools.Find All Num From String    ${output}    \\b${ac_wireless_ip}\\b\\\s*\\b${WIFI_AFFIRM_STA1_MAC}
+    Should Be Equal    ${Num}    ${1}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.7.8 如果此次漫游为本UWS内部的漫游，在AP的管理UWS上查看原关联AP的认证client数目减一
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${assoi_ap}=    Tools.Get Value From String    ${output}    (?m)^\\bAP\\s\\bMAC\\s\\bAddress\\.*\\s(.*?)\\s
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless ap radio status
+    ${NumA}=    Tools.Get Value From String    ${output}    (?m)^\\s\\b${assoi_ap}\\b\\s*\\d{1,2}\\s*\\d{1,3}\\s*\\d{1,3}\\s*(.*?)\\s
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless client ${WIFI_AFFIRM_STA1_MAC} status
+    log    ${output}
+    ${Num1}=    Tools.Find All Num From String    ${output}    \\bAP MAC Address\\b\.*\\s\\b${WIFI_AFFIRM_AP1_MAC}\\b
+    Run Keyword If    ${Num1}==1    AP.Reboot AP    ${ap}
+    Run Keyword If    ${Num1}==0    AP.Reboot AP    ${ap2}
+    sleep    1min
+    ${output}=    AC.Exec Cmd    ${ac}    sho wireless ap radio status
+    ${NumB}=    Tools.Get Value From String    ${output}    (?m)^\\s\\b${assoi_ap}\\b\\s*\\d{1,2}\\s*\\d{1,3}\\s*\\d{1,3}\\s*(.*?)\\s
+    ${Flag}=    Evaluate    int('${numA}') \ == int('${numB}')+1
+    Should Be True    ${Flag}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
+
+2.7.9 如果此次漫游为本UWS内部的漫游，在AP的管理UWS上查看关联AP的认证client数目加一
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    shut
+    AP.Factory Reset    ${ap2}
+    Network Open    ${ac}    ${ap_network}
+    Wireless Ap Profile Apply    ${ap_profile}
+    sleep    ${sleep_time}
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}
+    ${auth_result}=    Sta Wpa Open Connect    ${sta}    ${sta1_netcard}    ${network1_ssid}
+    Should Be True    ${auth_result}
+    ${dhip_result}=    Sta Dhclient    ${sta}    ${sta1_netcard}
+    Should Be True    ${dhip_result}
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    no shut
+    sleep    1min
+    AC.Wait For AP Profile Apply OK    ${ac}    ${ap_profile}    ${WIFI_AFFIRM_AP2_MAC}
+    ${NumA}=    Get AP_Client Num    ${WIFI_AFFIRM_AP2_MAC}    1
+    AP.Reboot AP    ${ap}
+    sleep    5s
+    ${Num_B}=    Get AP_Client Num    ${WIFI_AFFIRM_AP2_MAC}    1
+    ${Flag}=    Evaluate    int('${numA}') +1== int('${numB}')
+    Should Be True    ${Flag}
+    AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    shut
+    AP.Factory Reset    ${ap2}
+    Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
