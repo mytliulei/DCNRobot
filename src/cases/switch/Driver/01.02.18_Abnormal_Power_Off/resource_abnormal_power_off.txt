@@ -1,0 +1,24 @@
+*** Settings ***
+Resource          ../resource_driver.txt
+
+*** Keywords ***
+init suite test
+    Telnet.Open Connection    ${s1_ccm_ip}    ${s1_alias}    ${s1_ccm_port}    timeout=${sw_timeout}    prompt_is_regexp=${sw_prompt_is_regexp}    prompt=${sw_prompt}
+    ...    default_log_level=${sw_default_log_level}    terminal_emulation=${False}    terminal_type=${sw_terminal_type}    monitor=${sw_monitor}    newline=${sw_newline}
+    Switch.Enable Mode    ${s1_alias}
+    Switch.Set Exec TimeOut    ${s1_alias}
+    #打开APC Console
+    Telnet.Open Connection    ${apc_ccm_ip}    ${apc_alias}    ${apc_ccm_port}    timeout=10    prompt_is_regexp=${True}    prompt=(?m)^>.*
+    ...    default_log_level=${sw_default_log_level}    terminal_emulation=${False}    terminal_type=${sw_terminal_type}    monitor=${sw_monitor}    newline=${sw_newline}
+    ${isLogin}=    log In APC    ${apc_alias}
+    Run Keyword If    ${isLogin}!=${True}    Fail
+    tools.Comment    Suite Start!!    Suite Name: ${SUITE_NAME}
+    Connect To Ixia    ${testerp1_ip}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+
+uninit suite test
+    tools.Comment    Suite End!!    Suite Name: ${SUITE_NAME}
+    Close Console    ${s1_alias}
+    Close Console    ${apc_alias}

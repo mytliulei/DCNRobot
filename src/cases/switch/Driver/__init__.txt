@@ -1,9 +1,9 @@
 *** Settings ***
-Documentation     测试套名称:驱动测试
+Documentation     驱动测试
 ...
 ...
 ...               测试注意事项说明:
-...               - *执行前需要修改VARS_XXX文件*
+...               - *执行前需要修改vars_topo文件*
 ...
 ...
 ...               测试拓扑:
@@ -14,6 +14,7 @@ Documentation     测试套名称:驱动测试
 ...
 ...               s1p3 \ \ \ \ \ \ \ \ \ \ \ \ 辅测端口
 ...
+...               需要保证s1p1,s1p2速率相同,s1p3尽量与s1p1速率相同,或者小于s1p1.
 ...
 ...               已自动化的子功能:
 ...               - storm-control
@@ -26,40 +27,44 @@ Documentation     测试套名称:驱动测试
 Suite Setup       Init Driver Test
 Suite Teardown    Uninit Driver Test
 Force Tags        driver
-Resource          vars_topo.txt
-Resource          ../../../resource/Switch.txt
-Resource          proc.txt
+Resource          resource_driver.txt
 
 *** Variables ***
 
 *** Keywords ***
 Init Driver Test
+    [Documentation]    初始化驱动测试例
+    ...    - 1.检查拓扑
+    ...    - 2.初始化S1的配置
     Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    tools.comment    !!START!! ${SUITE_NAME}
     Check Topo
-    Init S1 Config    #初始化S1的配置
-    Sleep    5
-    Close Console    ${s1_alias}
-
-Init S1 Config
-    Comment    开始初始化
+    set driver var
+    set watchdog disable    ${s1_alias}
     Show Version    ${s1_alias}
-    ${s1_cpu_mac}=    Get Cpu Mac    ${s1_alias}
-    Set Global Variable    ${S1_CPU_MAC}    ${s1_cpu_mac}
-    ${s1_vlan_mac}=    Get Vlan Mac    ${s1_alias}
-    Set Global Variable    ${S1_VLAN_MAC}    ${s1_vlan_mac}
-    Comment    初始化结束
-
-Uninit Driver Test
-    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
-    Uninit S1 Config
     Close Console    ${s1_alias}
-
-Uninit S1 Config
-    Comment    开始恢复配置
-    Comment    恢复完成
 
 Check Topo
-    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p1}
+    [Documentation]    拓扑检查
+    ...
+    ...    检查s1p1与s1p2应该是up状态,否则初始化检查失败停止运行
+    ${s1p1_status}=    CheckPortUpdown    ${s1_alias}    ${s1p1}
     Should Be True    ${s1p1_status}    !!interface ${s1p1} \ isn't up!!
-    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
-    Should Be True    ${s1p2_status}    !!interface ${s1p1} \ isn't up!!
+    ${s1p2_status}=    CheckPortUpdown    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p2} \ isn't up!!
+
+Uninit Driver Test
+    [Documentation]    恢复配置
+    log    !!END!! ${SUITE_NAME}
+
+set driver var
+    ${S1P1_HW}=    Get Port Hardware    ${s1_alias}    ${s1p1}
+    ${S1P1_MAX_SPD}=    Get Port Status    ${s1_alias}    ${s1p1}    maxSpeed
+    ${S1P2_HW}=    Get Port Hardware    ${s1_alias}    ${s1p2}
+    ${S1P2_MAX_SPD}=    Get Port Status    ${s1_alias}    ${s1p2}    maxSpeed
+    Set Global Variable    ${S1P1_HW}
+    Set Global Variable    ${S1P1_MAX_SPD}
+    Set Global Variable    ${S1P2_HW}
+    Set Global Variable    ${S1P2_MAX_SPD}
+    ${s1_vlan_mac}=    Get Vlan Mac    ${s1_alias}
+    Set Global Variable    ${S1_VLAN_MAC}    ${s1_vlan_mac}

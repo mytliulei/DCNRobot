@@ -1,0 +1,108 @@
+*** Settings ***
+Documentation     测试点:端口收方向带宽限制功能正确,在同一芯片的不同端口上配置带宽限制相关之间不影响
+...
+...               - 01 检查缺省情况下端口没有广播抑制配置
+...               - 02 验证典型的带宽限制值下,入口带宽限制限速正常.
+...               - 03 先发送流量,开启带宽限制,流量受限,关闭带宽限制,流量恢复正常
+...               - 04 其他端口上配置广播抑制,不会互相影响
+Suite Setup       Init Suite Test
+Suite Teardown    Uninit Suite Test
+Resource          resource_bandwidth_control.txt
+
+*** Test Cases ***
+01_缺省不配置带宽限制
+    [Documentation]    检查缺省情况下端口没有广播抑制配置
+    tools.comment    检查缺省情况下端口没有广播抑制配置
+    ${show_s1p1}=    Exec Cmd List    ${s1_alias}    show run interface ${s1p1}
+    ${show_s1p2}=    Exec Cmd List    ${s1_alias}    show run interface ${s1p2}
+    Should Not Contain    '${show_s1p1}'    ${CMD_BANDWIDTH_CONTROL}
+    Should Not Contain    '${show_s1p2}'    ${CMD_BANDWIDTH_CONTROL}
+
+02_入方向带宽限制功能生效
+    [Documentation]    验证典型的带宽限制值下,入口带宽限制限速正常.
+    [Setup]    02_init
+    tools.comment    检查入方向端口带宽限制功能生效.选择10个值来测试
+    \    #带宽限制值(kbps)    #发送速率(bps)    #误差范围
+    set and check    1000    80000000    0.05
+    set and check    1250    80000000    0.05
+    set and check    1500    80000000    0.05
+    set and check    2000    80000000    0.05
+    set and check    10000    80000000    0.05
+    set and check    15234    80000000    0.05
+    set and check    17777    80000000    0.05
+    set and check    20000    80000000    0.05
+    set and check    50000    80000000    0.05
+    [Teardown]    02_uninit
+
+03_带流量开关带宽控制,功能正确生效
+    [Documentation]    先发送流量,开启带宽限制,流量受限,关闭带宽限制,流量恢复正常
+    [Setup]    03_init
+    tools.comment    先发送流量,开启带宽限制,流量受限,关闭带宽限制,流量恢复正常
+    Ixiasend.Start Transmit    @{testerp1}
+    ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    80000000
+    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    10000    direction=receive
+    ${res2}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}
+    Unset Bandwidth Control    ${s1_alias}    ${s1p1}
+    ${res3}=    CheckIxiaReceiveRate    @{testerp2}    bps    80000000
+    Ixiasend.Stop Transmit    @{testerp1}
+    Should Be True    ${res1}==${res2}==${res3}==${TRUE}    ${TEST_NAME}Check Error.
+    [Teardown]    03_uninit
+
+04_多个端口上配置带宽控制,不会互相影响
+    [Documentation]    其他端口上配置广播抑制,不会互相影响
+    [Setup]    04_init
+    tools.comment    其他端口上配置带宽控制,不会互相影响
+    Ixiasend.Start Transmit    @{testerp1}
+    #s1p3上配置带宽控制,不会影响s1p1的流量转发
+    Set Bandwidth Control    ${s1_alias}    ${s1p3}    100    direction=receive
+    ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    received_rate=80000000
+    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    10000    direction=receive
+    ${res2}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}
+    #s1p3删除配置带宽控制,不会影响s1p1的流量转发
+    unset Bandwidth Control    ${s1_alias}    ${s1p3}
+    ${res3}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}
+    Ixiasend.Stop Transmit    @{testerp1}
+    Should Be True    ${res1}==${res2}==${res3}==${TRUE}    ${TEST_NAME} Check Error.
+    [Teardown]    04_uninit
+
+*** Keywords ***
+set and check
+    [Arguments]    ${cfg_value}    ${send_rate}    ${tolerance}
+    [Documentation]    在端口上配置"入"方向带宽限制,TP1打入流量,检查TP2收到的流量是在预期范围内。
+    ...
+    ...    args:
+    ...    - cfg_value #带宽限制配置值
+    ...    - send_rate #Tp1发送流量速率,单位为bps
+    ...    - tolerance # 误差范围,取值:0~1
+    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${cfg_value}    direction=receive
+    Set ixia stream ip    @{testerp1}    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa
+    Ixiasend.Start Transmit    @{testerp1}
+    ${res}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}    ${tolerance}
+    Ixiasend.Stop Transmit    @{testerp1}
+    Run Keyword And Continue On Failure    Should Be True    ${res}    For Loop ${LOOP} Set bandwidth Control receive ${cfg_value}kbps, TP1 Send ${send_rate}bps,but \ TP2 check Receive Error!!
+    Set Suite Variable    ${LOOP}    ${${LOOP}+1}
+
+02_uninit
+    Unset Bandwidth Control    ${s1_alias}    ${s1p1}
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp1}
+
+02_init
+    Set Suite Variable    ${LOOP}    ${1}
+
+03_init
+    Set ixia stream ip    @{testerp1}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True
+
+03_uninit
+    Unset Bandwidth Control    ${s1_alias}    ${s1p1}
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp1}
+
+04_init
+    Set ixia stream ip    @{testerp1}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True
+
+04_uninit
+    Unset Bandwidth Control    ${s1_alias}    ${s1p1}
+    Unset Bandwidth Control    ${s1_alias}    ${s1p3}
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp1}

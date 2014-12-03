@@ -1,0 +1,96 @@
+*** Settings ***
+Documentation     带宽限制与port-channel交叉测试.port-channel与成员端口均不能配置,加入时配置必须一致,不一致无法加入聚合组.
+...               - step 1 S1P1与S1P3配置带宽限制后, 加入聚合端口, 检查聚合成功,成员端口上有风暴抑制配置.
+...               - step 2 带宽抑制功能正常生效
+...               - step 3 port-channel下没有bandwidth control配置
+...               - step 4 port-channel不能修改和删除bandwidth配置
+...               - step 5 port-channel成员端口不能修改和删除bandwidth配置
+...               - step 6 删除s1p1与s1p3的port-channel配置, 修改s1p1与s1p3的带宽抑制为不同值后, 重新聚合,聚合失败
+...               - step 7 恢复初始配置
+Suite Setup       init Suite test
+Suite Teardown    uninit suite test
+Resource          resource_bandwidth_control.txt
+
+*** Test Cases ***
+01_带宽限制与Portchannel交叉
+    [Documentation]    S1P1与S1P3配置带宽限制后, 加入聚合端口, 检查聚合成功,成员端口上有风暴抑制配置.
+    Log Step Start    Step1    S1P1与S1P3配置带宽限制后, 加入聚合端口, 检查聚合成功,有风暴抑制配置.
+    ${expect_value_receive}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    10000    direction=receive
+    ${expect_value_trans}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    20000    direction=transmit
+    Set Suite Variable    ${TP2_RCV}    ${expect_value_receive}
+    Set Suite Variable    ${TP1_RCV}    ${expect_value_trans}
+    Set Bandwidth Control    ${s1_alias}    ${s1p3}    10000    direction=receive
+    Set Bandwidth Control    ${s1_alias}    ${s1p3}    20000    direction=transmit
+    ${p1_rcv}=    Check Port Show Run    ${s1_alias}    ${s1p1}    ${CMD_BANDWIDTH_CONTROL} \\d+ receive
+    ${p1_trn}=    Check Port Show Run    ${s1_alias}    ${s1p1}    ${CMD_BANDWIDTH_CONTROL} \\d+ receive
+    ${p3_rcv}=    Check Port Show Run    ${s1_alias}    ${s1p3}    ${CMD_BANDWIDTH_CONTROL} \\d+ receive
+    ${p3_trn}=    Check Port Show Run    ${s1_alias}    ${s1p3}    ${CMD_BANDWIDTH_CONTROL} \\d+ receive
+    Run Keyword And Continue On Failure    Should be true    ${p1_rcv}==${p1_trn}==${p3_rcv}==${p3_trn}==True    ${s1p1}与${s1p3}应该有相应的带宽控制配置
+    Exec Cmd List In ConfigMode    ${s1_alias}    port-group 1
+    Set Port Channel Member    ${s1_alias}    ${s1p1}    channel_name=1    mode=on
+    Set Port Channel Member    ${s1_alias}    ${s1p3}    channel_name=1    mode=on
+    ${p1_result}=    Check Port Channel Member    ${s1_alias}    ${s1p1}    channel_name=1
+    ${p3_result}=    Check Port Channel Member    ${s1_alias}    ${s1p3}    channel_name=1
+    Run Keyword And Continue On Failure    Should be true    ${p1_result}==${p3_result}==True    ${s1p1}与${s1p3}是port-channel 1的成员端口
+    Log Step END    Step1    S1P1与S1P3配置带宽限制后, 加入聚合端口, 检查聚合成功,有风暴抑制配置.
+    #
+    #
+    Log Step Start    step 2    带宽抑制功能正常生效
+    Set ixia stream ip    @{testerp1}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:01:01:01
+    Set ixia stream ip    @{testerp2}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:02:02:02
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${TP2_RCV}
+    ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${TP1_RCV}
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Should Be True    ${res1}==${res2}==True    bandwidth control Error.
+    Log Step END    step 2    带宽抑制功能正常生效
+    #
+    #
+    Log Step Start    step 3    port-channel下没有bandwidth control配置
+    ${res1}=    Check Port Show Run    ${s1_alias}    port-channel 1    ${CMD_BANDWIDTH_CONTROL} \\d+ receive
+    ${res2}=    Check Port Show Run    ${s1_alias}    port-channel 1    ${CMD_BANDWIDTH_CONTROL} \\d+ receive
+    Should be true    ${res1}==${res2}==False    port-channel下没有bandwidth control配置
+    Log Step END    step 3    port-channel下没有bandwidth control配置
+    #
+    #
+    Log Step Start    step 4    port-channel不能修改和删除bandwidth配置
+    ${res1}=    Set Bandwidth Control Fail    ${s1_alias}    port-channel 1    1000    direction=both
+    ${res2}=    Set Bandwidth Control Fail    ${s1_alias}    port-channel 1    1000    direction=receive
+    ${res3}=    Set Bandwidth Control Fail    ${s1_alias}    port-channel 1    1000    direction=transmit
+    Run Keyword And Continue On Failure    Should be true    ${res1}==${res2}==${res3}==True    ${TEST_NAME}port-channel不能修改bandwidth control配置
+    ${res1}=    Unset Bandwidth Control Fail    ${s1_alias}    port-channel 1
+    Should be true    ${res1}    ${TEST_NAME} port-channel不能删除bandwidth control配置
+    Log Step END    step 4    port-channel不能修改和删除bandwidth配置
+    #
+    #
+    Log Step Start    step 5    port-channel成员端口不能修改和删除bandwidth配置
+    ${res1}=    Set Bandwidth Control Fail    ${s1_alias}    ${s1p1}    1000    direction=both
+    ${res2}=    Set Bandwidth Control Fail    ${s1_alias}    ${s1p1}    1000    direction=receive
+    ${res3}=    Set Bandwidth Control Fail    ${s1_alias}    ${s1p1}    1000    direction=transmit
+    Run Keyword And Continue On Failure    Should be true    ${res1}==${res2}==${res3}==True    ${TEST_NAME} port-channel的成员端口不能修改bandwidth control配置
+    ${res1}=    Unset Bandwidth Control Fail    ${s1_alias}    ${s1p1}
+    Should be true    ${res1}    ${TEST_NAME} port-channel的成员端口不能删除bandwidth control配置
+    Log Step END    step 5    port-channel成员端口不能修改和删除bandwidth配置
+    #
+    #
+    Log Step Start    step 6    删除s1p1与s1p3的port-channel配置, 修改s1p1与s1p3的带宽抑制为不同值后, 重新聚合,聚合失败
+    Unset Port Channel Member    ${s1_alias}    ${s1p1}
+    Unset Port Channel Member    ${s1_alias}    ${s1p3}
+    Set Bandwidth Control    ${s1_alias}    ${s1p1}    1000
+    Set Bandwidth Control    ${s1_alias}    ${s1p3}    2000
+    Set Port Channel Member    ${s1_alias}    ${s1p1}    channel_name=1    mode=on
+    Set Port Channel Member Fail    ${s1_alias}    ${s1p3}    channel_name=1    mode=on
+    Log Step End    step 6    删除s1p1与s1p3的port-channel配置, 修改s1p1与s1p3的带宽抑制为不同值后, 重新聚合,聚合失败
+    #
+    #
+    [Teardown]    01_uninit
+
+*** Keywords ***
+01_uninit
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置>>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 1
+    Unset Bandwidth Control    ${s1_alias}    ${s1p1}
+    Unset Bandwidth Control    ${s1_alias}    ${s1p3}
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置完成<<<<<<

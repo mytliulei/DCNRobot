@@ -1,0 +1,363 @@
+*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_forwarding.txt
+
+*** Test Cases ***
+1.2.12.1.1 同vlan内的二层转发
+    [Setup]    01_init
+    Log Step Start    step1    同vlan内未知单播转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic
+    Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:33:33:33    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:33:33:33    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    3000    0.1
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    3000    0.1
+    should be true    ${res1}==${res2}==${res3}==${res4}==True    同vlan内未知单播转发正常
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    同vlan内已知单播转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
+    Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:22:22:22    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:11:11:11    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==${res4}==True    同vlan内已知单播转发正常
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step2
+    #
+    #
+    Log Step Start    step3    同vlan内广播转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
+    Set ixia stream l2    @{testerp1}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    stream_mode=${IXIA_StreamMode_Next}
+    ...    reset=True
+    Set ixia stream arp    @{testerp1}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    stream_mode=${IXIA_StreamMode_Return}
+    ...    stream_id=2
+    Set ixia stream l2    @{testerp2}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    3000    0.05
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    3000    0.05
+    should be true    ${res1}==${res2}==${res3}==${res4}==True    同vlan内已知单播转发正常
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step3
+    #
+    #
+    Log Step Start    step4    同vlan内组播转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
+    Set ixia stream l2    @{testerp1}    dst_mac=01:00:5E:00:01:01    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Set ixia stream l2    @{testerp2}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    3000    0.05
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    3000    0.05
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Run Keyword And Continue On Failure    should be true    ${res1}==${res2}==${res3}==${res4}==True    同vlan内已知单播转发正常
+    Log Step End    step4
+    [Teardown]    01_uninit
+
+1.2.12.1.2 同vlan内的二层组播转发(开启igmp snooping)
+    [Setup]    02_init
+    Log Step Start    step1    开启igmp snooping后,缺省所有端口都收不到组播流量
+    Set ixia stream ip    @{testerp1}    dst_mac=01:00:5E:00:01:01    src_mac=00:00:00:11:11:11    dst_ip=225.0.1.1    src_ip=1.1.1.1    stream_rate=1000
+    ...    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Set ixia stream ip    @{testerp2}    dst_mac=01:00:5E:00:02:02    src_mac=00:00:00:22:22:22    dst_ip=225.0.2.2    src_ip=2.2.2.2    stream_rate=2000
+    ...    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    0    mode=pps    tolerance=10
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=10
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    5
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    5
+    should be true    ${res1}==${res2}==${res3}==${res4}==True    开启igmp snooping后,缺省所有端口都收不到组播流量
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    tp1作为组播源,tp2进行点播,点播后,只有tp2收到流量,其他端口没有组播流量转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
+    Set ixia stream ip    @{testerp1}    dst_mac=01:00:5E:00:01:01    src_mac=00:00:00:11:11:11    dst_ip=225.0.1.1    src_ip=1.1.1.1    stream_rate=1000
+    ...    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    02_set tp2 igmpv2 stream    report
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res2}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res3}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==True    开启snooping后,只有点播端口能够收到点播流量
+    Log Step End    step2
+    #
+    #
+    Log Step Start    step3    tp2发送leave报文,组播流量不再转发
+    02_set tp2 igmpv2 stream    leave
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    0    mode=pps
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res2}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res3}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==True
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step3
+    #
+    #
+    Log Step Start    step4    tp2作为组播源,tp1进行点播,点播后,只有tp1收到流量,其他端口没有组播流量转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
+    Set ixia stream ip    @{testerp2}    dst_mac=01:00:5E:00:02:02    src_mac=00:00:00:22:22:22    dst_ip=225.0.2.2    src_ip=2.2.2.2    stream_rate=2000
+    ...    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    02_set tp1 igmpv2 stream    report
+    Ixiasend.Start Transmit    @{testerp2}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res2}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res3}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==True    开启snooping后,只有点播端口能够收到点播流量
+    Log Step End    step4
+    #
+    #
+    Log Step Start    step5    tp1发送leave报文,组播流量不再转发
+    02_set tp1 igmpv2 stream    leave
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res2}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res3}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==True
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step5
+    [Teardown]    02_uninit
+
+1.2.12.1.3 不同vlan内的二层转发
+    [Setup]    03_init
+    Log Step Start    step1    不同vlan内未知单播转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic
+    Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:33:33:33    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:33:33:33    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    0    mode=pps    tolerance=10
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=10
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==${res4}==True    不同vlan内未知单播转发正常
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    不同vlan内已知单播转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
+    Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:22:22:22    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:11:11:11    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    0    mode=pps    tolerance=10
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=10
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==${res4}==True
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step2
+    #
+    #
+    Log Step Start    step3    不同vlan内广播转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
+    Set ixia stream l2    @{testerp1}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    stream_mode=${IXIA_StreamMode_Next}
+    ...    reset=True
+    Set ixia stream arp    @{testerp1}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    stream_mode=${IXIA_StreamMode_Return}
+    ...    stream_id=2
+    Set ixia stream l2    @{testerp2}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    0    mode=pps    tolerance=10
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=10
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==${res4}==True
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step3
+    #
+    #
+    Log Step Start    step4    不同vlan内组播转发
+    Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
+    Set ixia stream l2    @{testerp1}    dst_mac=01:00:5E:00:01:01    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Set ixia stream l2    @{testerp2}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    wait for counter update
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    0    mode=pps    tolerance=10
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=10
+    ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    0    10
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    0    10
+    should be true    ${res1}==${res2}==${res3}==${res4}==True
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step4
+    [Teardown]    03_uninit
+
+*** Keywords ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20;30
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    switchport mode hybrid    switchport hybrid native vlan 10    switchport hybrid allowed vlan 1;10 untag    loopback
+    sleep    5s    wait for ${s1p3} up
+    ${s1p3_updown}=    CheckPortUpdown    ${s1_alias}    ${s1p3}
+    Should Be True    ${s1p3_updown}    !!interface ${s1p3} \ isn't up!!
+    log    配置静态mac,作为已知单播使用
+    Set Static Mac    ${s1_alias}    ${s1p1}    1    00:00:00:11:11:11
+    Set Static Mac    ${s1_alias}    ${s1p2}    1    00:00:00:22:22:22
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+01_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    01_show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Del Static Mac    ${s1_alias}    ${s1p1}    1    00:00:00:11:11:11
+    Del Static Mac    ${s1_alias}    ${s1p2}    1    00:00:00:22:22:22
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10;20;30
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    no switchport mode    switchport access vlan 1    no loopback
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+02_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20;30
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    switchport mode hybrid    switchport hybrid native vlan 20    switchport hybrid allowed vlan 10;20 untag    loopback
+    sleep    5s    wait for ${s1p3} up
+    ${s1p3_updown}=    CheckPortUpdown    ${s1_alias}    ${s1p3}
+    Should Be True    ${s1p3_updown}    !!interface ${s1p3} \ isn't up!!
+    Exec Cmd List In ConfigMode    ${s1_alias}    ip igmp snooping
+    Exec Cmd List In ConfigMode    ${s1_alias}    ip igmp snooping vlan 10    ip igmp snooping vlan 10 immediately-leave
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+02_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    02_show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10;20;30
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 1
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 1
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    no switchport mode    switchport access vlan 1    no loopback
+    Exec Cmd List In ConfigMode    ${s1_alias}    no ip igmp snooping vlan 10 immediately-leave     no ip igmp snooping vlan 10    no ip igmp snooping
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+    #
+
+03_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20;30
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    switchport access vlan 30    loopback
+    sleep    5s    wait for ${s1p3} up
+    ${s1p3_updown}=    CheckPortUpdown    ${s1_alias}    ${s1p3}
+    Should Be True    ${s1p3_updown}    !!interface ${s1p3} \ isn't up!!
+    log    配置静态mac,作为已知单播使用
+    Set Static Mac    ${s1_alias}    ${s1p1}    10    00:00:00:11:11:11
+    Set Static Mac    ${s1_alias}    ${s1p2}    20    00:00:00:22:22:22
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+03_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    01_show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Del Static Mac    ${s1_alias}    ${s1p1}    10    00:00:00:11:11:11
+    Del Static Mac    ${s1_alias}    ${s1p2}    20    00:00:00:22:22:22
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10;20;30
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 1
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 1
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    no switchport mode    switchport access vlan 1    no loopback
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+    #
+
+02_show for Test failed
+    Exec Cmd List    ${s1_alias}    show mac-address-table multicast
+    Exec Cmd List    ${s1_alias}    show ip igmp snooping vlan 10
+    repeat keyword    2times    exec cmd slowly    ${s1_alias}    show interface ethernet counter rate
+    repeat keyword    2times    exec cmd slowly    ${s1_alias}    show interface ${s1p1} | begin Statistics:
+    repeat keyword    2times    exec cmd slowly    ${s1_alias}    show interface ${s1p2} | begin Statistics:
+    repeat keyword    2times    exec cmd slowly    ${s1_alias}    show interface ${s1p3} | begin Statistics:
+    Exec Cmd List    ${s1_alias}    show mac-address-table multicast
+
+02_set tp2 igmpv2 stream
+    [Arguments]    ${type}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+    Ixiasend.Build Ether    dst=01:00:5E:00:01:01    src=00:00:00:22:22:22
+    Ixiasend.Build Ip    src=10.1.1.2    dst=225.0.1.1    ttl=1    proto=${2}
+    Run Keyword If    '${type}'=='report'    Ixiasend.Build Igmpv1v2    version=${0x16}    group=225.0.1.1
+    ...    ELSE IF    '${type}'=='leave'    Ixiasend.Build Igmpv1v2    version=${0x17}    group=225.0.1.1
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{testerp2}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp2}    streamId=1    streamRate=5    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}
+
+02_set tp1 igmpv2 stream
+    [Arguments]    ${type}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Build Ether    dst=01:00:5E:00:02:02    src=00:00:00:11:11:11
+    Ixiasend.Build Ip    src=10.1.1.1    dst=225.0.2.2    ttl=1    proto=${2}
+    Run Keyword If    '${type}'=='report'    Ixiasend.Build Igmpv1v2    version=${0x16}    group=225.0.2.2
+    ...    ELSE IF    '${type}'=='leave'    Ixiasend.Build Igmpv1v2    version=${0x17}    group=225.0.2.2
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{testerp1}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=5    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}
+
+01_show for Test failed
+    Exec Cmd List    ${s1_alias}    show mac-address-table
+    repeat keyword    2times    exec cmd slowly    ${s1_alias}    show interface ethernet counter rate
+    repeat keyword    2times    exec cmd slowly    ${s1_alias}    show interface ${s1p1} | begin Statistics:
+    repeat keyword    2times    exec cmd slowly    ${s1_alias}    show interface ${s1p2} | begin Statistics:
+    repeat keyword    2times    exec cmd slowly    ${s1_alias}    show interface ${s1p3} | begin Statistics:
+    Exec Cmd List    ${s1_alias}    show running

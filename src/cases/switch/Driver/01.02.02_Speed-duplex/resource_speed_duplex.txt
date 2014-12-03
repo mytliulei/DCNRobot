@@ -1,0 +1,60 @@
+*** Settings ***
+Resource          ../resource_driver.txt
+
+*** Keywords ***
+init suite test
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    tools.Comment    !!Start!! Test-Suite: ${SUITE_NAME}
+    Connect To Ixia    ${testerp1_ip}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+
+uninit suite test
+    tools.Comment    !!END!! Test-Suite: ${SUITE_NAME}
+    Close Console    ${s1_alias}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+
+check stream full-duplex
+    Set ixia stream ip    @{testerp1}    stream_rate=5000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:01:01:01
+    Set ixia stream ip    @{testerp2}    stream_rate=5000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:02:02:02
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1
+    Run Keyword And Continue On Failure    should be true    ${res1}==${res2}==True    tp1与tp2对打能够互相收到流量
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+
+check stream half-duplex
+    Set ixia stream ip    @{testerp1}    stream_rate=2000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:01:01:01
+    Set ixia stream ip    @{testerp2}    stream_rate=2000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:02:02:02
+    Ixiasend.Start Transmit    @{testerp1}
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1
+    Ixiasend.Stop Transmit    @{testerp1}
+    Run Keyword And Continue On Failure    should be true    ${res1}==True    tp2能够收到tp1发送的流量
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1
+    Ixiasend.Stop Transmit    @{testerp2}
+    Run Keyword And Continue On Failure    should be true    ${res2}==True    tp1能够收到tp1发送的流量
+
+check negotiation
+    [Arguments]    ${mode}    ${port_updown}    ${port_speed}    ${port_duplex}    ${ixia_updown}    ${ix_speed}
+    ...    ${ix_duplex}    ${neglist}=${EMPTY}
+    ${len}=    Get Length    ${neglist}
+    Run Keyword If    ${len}==${0}    Ixiasend.Set Port Speed Duplex    @{testerp1}    ${mode}    ELSE    Ixiasend.Set Port Speed Duplex
+    ...    @{testerp1}    ${mode}    @{neglist}
+    sleep    5s    wait for port up
+    ${s1p1_up}    ${s1p1_speed}    ${s1p1_duplex}=    Get Port Status    ${s1_alias}    ${s1p1}    updown
+    ...    speed    duplex
+    ${tp1_up}    ${tp1_spd}    ${tp1_duplex}=    Get Statics    @{testerp1}    updown    lineSpeed
+    ...    duplex
+    Run Keyword And Continue On Failure    Should Be True    '${s1p1_up}'=='${port_updown}'    s1p1 should be "${port_updown}" (1:up,0:down)
+    Run Keyword If    '${s1p1_up}'=='UP'    Run Keyword And Continue On Failure    Should Be True    '${s1p1_speed}'=='${port_speed}'    s1p1端口速率应该是'${port_speed}'M
+    Run Keyword If    '${s1p1_up}'=='UP'    Run Keyword And Continue On Failure    Should Be True    '${s1p1_duplex}'=='${port_duplex}'    s1p1端口双工模式应该是'${port_duplex}'
+    Run Keyword And Continue On Failure    Should Be True    '${tp1_up}'=='${ixia_updown}'    tp1 should be "${ixia_updown}" (1:up,0:down)
+    Run Keyword If    '${tp1_up}'=='1'    Run Keyword And Continue On Failure    Should Be True    '${tp1_spd}'=='${ix_speed}'    tp1端口速率应该是'${ix_speed}'M
+    Run Keyword If    '${tp1_up}'=='1'    Run Keyword And Continue On Failure    Should Be True    '${tp1_duplex}'=='${ix_duplex}'    tp1端口双工模式应该是'${ix_duplex}'
+    Run Keyword If    '${port_updown}'=='${ixia_updown}'=='UP' and '${port_duplex}'=='${ix_duplex}'=='FULL'    check stream full-duplex
+    Run Keyword If    '${port_updown}'=='${ixia_updown}'=='UP' and '${port_duplex}'=='${ix_duplex}'=='HALF'    check stream half-duplex

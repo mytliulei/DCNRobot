@@ -1,0 +1,67 @@
+*** Settings ***
+Resource          ../resource_driver.txt
+
+*** Variables ***
+${CMD_FLOW_CONTROL}    flow control
+
+*** Keywords ***
+init suite test
+    [Documentation]    初始化测试套运行
+    ...
+    ...    - 打开console
+    ...    - 连接ixia
+    ...    - 设置i缺省流量
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    tools.Comment    !!Start!! Test-Suite: ${SUITE_NAME}
+    Connect To Ixia    ${testerp1_ip}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Ixia.Set Port Mode Default    @{testerp2}
+    #设置ixia流量
+    Set ixia stream ip    @{testerp1}    stream_rate=100    stream_rate_mode=${IXIA_StreamRateMode_percent}    reset=True    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:01:01:01
+    Set ixia stream ip    @{testerp2}    stream_rate=100    stream_rate_mode=${IXIA_StreamRateMode_percent}    reset=True    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:02:02:02
+
+uninit suite test
+    [Documentation]    恢复测试套配置
+    ...
+    ...    - 删除端口上可能遗留的flow control配置
+    ...    - 将ixia端口set default
+    ...    - 关闭console
+    tools.Comment    恢复Suite拓扑配置>>>>>
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    tools.Comment    恢复Suite拓扑配置结束<<<<<
+    tools.Comment    !!END!! Test-Suite: ${SUITE_NAME}
+    Close Console    ${s1_alias}
+
+Set Flow Control
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    设置flow control
+    ...
+    ...    args:
+    ...    - alias
+    ...    - port
+    log    配置端口流控功能
+    ${cfg_flow_control_config}=    Set Variable    ${CMD_FLOW_CONTROL}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_flow_control_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    #检查是否有配置错误信息返回
+    ${check_result}=    Check set error    ${ret}
+    Run Keyword If    '${check_result}'!='None'    Fail    the Device may be don't support the "${cfg_flow_control_config}" \ or Set error.    TAG_CFG_ERROR
+
+unset Flow Control
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    删除flow control配置
+    ...
+    ...    args:
+    ...    - alias
+    ...    - port
+    log    删除端口流控配置
+    ${cfg_flow_control_config}=    Set Variable    no ${CMD_FLOW_CONTROL}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_flow_control_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    #检查是否有配置错误信息返回
+    ${check_result}=    Check set error    ${ret}
+    Run Keyword If    '${check_result}'!='None'    Fail    the Device may be don't support the "${cfg_flow_control_config}" \ or Set error.    TAG_CFG_ERROR

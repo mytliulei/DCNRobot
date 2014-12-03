@@ -1,0 +1,2 @@
+*** Settings ***
+Documentation     带宽限制功能

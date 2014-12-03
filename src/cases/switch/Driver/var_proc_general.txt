@@ -1,0 +1,112 @@
+*** Settings ***
+Resource          ../../../resource/Switch.txt
+Library           ../../../lib/Tools.py
+Resource          var_topo.txt
+Resource          var_proc_function.txt
+Resource          var_proc_general.txt
+Resource          ../../../resource/ixiasend.txt
+
+*** Keywords ***
+Log Console
+    [Arguments]    ${alias}    @{msg_list}
+    [Documentation]    在ccm console中记录信息
+    Enable Mode    ${alias}
+    Write Bare    \n################################################################################
+    : FOR    ${msg}    IN    @{msg_list}
+    \    Write Bare    \n \# ${msg}
+    Write Bare    \n################################################################################ \n
+    sleep    500ms
+    Read
+
+Log Step Start
+    [Arguments]    ${step}    @{messages}
+    [Documentation]    功能:在console和log中记录当前Step开始
+    ...
+    ...    args:
+    ...    - step #指定step
+    ...    - message #附加的输出信息,缺省会提示当前test suite和case
+    tools.Comment    !!Step-START!! Test-Suite: ${SUITE_NAME}    !!Step-START!! Test-Case: ${TEST_NAME}    !!Step-START!! ${step}    @{messages}
+
+Log Step End
+    [Arguments]    ${step}    @{messages}
+    [Documentation]    功能:在console和log中记录当前Step结束
+    ...
+    ...    args:
+    ...    - step #指定step
+    ...    - message #附加的输出信息,缺省会提示当前test suite和case
+    tools.Comment    !!Step-END!! Test-Suite: ${SUITE_NAME}    !!Step-END!! Test-Case: ${TEST_NAME}    !!Step-END!! ${step}    @{messages}
+
+Check More or Less
+    [Arguments]    ${num1}    ${num2}    ${tolerance}
+    ${low}=    Evaluate    ${num2}*(1-${tolerance})
+    ${up}=    Evaluate    ${num2}*(1+${tolerance})
+    Run Keyword If    ${num2}!=${0}    log    ${low}<${num1}<${up}    ELSE    log    ${0}<=${num1}<${tolerance}
+    ${res}=    Run Keyword If    ${num2}!=${0}    Evaluate    ${low}<${num1}<${up}    ELSE    Evaluate
+    ...    ${0}<=${num1}<${tolerance}
+    [Return]    ${res}
+
+convert mask to num
+    [Arguments]    ${mask}
+    ${a}    ${b}    ${c}    ${d}=    Split String    ${mask}    .
+    ${a}=    Convert To Binary    ${a}
+    ${b}=    Convert To Binary    ${b}
+    ${c}=    Convert To Binary    ${c}
+    ${d}=    Convert To Binary    ${d}
+    ${num}=    Evaluate    "${a}".count('1')+"${b}".count('1')+"${c}".count('1')+"${d}".count('1')    string
+    [Return]    ${num}
+
+Get Debug Output Until Regexp
+    [Arguments]    ${alias}    ${regexp}    ${timeout}=${None}
+    Telnet.Switch Connection    ${alias}
+    Run Keyword If    '${timeout}'!='${None}'    Telnet.Set Timeout    ${timeout}
+    @{ret}=    Telnet.Debug Read Until Regexp    ${regexp}
+    Run Keyword If    '${timeout}'!='${None}'    Telnet.Set Timeout    ${sw_timeout}
+    Log    ${ret}
+    [Return]    @{ret}
+
+Exec Cmd slowly
+    [Arguments]    ${alias}    ${cmd}
+    Telnet.Switch Connection    ${alias}
+    Telnet.Write bare    ${cmd}
+    Sleep    500ms
+    Telnet.Write    ${SPACE}
+    ${output}=    Telnet.Read Until Prompt
+    [Return]    ${output}
+
+Log In APC
+    [Arguments]    ${alias}    ${user}=apc    ${pwd}=apc
+    Switch Connection    ${alias}
+    write bare    \x03
+    write bare    4\r    #logout
+    sleep    1s
+    Read
+    write bare    \r\r
+    write bare    \r\r
+    Telnet.Read Until Regexp    User\\s+Name\\s+:.*
+    write bare    ${user}\r
+    Telnet.Read Until Regexp    Password\\s+:.*
+    write bare    ${pwd}\r
+    Telnet.Read Until Prompt
+    Return From Keyword    ${True}
+
+Set Apc Port
+    [Arguments]    ${alias}    ${port}    ${state}
+    log in apc    ${alias}
+    write bare    1\r    #device manager
+    Telnet.Read Until Regexp    (?m)^>
+    write bare    2\r    #Outlet Management
+    Telnet.Read Until Regexp    (?m)^>
+    write bare    1\r    #Outlet Control/Configuration
+    Telnet.Read Until Regexp    (?m)^>
+    write bare    ${port}\r    #Outlet ${port}
+    Telnet.Read Until Regexp    (?m)^>
+    write bare    1\r    #Control Outlet
+    Telnet.Read Until Regexp    (?m)^>
+    Run Keyword If    '${state}'=='ON'    write bare    1\r    ELSE    write bare    2\r
+    Telnet.Read Until Regexp    <ENTER> to cancel :
+    write bare    YES\r
+    Telnet.Read Until Regexp    Press <ENTER> to continue...
+    write bare    \r
+    ${ret}=    Telnet.Read Until Regexp    (?m)^>
+    ${res}=    Tools.Is Match From String    ${ret}    (?ism)Name\\s+:\\s+Outlet\\s+${port}.*?State\\s+:\\s+${state}
+    [Return]    ${res}

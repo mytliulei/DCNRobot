@@ -1,0 +1,62 @@
+*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_show_interface.txt
+
+*** Test Cases ***
+01_show interface
+    Log Step Start    step1    检查show interface能够显示所有端口的brief信息(通过show interface port status来判断是否显示全)
+    Exec Cmd List    ${s1_alias}
+    ${showPortStatus}=    Exec Cmd slowly    ${s1_alias}    show interface ethernet status | include UP|DOWN
+    ${showInterface}=    Exec Cmd Until Regexp    ${s1_alias}    show interface    ${sw_prompt}    timeout=5 minute
+    @{ports}=    Tools.Find All From String    ${showPortStatus}    (?m)^(\\d+/.*?)\\s+    #获取所有端口号
+    : FOR    ${port}    IN    @{ports}
+    \    Should Contain    ${showInterface}    ${port}    show interface没有输出端口${port}的信息!!
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查show interface能够正确显示S1P1的基本信息
+    Get s1p1 port info
+    ${showS1P1}=    Tools.Get Value From String    ${showInterface}    (?s)(1/0/3.*?)(?=Interface brief|$)
+    should contain    ${showS1P1}    ${s1p1} is ${PortStauts}    show interface可以显示s1p1端口up/down 状态
+    Run Keyword If    '${PortAlias}'!='None'    should contain    ${showS1P1}    alias name is ${PortAlias}    show interface可以显示s1p1端口的description    ELSE
+    ...    should contain    ${showS1P1}    alias name is (null)
+    should contain    ${showS1P1}    Hardware is ${PortHW}    show interface可以显示s1p1端口的硬件类型
+    should contain    ${showS1P1}    PVID is ${PortVlan}    show interface可以显示s1p1端口的PVID
+    should contain    ${showS1P1}    ${PortDuplex}
+    should contain    ${showS1P1}    ${PortSpeed}
+    Log Step End    step2
+
+*** Key Words ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+01_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+show for Test failed
+    log    a
+
+Get s1p1 port info
+    ${s1p1Name}=    Tools.Get Value From String    ${s1p1}    (\\d+/.*)
+    ${s1p1Status}    Exec Cmd slowly    ${s1_alias}    show interface ethernet status | include ${s1p1Name} +
+    ${tempPortStatus}=    Tools.Get Value From String    ${s1p1Status}    (UP|Down)
+    ${PortStauts}=    Evaluate    "${tempPortStatus}".lower
+    ${tempPortSpeed}=    Tools.Get Value From String    ${s1p1Status}    ([af]-\\d+\\w+)\\s+
+    ${PortSpeed}=    Evaluate    "${tempPortSpeed}".lower
+    ${speed_dict}=    Create Dictionary    a-1g=Auto-speed: Negotiation 1G bits    f-1g=Force 1G    a-100m=Auto-speed: Negotiation 100M bits    f-100m=Force 100M    a-10m=Auto-speed: Negotiation 10M bits
+    ...    f-10m=Force 10M
+    ${PortSpeed}=    Set Variable    ${speed_dict["${PortSpeed}"]}
+    ${tempPortDuplex}=    Tools.Get Value From String    ${s1p1Status}    (?i)([af]-(?:FULL|HALF))
+    ${PortDuplex}=    Evaluate    "${tempPortDuplex}".lower
+    ${duplex_dict}=    Create Dictionary    a-full=Auto-duplex: Negotiation full-duplex    a-half=Auto-duplex: Negotiation half-duplex    f-full=Force full-duplex    f-half=Force half-duplex
+    ${PortDuplex}=    Set Variable    ${duplex_dict["${PortDuplex}"]}
+    ${PortVlan}=    Tools.Get Value From String    ${s1p1Status}    ${tempPortDuplex}\\s+(\\d+)
+    ${tempHW}=    Tools.Get Value From String    ${s1p1Status}    ${tempPortDuplex}\\s+\\d+\\s+(.*?)\\s+
+    ${hw_dict}=    Create Dictionary    G-TX=Gigabit-TX    SFP=SFP    SFP+=SFP+
+    ${PortHW}=    Set Variable    ${hw_dict["${tempHW}"]}
+    ${PortAlias}=    Tools.Get Value From String    ${s1p1Status}    ${tempHW}\\s+(.*)\\s+

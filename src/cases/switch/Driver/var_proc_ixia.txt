@@ -1,0 +1,311 @@
+*** Settings ***
+Resource          ../../../resource/Switch.txt
+Library           ../../../lib/Tools.py
+Resource          var_topo.txt
+Resource          var_proc_function.txt
+Resource          ../../../resource/ixiasend.txt
+
+*** Variables ***
+${IXIA_StreamRateMode_bps}    2
+${IXIA_StreamRateMode_pps}    1
+${IXIA_StreamRateMode_percent}    0
+${IXIA_StreamMode_continue}    0
+${IXIA_StreamMode_stop}    1
+${IXIA_StreamMode_next}    2
+${IXIA_StreamMode_return}    3
+
+*** Keywords ***
+CheckIxiaReceiveRate
+    [Arguments]    ${chassis}    ${card}    ${port}    ${received_type}    ${received_rate}    ${tolerance}=${0.05}
+    [Documentation]    功能:检查收包端口指定类型速率是否与预期接收速率相符
+    ...
+    ...    \ args:
+    ...    \- ${chassis} ${card} ${port}#接收端口
+    ...    \- ${received_type}#接收流量单位(bps,pps)
+    ...    \- ${received_rate}#预期接收速率
+    ...    \- ${tolerance}#误差范围
+    ...
+    ...    return:
+    ...    - ret #True表示接收速率在误差范围内,否则返回False
+    @{port}=    Set Variable    ${chassis}    ${card}    ${port}
+    log    获取接收速率
+    ${port_rx}=    Get Statics    @{port}    rx${received_type}
+    ${ret}=    Evaluate    ${received_rate}*(1-${tolerance})<${port_rx}<${received_rate}*(1+${tolerance})
+    Log    ${received_rate}*(1-${tolerance})<${port_rx}<${received_rate}*(1+${tolerance})
+    [Return]    ${ret}
+
+[Del]Set ixia stream ip
+    [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${stream_rate_mode}    ${stream_id}=${1}
+    ...    ${stream_mode}=${IXIA_StreamMode_continue}    ${numPacket}=${1}    ${returnID}=${1}    ${dst_mac}=FF:FF:FF:FF:FF:FF    ${src_mac}=00:00:00:00:01:01    ${type_id}=${None}
+    ...    ${dst_ip}=1.1.1.1    ${src_ip}=2.2.2.2    ${pkt_length}=${64}    ${reset}=False
+    [Documentation]    设置IP流
+    ...
+    ...    \ args:
+    ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
+    ...    \- ${stream_rate}#流量速率
+    ...    \- ${stream_rate_mode} #流量模式(bps,pps,percent)
+    ...    \- ${stream_id}=${1} #发送流序号,缺省为1
+    ...    \- ${stream_mode}=${IXIA_StreamMode_continue} #发送模式，continue，stop，next，return to id，缺省为continue
+    ...    \- ${numPacket}=${1} #发送报文个数,在next和return模式下,用于控制发送指定数量报文后切换到指定流
+    ...    \- ${returnID}=${1} #return ID,在return模式下,用于确定返回到指定流.缺省返回流1
+    ...    \- ${dst_mac}=${1} #destination mac,报文目的mac地址
+    ...    \- ${src_mac}=${1} #source mac,报文源mac地址
+    ...    \- ${type_id}=${1} #eth_type,报文以太网类型,当设置ip字段后,此字段会自动设置为0x0800,即IP
+    ...    \- ${dst_ip}=${1} #destination ip,报文目的ip地址
+    ...    \- ${src_ip}=${1} #source ip,报文源ip地址
+    ...    \- ${pkt_length}=${1} #报文整体长度
+    ...    \- ${reset}=False #resetixia端口,True表示reset,False表示不reset
+    ...
+    ...    Example:
+    ...
+    ...    在tp2上配置ip流量,速率为200000bps,持续发送模式
+    ...    | Set stream ip | @{testerp2} | ${200000} | bps | stream_id=${1} | dst_mac=ff:ff:ff:ff:ff:ff | src_mac=00:00:00:00:22:22 | dst_ip=20.1.1.1 | src_ip=10.1.1.1 | pkt_length=${64} | reset=True |
+    ${stream_rate_mode_set}=    Set Variable If    '${stream_rate_mode}'=='bps'    ${IXIA_StreamRateMode_bps}    '${stream_rate_mode}'=='pps'    ${IXIA_StreamRateMode_pps}    '${stream_rate_mode}'=='pencent'
+    ...    ${IXIA_StreamRateMode_pencent}
+    Run Keyword If    ${reset}==True    Ixia.Set Port Mode Default    ${tp_chassis}    ${tp_card}    ${tp_port}
+    ${dict}=    Create Dictionary
+    Ixiasend.Build Ether    dst=${dst_mac}    src=${src_mac}    typeid=${type_id}
+    Ixiasend.Build Ip    dst=${dst_ip}    src=${src_ip}
+    Ixiasend.Build Packet    ${pkt_length}
+    Ixiasend.Set Stream Packet By Api    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
+    Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode_set}
+    ...    ${stream_mode}    ${numPacket}    ${returnID}
+
+CheckIxiaSendReceive
+    [Arguments]    ${schassis}    ${scard}    ${sport}    ${dchassis}    ${dcard}    ${dport}
+    ...    ${num}    ${mode}=bps    ${tolerance}=${0.05}
+    ${sport_tx}=    Get Statics    ${schassis}    ${scard}    ${sport}    tx${mode}
+    ${dport_rx}=    Get Statics    ${dchassis}    ${dcard}    ${dport}    rx${mode}
+    Return From Keyword If    ${sport_tx}==0    False
+    ${temp}=    Evaluate    ${dport_rx}.0/${sport_tx}.0
+    ${res}=    Run Keyword If    ${num}==${0}    Evaluate    (${num}-${tolerance}) <${dport_rx}<(${num}+${tolerance})    ELSE    Evaluate
+    ...    (${num}-${tolerance}) <${temp}<(${num}+${tolerance})
+    Return From Keyword    ${res}
+
+Set ixia stream l2
+    [Arguments]    ${chassis}    ${card}    ${port}    @{args}
+    [Documentation]    设置L2流
+    ...
+    ...    \ args:
+    ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
+    ...    \- ${stream_rate}#流量速率
+    ...    \- ${stream_rate_mode} #流量模式(bps,pps,percent)
+    ...    \- ${stream_id}=${1} #发送流序号,缺省为1
+    ...    \- ${stream_mode}=${IXIA_StreamMode_continue} #发送模式，continue，stop，next，return to id，缺省为continue
+    ...    \- ${numPacket}=${1} #发送报文个数,在next和return模式下,用于控制发送指定数量报文后切换到指定流
+    ...    \- ${returnID}=${1} #return ID,在return模式下,用于确定返回到指定流.缺省返回流1
+    ...    \- ${dst_mac}={ff:ff:ff:ff:ff:ff #destination mac,报文目的mac地址
+    ...    \- ${src_mac}=00:00:00:00:22:22 #source mac,报文源mac地址
+    ...    \- ${type_id}=${None} #eth_type,报文以太网类型,当设置ip字段后,此字段会自动设置为0x0800,即IP
+    ...    \- ${prio}=${0} #vlan-tag的优先级
+    ...    \- ${cfi}=${0} #vlan-tag的cfi置位,默认为0
+    ...    \- ${vlan}=${None} #vlan-id,默认为空
+    ...    \- ${pkt_length}=${64} #报文整体长度
+    ...    \- ${reset}=False #resetixia端口,True表示reset,False表示不reset
+    ...
+    ...    Example:
+    ...
+    ...    在tp2上配置ip流量,速率为200000bps,持续发送模式
+    ...    | Set stream ip | @{testerp2} | ${200000} | bps | stream_id=${1} | dst_mac=ff:ff:ff:ff:ff:ff | src_mac=00:00:00:00:22:22 | dst_ip=20.1.1.1 | src_ip=10.1.1.1 | pkt_length=${64} | reset=True |
+    ${dict}=    Create Dictionary    stream_rate=100    stream_rate_mode=${IXIA_StreamRateMode_Percent}    stream_id=1    stream_mode=${IXIA_StreamMode_continue}    numPacket=1
+    ...    dst_mac=FF:FF:FF:FF:FF:FF    src_mac=00:00:00:00:01:01    etherType=${None}    returnID=1    tpid1=0x8100    prio1=0
+    ...    cfi1=0    vlan1=None    tpid2=0x8100    prio2=0    cfi2=0    vlan2=None
+    ...    pkt_length=64    reset=False    payload=${None}
+    ${dict_update}=    Create Dictionary
+    : FOR    ${arg}    IN    @{args}
+    \    @{ilist}    String.Split String    ${arg}    =
+    \    ${dict_update}=    Set To Dictionary    ${dict_update}    @{ilist}
+    @{ulist}=    Get Dictionary Keys    ${dict_update}
+    : FOR    ${item}    IN    @{ulist}
+    \    Remove From Dictionary    ${dict}    ${item}
+    \    Set To Dictionary    ${dict}    ${item}    ${dict_update['${item}']}
+    #取出ether递增参数
+    ${ex_dict_ether}=    get stream ether extend var    ${dict}
+    #取出dot1q递增参数
+    ${ex_dict_dot1q_1}    ${ex_dict_dot1q_2}=    get stream dot1q extend var    ${dict}
+    Log Dictionary    ${dict}
+    Log Dictionary    ${ex_dict_ether}
+    Log Dictionary    ${ex_dict_dot1q_1}
+    Log Dictionary    ${ex_dict_dot1q_2}
+    Run Keyword If    ${dict['reset']}==True    Ixia.Set Port Mode Default    ${chassis}    ${card}    ${port}
+    Ixiasend.Build Ether    dst=${dict['dst_mac']}    src=${dict['src_mac']}    kwargs=${ex_dict_ether}    typeid=${dict['etherType']}
+    Run Keyword If    ${dict['vlan1']}!=${None}    Ixiasend.Build Dot1Q    prio=${dict['prio1']}    cfi=${dict['cfi1']}    vlan=${dict['vlan1']}    kwargs=${ex_dict_dot1q_1}
+    ...    typeid=${dict['tpid1']}
+    Run Keyword If    ${dict['vlan2']}!=${None}    Ixiasend.Build Dot1Q    prio=${dict['prio2']}    cfi=${dict['cfi2']}    vlan=${dict['vlan2']}    kwargs=${ex_dict_dot1q_2}
+    ...    typeid=${dict['tpid2']}
+    Ixiasend.Build Payload    ${dict['payload']}
+    Ixiasend.Build Packet    ${dict['pkt_length']}
+    Ixiasend.Set Stream Packet By api    ${chassis}    ${card}    ${port}    ${dict['stream_id']}
+    Ixiasend.Set Stream Control    ${chassis}    ${card}    ${port}    ${dict['stream_id']}    ${dict['stream_rate']}    ${dict['stream_rate_mode']}
+    ...    ${dict['stream_mode']}    ${dict['numPacket']}    ${dict['returnID']}
+
+get stream ether extend var
+    [Arguments]    ${dict}
+    ${new_dict}=    Copy Dictionary    ${dict}
+    @{list}=    create list    daRepeatCounter    numDA    daStep    saRepeatCounter    numSA
+    ...    saStep
+    Keep In Dictionary    ${new_dict}    @{list}
+    Return From Keyword    ${new_dict}
+
+get stream dot1q extend var
+    [Arguments]    ${dict}
+    ${dict1}=    Create Dictionary
+    ${dict2}=    Create Dictionary
+    ${item}=    Get Dictionary Items    ${dict}
+    ${index}=    Get Index From List    ${item}    mode1
+    Run Keyword If    ${index}!=${-1}    Set To Dictionary    ${dict1}    mode    ${item[${index}+1]}
+    ${index}=    Get Index From List    ${item}    repeat1
+    Run Keyword If    ${index}!=${-1}    Set To Dictionary    ${dict1}    repeat    ${item[${index}+1]}
+    ${index}=    Get Index From List    ${item}    step1
+    Run Keyword If    ${index}!=${-1}    Set To Dictionary    ${dict1}    step    ${item[${index}+1]}
+    ${index}=    Get Index From List    ${item}    mode2
+    Run Keyword If    ${index}!=${-1}    Set To Dictionary    ${dict2}    mode    ${item[${index}+1]}
+    ${index}=    Get Index From List    ${item}    repeat2
+    Run Keyword If    ${index}!=${-1}    Set To Dictionary    ${dict2}    repeat    ${item[${index}+1]}
+    ${index}=    Get Index From List    ${item}    step2
+    Run Keyword If    ${index}!=${-1}    Set To Dictionary    ${dict2}    step    ${item[${index}+1]}
+    Return From Keyword    ${dict1}    ${dict2}
+
+Set ixia stream ip
+    [Arguments]    ${chassis}    ${card}    ${port}    @{args}
+    [Documentation]    设置IP流
+    ...
+    ...    \ args:
+    ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
+    ...    \- ${stream_rate}#流量速率
+    ...    \- ${stream_rate_mode} #流量模式(bps,pps,percent)
+    ...    \- ${stream_id}=${1} #发送流序号,缺省为1
+    ...    \- ${stream_mode}=${IXIA_StreamMode_continue} #发送模式，continue，stop，next，return to id，缺省为continue
+    ...    \- ${numPacket}=${1} #发送报文个数,在next和return模式下,用于控制发送指定数量报文后切换到指定流
+    ...    \- ${returnID}=${1} #return ID,在return模式下,用于确定返回到指定流.缺省返回流1
+    ...    \- ${dst_mac}=${1} #destination mac,报文目的mac地址
+    ...    \- ${src_mac}=${1} #source mac,报文源mac地址
+    ...    \- ${type_id}=${1} #eth_type,报文以太网类型,当设置ip字段后,此字段会自动设置为0x0800,即IP
+    ...    \- ${dst_ip}=${1} #destination ip,报文目的ip地址
+    ...    \- ${src_ip}=${1} #source ip,报文源ip地址
+    ...    \- ${pkt_length}=${1} #报文整体长度
+    ...    \- ${reset}=False #resetixia端口,True表示reset,False表示不reset
+    ...
+    ...    Example:
+    ...
+    ...    在tp2上配置ip流量,速率为200000bps,持续发送模式
+    ...    | Set stream ip | @{testerp2} | ${200000} | bps | stream_id=${1} | dst_mac=ff:ff:ff:ff:ff:ff | src_mac=00:00:00:00:22:22 | dst_ip=20.1.1.1 | src_ip=10.1.1.1 | pkt_length=${64} | reset=True |
+    ${dict}=    Create Dictionary    stream_rate=100    stream_rate_mode=${IXIA_StreamRateMode_Percent}    stream_id=1    stream_mode=${IXIA_StreamMode_continue}    numPacket=1
+    ...    dst_mac=FF:FF:FF:FF:FF:FF    src_mac=00:00:00:00:01:01    etherType=0x0800    returnID=1    tpid1=0x8100    prio1=0
+    ...    cfi1=0    vlan1=None    tpid2=0x8100    prio2=0    cfi2=0    vlan2=None
+    ...    pkt_length=64    reset=False    payload=${None}    dst_ip=1.1.1.1    src_ip=2.2.2.2    version=${4}
+    ...    ihl=${None}    tos=${0x0}    iplen=${None}    iden=${0}    flags=${0}    frag=${0}
+    ...    ttl=${64}    proto=${None}    chksum=${None}    options=${None}
+    ${dict_update}=    Create Dictionary
+    : FOR    ${arg}    IN    @{args}
+    \    @{ilist}    String.Split String    ${arg}    =
+    \    Set To Dictionary    ${dict_update}    @{ilist}
+    @{ulist}=    Get Dictionary Keys    ${dict_update}
+    : FOR    ${item}    IN    @{ulist}
+    \    Remove From Dictionary    ${dict}    ${item}
+    \    Set To Dictionary    ${dict}    ${item}    ${dict_update['${item}']}
+    #取出ether递增参数
+    ${ex_dict_ether}=    get stream ether extend var    ${dict}
+    #取出dot1q递增参数
+    ${ex_dict_dot1q_1}    ${ex_dict_dot1q_2}=    get stream dot1q extend var    ${dict}
+    #取出IP递增参数
+    ${ex_dict_ip}=    get stream ip extend var    ${dict}
+    #记录所有字典参数
+    Log Dictionary    ${dict}
+    Log Dictionary    ${ex_dict_ether}
+    Log Dictionary    ${ex_dict_dot1q_1}
+    Log Dictionary    ${ex_dict_dot1q_2}
+    Log Dictionary    ${ex_dict_ip}
+    Run Keyword If    ${dict['reset']}==True    Ixia.Set Port Mode Default    ${chassis}    ${card}    ${port}
+    Ixiasend.Build Ether    dst=${dict['dst_mac']}    src=${dict['src_mac']}    kwargs=${ex_dict_ether}    typeid=${dict['etherType']}
+    Run Keyword If    ${dict['vlan1']}!=${None}    Ixiasend.Build Dot1Q    prio=${dict['prio1']}    cfi=${dict['cfi1']}    vlan=${dict['vlan1']}    kwargs=${ex_dict_dot1q_1}
+    ...    typeid=${dict['tpid1']}
+    Run Keyword If    ${dict['vlan2']}!=${None}    Ixiasend.Build Dot1Q    prio=${dict['prio2']}    cfi=${dict['cfi2']}    vlan=${dict['vlan2']}    kwargs=${ex_dict_dot1q_2}
+    ...    typeid=${dict['tpid2']}
+    Ixiasend.Build Ip    version=${dict['version']}    ihl=${dict['ihl']}    tos=${dict['tos']}    iplen=${dict['iplen']}    iden=${dict['iden']}    flags=${dict['flags']}
+    ...    frag=${dict['frag']}    ttl=${dict['ttl']}    proto=${dict['proto']}    chksum=${dict['chksum']}    src=${dict['src_ip']}    dst=${dict['dst_ip']}
+    ...    options=${dict['options']}    kwargs=${ex_dict_ip}
+    Ixiasend.Build Payload    ${dict['payload']}
+    Ixiasend.Build Packet    ${dict['pkt_length']}
+    Ixiasend.Set Stream Packet By Api    ${chassis}    ${card}    ${port}    ${dict['stream_id']}
+    Ixiasend.Set Stream Control    ${chassis}    ${card}    ${port}    ${dict['stream_id']}    ${dict['stream_rate']}    ${dict['stream_rate_mode']}
+    ...    ${dict['stream_mode']}    ${dict['numPacket']}    ${dict['returnID']}
+
+get stream ip extend var
+    [Arguments]    ${dict}
+    ${new_dict}=    Copy Dictionary    ${dict}
+    @{list}=    create list    sourceIpMask    sourceIpAddrMode    sourceIpAddrRepeatCount    sourceClass    destIpMask
+    ...    destIpAddrMode    destIpAddrRepeatCount    destClass
+    Keep In Dictionary    ${new_dict}    @{list}
+    Return From Keyword    ${new_dict}
+
+set ixia stream arp
+    [Arguments]    ${chassis}    ${card}    ${port}    @{args}
+    [Documentation]    设置L2流
+    ...
+    ...    \ args:
+    ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
+    ...    \- ${stream_rate}#流量速率
+    ...    \- ${stream_rate_mode} #流量模式(bps,pps,percent)
+    ...    \- ${stream_id}=${1} #发送流序号,缺省为1
+    ...    \- ${stream_mode}=${IXIA_StreamMode_continue} #发送模式，continue，stop，next，return to id，缺省为continue
+    ...    \- ${numPacket}=${1} #发送报文个数,在next和return模式下,用于控制发送指定数量报文后切换到指定流
+    ...    \- ${returnID}=${1} #return ID,在return模式下,用于确定返回到指定流.缺省返回流1
+    ...    \- ${dst_mac}={ff:ff:ff:ff:ff:ff #destination mac,报文目的mac地址
+    ...    \- ${src_mac}=00:00:00:00:22:22 #source mac,报文源mac地址
+    ...    \- ${type_id}=${None} #eth_type,报文以太网类型,当设置ip字段后,此字段会自动设置为0x0800,即IP
+    ...    \- ${prio}=${0} #vlan-tag的优先级
+    ...    \- ${cfi}=${0} #vlan-tag的cfi置位,默认为0
+    ...    \- ${vlan}=${None} #vlan-id,默认为空
+    ...    \- ${pkt_length}=${64} #报文整体长度
+    ...    \- ${reset}=False #resetixia端口,True表示reset,False表示不reset
+    ...
+    ...    Example:
+    ...
+    ...    在tp2上配置ip流量,速率为200000bps,持续发送模式
+    ...    | Set stream ip | @{testerp2} | ${200000} | bps | stream_id=${1} | dst_mac=ff:ff:ff:ff:ff:ff | src_mac=00:00:00:00:22:22 | dst_ip=20.1.1.1 | src_ip=10.1.1.1 | pkt_length=${64} | reset=True |
+    ${dict}=    Create Dictionary    stream_rate=100    stream_rate_mode=${IXIA_StreamRateMode_Percent}    stream_id=1    stream_mode=${IXIA_StreamMode_continue}    numPacket=1
+    ...    dst_mac=FF:FF:FF:FF:FF:FF    src_mac=00:00:00:00:01:01    returnID=1    tpid1=0x8100    prio1=0    cfi1=0
+    ...    vlan1=None    tpid2=0x8100    prio2=0    cfi2=0    vlan2=None    pkt_length=64
+    ...    reset=False    payload=${None}    hwtype=${0x1}    ptype=${0x800}    hwlen=${6}    plen=${4}
+    ...    op=${1}    hwsrc=00:00:00:00:00:00    psrc=0.0.0.0    hwdst=00:00:00:00:00:00    pdst=0.0.0.0
+    ${dict_update}=    Create Dictionary
+    : FOR    ${arg}    IN    @{args}
+    \    @{ilist}    String.Split String    ${arg}    =
+    \    ${dict_update}=    Set To Dictionary    ${dict_update}    @{ilist}
+    @{ulist}=    Get Dictionary Keys    ${dict_update}
+    : FOR    ${item}    IN    @{ulist}
+    \    Remove From Dictionary    ${dict}    ${item}
+    \    Set To Dictionary    ${dict}    ${item}    ${dict_update['${item}']}
+    #取出ether递增参数
+    ${ex_dict_ether}=    get stream ether extend var    ${dict}
+    #取出dot1q递增参数
+    ${ex_dict_dot1q_1}    ${ex_dict_dot1q_2}=    get stream dot1q extend var    ${dict}
+    #取出arp递增参数
+    ${ex_dict_arp}=    get stream arp extend var    ${dict}
+    Log Dictionary    ${dict}
+    Log Dictionary    ${ex_dict_ether}
+    Log Dictionary    ${ex_dict_dot1q_1}
+    Log Dictionary    ${ex_dict_dot1q_2}
+    Log Dictionary    ${ex_dict_arp}
+    Run Keyword If    ${dict['reset']}==True    Ixia.Set Port Mode Default    ${chassis}    ${card}    ${port}
+    Ixiasend.Build Ether    dst=${dict['dst_mac']}    src=${dict['src_mac']}    kwargs=${ex_dict_ether}
+    Run Keyword If    ${dict['vlan1']}!=${None}    Ixiasend.Build Dot1Q    prio=${dict['prio1']}    cfi=${dict['cfi1']}    vlan=${dict['vlan1']}    kwargs=${ex_dict_dot1q_1}
+    ...    typeid=${dict['tpid1']}
+    Run Keyword If    ${dict['vlan2']}!=${None}    Ixiasend.Build Dot1Q    prio=${dict['prio2']}    cfi=${dict['cfi2']}    vlan=${dict['vlan2']}    kwargs=${ex_dict_dot1q_2}
+    ...    typeid=${dict['tpid2']}
+    Ixiasend.Build Arp    hwtype=${dict['hwtype']}    ptype=${dict['ptype']}    hwlen=${dict['hwlen']}    plen=${dict['plen']}    op=${dict['op']}    hwsrc=${dict['hwsrc']}
+    ...    psrc=${dict['psrc']}    hwdst=${dict['hwdst']}    pdst=${dict['pdst']}    kwargs=${ex_dict_arp}
+    Ixiasend.Build Payload    ${dict['payload']}
+    Ixiasend.Build Packet    ${dict['pkt_length']}
+    Ixiasend.Set Stream Packet By api    ${chassis}    ${card}    ${port}    ${dict['stream_id']}
+    Ixiasend.Set Stream Control    ${chassis}    ${card}    ${port}    ${dict['stream_id']}    ${dict['stream_rate']}    ${dict['stream_rate_mode']}
+    ...    ${dict['stream_mode']}    ${dict['numPacket']}    ${dict['returnID']}
+
+get stream arp extend var
+    [Arguments]    ${dict}
+    ${new_dict}=    Copy Dictionary    ${dict}
+    @{list}=    create list    destHardwareAddrMode    destHardwareAddrRepeatCount    destProtocolAddrMode    destProtocolAddrRepeatCount    sourceHardwareAddrMode
+    ...    sourceHardwareAddrRepeatCount    sourceProtocolAddrMode    sourceProtocolAddrRepeatCount
+    Keep In Dictionary    ${new_dict}    @{list}
+    Return From Keyword    ${new_dict}

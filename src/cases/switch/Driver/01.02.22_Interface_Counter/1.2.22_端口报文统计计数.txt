@@ -1,0 +1,170 @@
+*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_interface_counter.txt
+
+*** Variables ***
+${packetNum}      50000    # 发送报文数量
+${pktLen}         64    # 发送报文整体长度
+
+*** Test Cases ***
+01_入口单播报文统计
+    Log Step Start    step1    清除计数后,tp1打入单播报文
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Clear Statics    @{testerp1}
+    Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:00:02:02    src_mac=00:00:00:00:01:01    stream_rate=10000    stream_rate_mode=pps    stream_mode=${Ixia_StreamMode_Stop}
+    ...    numPacket=${packetNum}    pkt_length=${pktLen}    reset=${True}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    10s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp1}
+    ${tp1_tx}=    Ixiasend.Get Statics    @{testerp1}    txpackets
+    Should Be True    ${tp1_tx}==${packetNum}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查计数统计正确
+    ${res_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    in_packets    in_bytes    in_uc
+    ...    in_crc
+    Should Be True    ${res_dict["in_packets"]}+${res_dict["in_crc"]}==${packetNum}    测试仪发送${packetNum}个报文,s1p1-${s1p1}收包计数为${res_dict["in_packets"]},crc个数为${res_dict["in_crc"]}
+    Should Be True    ${res_dict["in_bytes"]}==(${packetNum}-${res_dict["in_crc"]})*${pktLen}    测试仪发送${packetNum}个${pktLen}字节报文,s1p1-${s1p1}收包字节统计为${res_dict["in_bytes"]},crc个数为${res_dict["in_crc"]}
+    Should Be True    ${res_dict["in_uc"]}+${res_dict["in_crc"]}==${packetNum}    测试仪发送${packetNum}个单播报文,s1p1-${s1p1}收包单播报文统计为${res_dict["in_uc"]},crc个数为为${res_dict["in_crc"]}
+    Log Step End    step2
+
+02_入口组播报文统计
+    Log Step Start    step1    清除计数后,tp1打入组播报文
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Clear Statics    @{testerp1}
+    Set ixia stream l2    @{testerp1}    dst_mac=01:00:5e:00:02:02    src_mac=00:00:00:00:01:01    stream_rate=10000    stream_rate_mode=pps    stream_mode=${Ixia_StreamMode_Stop}
+    ...    numPacket=${packetNum}    pkt_length=${pktLen}    reset=${True}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    10s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp1}
+    ${tp1_tx}=    Ixiasend.Get Statics    @{testerp1}    txpackets
+    Should Be True    ${tp1_tx}==${packetNum}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查计数统计正确
+    ${res_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    in_packets    in_bytes    in_mc
+    ...    in_crc
+    Should Be True    ${res_dict["in_packets"]}+${res_dict["in_crc"]}==${packetNum}    测试仪发送${packetNum}个报文,s1p1-${s1p1}收包计数为${res_dict["in_packets"]},crc个数为${res_dict["in_crc"]}
+    Should Be True    ${res_dict["in_bytes"]}==(${packetNum}-${res_dict["in_crc"]})*${pktLen}    测试仪发送${packetNum}个${pktLen}字节报文,s1p1-${s1p1}收包字节统计为${res_dict["in_bytes"]},crc个数为${res_dict["in_crc"]}
+    Should Be True    ${res_dict["in_mc"]}+${res_dict["in_crc"]}==${packetNum}    测试仪发送${packetNum}个组播报文,s1p1-${s1p1}收包单播报文统计为${res_dict["in_mc"]},crc个数为${res_dict["in_crc"]}
+    Log Step End    step2
+
+03_入口广播报文统计
+    Log Step Start    step1    清除计数后,tp1打入广播报文
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Clear Statics    @{testerp1}
+    set ixia stream arp    @{testerp1}    stream_rate=10000    stream_rate_mode=pps    stream_mode=${Ixia_StreamMode_Stop}    numPacket=${packetNum}    pkt_length=${pktLen}
+    ...    reset=${True}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    10s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp1}
+    ${tp1_tx}=    Ixiasend.Get Statics    @{testerp1}    txpackets
+    Should Be True    ${tp1_tx}==${packetNum}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查计数统计正确
+    ${res_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    in_packets    in_bytes    in_bc
+    ...    in_crc
+    Should Be True    ${res_dict["in_packets"]}+${res_dict["in_crc"]}==${packetNum}    测试仪发送${packetNum}个报文,s1p1-${s1p1}收包计数为${res_dict["in_packets"]},crc个数为${res_dict["in_crc"]}
+    Should Be True    ${res_dict["in_bytes"]}==(${packetNum}-${res_dict["in_crc"]})*${pktLen}    测试仪发送${packetNum}个${pktLen}字节报文,s1p1-${s1p1}收包字节统计为${res_dict["in_bytes"]},crc个数为${res_dict["in_crc"]}
+    Should Be True    ${res_dict["in_bc"]}+${res_dict["in_crc"]}==${packetNum}    测试仪发送${packetNum}个广播报文,s1p1-${s1p1}收包单播报文统计为${res_dict["in_bc"]},crc个数为${res_dict["in_crc"]}
+    Log Step End    step2
+
+(未)04_入口CRC报文统计
+    Log Step Start    step1    清除计数后,tp1打入CRC报文
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Clear Statics    @{testerp1}
+    set ixia stream arp    @{testerp1}    stream_rate=10000    stream_rate_mode=pps    stream_mode=${Ixia_StreamMode_Stop}    numPacket=${packetNum}    pkt_length=${pktLen}
+    ...    reset=${True}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    10s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp1}
+    ${tp1_tx}=    Ixiasend.Get Statics    @{testerp1}    txpackets
+    Should Be True    ${tp1_tx}==${packetNum}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查计数统计正确
+    ${res_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    in_packets    in_bytes    in_bc
+    Should Be True    ${res_dict["in_packets"]}==${packetNum}    测试仪发送${packetNum}个报文,s1p1-${s1p1}收包计数为${res_dict["in_packets"]}
+    Should Be True    ${res_dict["in_bytes"]}==${packetNum}*${pktLen}    测试仪发送${packetNum}个${pktLen}字节报文,s1p1-${s1p1}收包字节统计为${res_dict["in_bytes"]}
+    Should Be True    ${res_dict["in_bc"]}==${packetNum}    测试仪发送${packetNum}个广播报文,s1p1-${s1p1}收包单播报文统计为${res_dict["in_bc"]}
+    Log Step End    step2
+
+05_出口单播报文统计
+    Log Step Start    step1    清除计数后,tp2打入单播报文
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Clear Statics    @{testerp2}
+    Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:00:01:01    src_mac=00:00:00:00:02:02    stream_rate=10000    stream_rate_mode=pps    stream_mode=${Ixia_StreamMode_Stop}
+    ...    numPacket=${packetNum}    pkt_length=${pktLen}    reset=${True}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    10s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${tp2_tx}=    Ixiasend.Get Statics    @{testerp2}    txpackets
+    Should Be True    ${tp2_tx}==${packetNum}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查计数统计正确
+    ${res_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    out_packets    out_bytes    out_uc
+    ${res_dict2}=    Get Show Interface Port    ${s1_alias}    ${s1p2}    in_crc
+    Should Be True    ${res_dict["out_packets"]}==${packetNum}-${res_dict2["in_crc"]}    tp2发送${packetNum}个报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包计数为${res_dict["out_packets"]}
+    Should Be True    ${res_dict["out_bytes"]}==(${packetNum}-${res_dict2["in_crc"]})*${pktLen}    tp2发送${packetNum}个${pktLen}字节报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包字节统计为${res_dict["out_bytes"]}
+    Should Be True    ${res_dict["out_uc"]}==(${packetNum}-${res_dict2["in_crc"]})    tp2发送${packetNum}个单播报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包单播报文统计为${res_dict["out_uc"]}
+    Log Step End    step2
+
+06_出口组播报文统计
+    Log Step Start    step1    清除计数后,tp2打入报文
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Clear Statics    @{testerp2}
+    Set ixia stream l2    @{testerp2}    dst_mac=01:00:5e:00:02:02    src_mac=00:00:00:00:02:02    stream_rate=10000    stream_rate_mode=pps    stream_mode=${Ixia_StreamMode_Stop}
+    ...    numPacket=${packetNum}    pkt_length=${pktLen}    reset=${True}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    10s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${tp2_tx}=    Ixiasend.Get Statics    @{testerp2}    txpackets
+    Should Be True    ${tp2_tx}==${packetNum}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查计数统计正确
+    ${res_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    out_packets    out_bytes    out_mc
+    ${res_dict2}=    Get Show Interface Port    ${s1_alias}    ${s1p2}    in_crc
+    Should Be True    ${res_dict["out_packets"]}==${packetNum}-${res_dict2["in_crc"]}    tp2发送${packetNum}个报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包计数为${res_dict["out_packets"]}
+    Should Be True    ${res_dict["out_bytes"]}==(${packetNum}-${res_dict2["in_crc"]})*${pktLen}    tp2发送${packetNum}个${pktLen}字节报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包字节统计为${res_dict["out_bytes"]}
+    Should Be True    ${res_dict["out_mc"]}==(${packetNum}-${res_dict2["in_crc"]})    tp2发送${packetNum}个组播报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包单播报文统计为${res_dict["out_mc"]}
+    Log Step End    step2
+
+07_出口广播报文统计
+    Log Step Start    step1    清除计数后,tp2打入报文
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Clear Statics    @{testerp2}
+    set ixia stream arp    @{testerp2}    stream_rate=10000    stream_rate_mode=pps    stream_mode=${Ixia_StreamMode_Stop}    numPacket=${packetNum}    pkt_length=${pktLen}
+    ...    reset=${True}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    10s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${tp2_tx}=    Ixiasend.Get Statics    @{testerp2}    txpackets
+    Should Be True    ${tp2_tx}==${packetNum}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查计数统计正确
+    ${res_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    out_packets    out_bytes    out_bc
+    ${res_dict2}=    Get Show Interface Port    ${s1_alias}    ${s1p2}    in_crc
+    Should Be True    ${res_dict["out_packets"]}==${packetNum}-${res_dict2["in_crc"]}    tp2发送${packetNum}个报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包计数为${res_dict["out_packets"]}
+    Should Be True    ${res_dict["out_bytes"]}==(${packetNum}-${res_dict2["in_crc"]})*${pktLen}    tp2发送${packetNum}个${pktLen}字节报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包字节统计为${res_dict["out_bytes"]}
+    Should Be True    ${res_dict["out_bc"]}==(${packetNum}-${res_dict2["in_crc"]})    tp2发送${packetNum}个组播报文,s1p2-${s1p2}收到的crc计数为${res_dict2["in_crc"]},s1p1-${s1p1}发包单播报文统计为${res_dict["out_bc"]}
+    Log Step End    step2
+
+*** Keywords ***
+init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+show for Test failed
+    log    a

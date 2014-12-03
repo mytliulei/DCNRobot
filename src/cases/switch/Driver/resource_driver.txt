@@ -1,0 +1,7 @@
+*** Settings ***
+Resource          var_topo.txt
+Resource          var_proc_ixia.txt
+Resource          var_proc_function.txt
+Resource          var_proc_general.txt
+Resource          ../../../resource/Switch.txt
+Resource          ../../../resource/ixiasend.txt
