@@ -6,8 +6,8 @@ ${s1_ccm_port}    10002
 ${s1_alias}       s1
 ${s1p1}           Ethernet1/0/17    # 主测端口
 ${s1p2}           Ethernet1/0/21    # 辅测端口
-${testerp1_ip}    172.16.11.253    # ixia ip for tp1
-${testerp2_ip}    172.16.11.253    # ixia ip for tp2
+${testerp1_ip}    172.16.1.253    # ixia ip for tp1
+${testerp2_ip}    172.16.1.253    # ixia ip for tp2
 @{testerp1}       1    7    1
 @{testerp2}       1    7    2
 ${CROSS_CHIP}     0    # 跨芯片标记位 0为同芯片,1为跨芯片
