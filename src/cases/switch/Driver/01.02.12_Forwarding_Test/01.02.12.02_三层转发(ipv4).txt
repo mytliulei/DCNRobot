@@ -129,7 +129,7 @@ Resource          resource_forwarding.txt
     Exec Cmd List In ConfigMode    ${s1_alias}    ip pim bsr-candidate vlan 10    ip pim rp-candidate vlan 10
     Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ip pim sparse-mode
     Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 20    ip pim sparse-mode
-    :FOR    ${i}    IN RANGE    1    4
+    : FOR    ${i}    IN RANGE    1    4
     \    ${ret}=    exec cmd list    ${s1_alias}    show ip pim bsr-router
     \    ${res}=    Tools.Is Match From String    ${ret}    BSR address: 10.1.1.1
     \    Exit For Loop If    ${res}==${True}
@@ -153,7 +153,7 @@ Resource          resource_forwarding.txt
     [Setup]    04_init
     Log Step Start    step1    收到ttl=1的本地IP icmp request报文,不转发到同vlan的其他端口,cpu能够正常回复icmp reply,
     Ixia.Set Port Mode Default    @{testerp1}
-    04_set tp1 ip \ icmp stream    ttl=${1}
+    04_set tp1 ip icmp stream    ttl=${1}
     Ixiasend.Start Capture    @{testerp1}
     Ixiasend.Start Capture    @{testerp2}
     Ixiasend.Start Transmit    @{testerp1}
@@ -171,7 +171,7 @@ Resource          resource_forwarding.txt
     #
     #
     Log Step Start    step2    收到ttl=0的本地IP icmp request报文,不转发到同vlan的其他端口,丢弃该报文
-    04_set tp1 ip \ icmp stream    ttl=${0}
+    04_set tp1 ip icmp stream    ttl=${0}
     Ixiasend.Start Capture    @{testerp1}
     Ixiasend.Start Capture    @{testerp2}
     Ixiasend.Start Transmit    @{testerp1}
@@ -193,7 +193,7 @@ Resource          resource_forwarding.txt
 1.2.12.2.5 ttl=1的转发IP报文处理
     [Setup]    05_init
     Log Step Start    step1    ttl=1的转发IP报文处理
-    05_set tp1 ip \ icmp stream    ttl=${1}
+    05_set tp1 ip icmp stream    ttl=${1}
     Ixiasend.Start Capture    @{testerp1}
     Ixiasend.Start Capture    @{testerp2}
     Ixiasend.Start Transmit    @{testerp1}
@@ -211,7 +211,7 @@ Resource          resource_forwarding.txt
     #
     #
     Log Step Start    step2    ttl=0的本地IP报文处理
-    05_set tp1 ip \ icmp stream    ttl=${0}
+    05_set tp1 ip icmp stream    ttl=${0}
     Ixiasend.Start Capture    @{testerp1}
     Ixiasend.Start Capture    @{testerp2}
     Ixiasend.Start Transmit    @{testerp1}
@@ -326,7 +326,7 @@ Resource          resource_forwarding.txt
     set static arp    ${s1_alias}    ${s1p2}    10    10.1.1.3    00-00-00-00-22-22
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
 
-04_set tp1 ip \ icmp stream
+04_set tp1 ip icmp stream
     [Arguments]    ${ttl}
     Ixiasend.Build Ether    dst=${S1_VLAN_MAC}    src=00:00:00:00:11:11
     Ixiasend.Build Ip    src=10.1.1.2    dst=10.1.1.1    ttl=${ttl}    proto=${1}
@@ -362,7 +362,7 @@ Resource          resource_forwarding.txt
     set static arp    ${s1_alias}    ${s1p2}    20    20.1.1.2    00-00-00-00-22-22
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
 
-05_set tp1 ip \ icmp stream
+05_set tp1 ip icmp stream
     [Arguments]    ${ttl}
     Ixiasend.Build Ether    dst=${S1_VLAN_MAC}    src=00:00:00:00:11:11
     Ixiasend.Build Ip    src=10.1.1.2    dst=20.1.1.2    ttl=${ttl}    proto=${1}

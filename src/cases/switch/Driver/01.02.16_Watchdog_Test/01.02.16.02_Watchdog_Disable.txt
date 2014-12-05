@@ -38,5 +38,5 @@ Resource          resource_watchdog.txt
     [Arguments]    ${ptr}    ${reload}
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
     Exit from Superdiag Mode    ${s1_alias}
-    Run Keyword IF    '${ptr}'!='${None}' and ${reload}==${False}    Reload Swtich    ${s1_alias}
+    Run Keyword IF    '${ptr}'!='${None}' and ${reload}==${False}    Reload Switch    ${s1_alias}
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
