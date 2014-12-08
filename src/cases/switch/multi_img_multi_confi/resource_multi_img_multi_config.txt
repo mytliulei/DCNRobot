@@ -405,7 +405,7 @@ Send Stream And Check
 
 Set stream
     [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_type}    ${stream_rate}    ${dmac_number}
-    ...    ${stream_rate_mode}    ${dmac}    ${stream_id}=${1}    ${stream_mode}=${IXIA_StreamMode_stop}    ${reset}=True    ${numPacket}=${packets_number_send}
+    ...    ${stream_rate_mode}    ${dmac}    ${numPacket}    ${stream_id}=${1}    ${stream_mode}=${IXIA_StreamMode_stop}    ${reset}=True
     ...    ${returnID}=${1}
     [Documentation]    \ args:
     ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
@@ -419,15 +419,15 @@ Set stream
     ...    ${IXIA_StreamRateMode_pencent}
     @{sport}=    Set Variable    ${tp_chassis}    ${tp_card}    ${tp_port}
     Run Keyword If    ${reset}==True    Ixia.Set Port Mode Default    @{sport}
-    Run Keyword    Set stream ${stream_type}    @{sport}    ${stream_rate}    ${da_number}    ${stream_rate_mode_set}    ${dmac}
-    ...    ${stream_id}    ${stream_mode}    ${numPacket}    ${returnID}
+    Run Keyword    Set stream ${stream_type}    @{sport}    ${stream_rate}    ${dmac_number}    ${stream_rate_mode_set}    ${dmac}
+    ...    ${numPacket}    ${stream_id}    ${stream_mode}    ${returnID}
 
 Set stream dlf
     [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${dmac_number}    ${stream_rate_mode}
-    ...    ${dmac}    ${stream_id}    ${stream_mode}=${IXIA_StreamMode_stop}    ${numPacket}=${packets_number_send}    ${returnID}=${1}
+    ...    ${dmac}    ${numPacket}    ${stream_id}    ${stream_mode}=${IXIA_StreamMode_stop}    ${returnID}=${1}
     [Documentation]    设置广播流
     [Timeout]
-    ${dict}    Make Kwargs    daRepeatCounter=0    numDA=${packets_number_send}
+    ${dict}    Make Kwargs    daRepeatCounter=0    numDA=${dmac_number}
     Ixiasend.Build Ether    ${dmac}    00:00:00:00:0d:01    kwargs=${dict}
     Ixiasend.Build Packet    ${64}
     Ixiasend.Set Stream Packet By Api    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
