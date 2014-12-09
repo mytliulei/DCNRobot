@@ -25,8 +25,8 @@ Check Send Receive
     Run Keyword If    ${transmit_tag}==True    Ixiasend.Start Transmit    @{sport}
     ${tp1_tx}=    Get Statics    @{sport}    txpackets
     ${tp2_rx}=    Get Statics    @{dport}    rxpackets
-    ${ret}=    Evaluate    ${received_packets}*(1-${tolerance})<${tp2_rx}<${received_packets}*(1+${tolerance})
-    Log    ${received_packets}*(1-${tolerance})<${tp2_rx}<${received_packets}*(1+${tolerance})
+    ${ret}=    Evaluate    ${received_packets}*(1-${tolerance})<=${tp2_rx}<=${received_packets}*(1+${tolerance})
+    Log    ${received_packets}*(1-${tolerance})<=${tp2_rx}<=${received_packets}*(1+${tolerance})
     Run Keyword If    ${stop_trans_tag}==True    Ixiasend.Stop Transmit    @{sport}
     [Return]    ${ret}
 

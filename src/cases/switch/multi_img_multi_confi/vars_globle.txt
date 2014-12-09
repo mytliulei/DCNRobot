@@ -16,7 +16,7 @@ ${BOOT_NULL}      NULL
 ${SET_IMG_BOOT_WITHOUT_POSTFIX_IN_BOOT}    Set img file flash:/${BOOT_IMG_NAME_WITHOUT_POSTFIX} failed!    # bootrom下设置启动img文件名不带后缀.img，提示信息
 ${BOOT_IMG_NAME_WITHOUT_POSTFIX}    nos1    # img文件名不带后缀
 ${SET_IMG_BOOT_WITHOUT_POSTFIX_IN_IMG}    The postfix of file name should be .img    # img下设置启动img文件名不带后缀.img，提示信息
-${BACKUP_SOURCE_IMG_NAME}    QSW-3450-28T(TX)-AC-10.9.88-vendor_7.0.3.5\\(R0288.0017\\)_nos.img    #back img源文件名
+${BACKUP_SOURCE_IMG_NAME}    7.0.3.5\(R0228.0017\)_nos.img    #back img源文件名
 ${BOOT_TYPE_IMG}    img    #设置启动img
 ${BOOT_TYPE_STARTUP-CONFIG}    startup-config    #设置启动配置文件
 ${BOOT_PRIMARY_IMG_NAME}    nos1.img    #primary启动img
@@ -48,3 +48,12 @@ ${OUTPUT_COUNTER_REGEXP}    Output packets statistics:    # 发包统计
 ${INPUT_COUNTER_REGEXP}    Input packets statistics:    # 收包统计
 ${INPUT_PACKETS}    input packets
 ${OUTPUT_PACKETS}    output packets
+${write_config_regexp}    Write running-config to current startup-config successful    ##保存配置成功，提示信息
+${boot_flash_startup1_cfg}    flash:/startup1.cfg
+${boot_flash_startup_cfg}    flash:/startup.cfg
+${longer_config_file_name}    12345678901234567890123456789012345678901234567890123456789012345678901234567.cfg
+${config_file_from_remote_server}    remote_server_config.cfg    # 远端服务器上的配置文件
+${config_file_more_than_one_m}    config_file_1m.cfg    # 远端服务器上大于1M的配置文件
+${receive_data_timeout}    receive data timeout    # load配置过程中，shutdown端口，提示错误信息
+${load_config_end_regexp}    Loading running-config end    # 配置load完成，提示信息
+${BIG_SIZE_CONFIG_NAME}    load_big_size_config_name.cfg    # load一个大config文件
