@@ -60,7 +60,7 @@ multi_config.5.2.2.3
     [Setup]    Init STEP
     Tools.Comment    Step1    将启动配置文件设置为startup1.cfg
     Log Step Start    ${s1_alias}
-    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    ipv6 mld snooping
+    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    access-list 1 deny any-source
     Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
     Write Running-Config    ${BOOT_STARTUP1_CFG}
     Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
@@ -94,7 +94,7 @@ multi_config.5.2.2.4
     Exec Cmd List    ${s1_alias}    config    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
     Check Ping    ${SERVER_IP}
     Updata In Img By    ${UPDATA_TYPE}    ${SERVER_IP}    ${INVALID_STARTUP_CONFIG_NAME}    ${BOOT_STARTUP1_CFG}
-    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping
+    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    access-list 1 deny any-source
     Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
     Boot Startup-config With Postfix    ${BOOT_STARTUP1_CFG}
     Reload Switch Without Write    ${s1_alias}
@@ -108,7 +108,7 @@ multi_config.5.2.2.4
     ##
     Tools.Comment    Step3    show running-config,不存在上述配置
     Log Step Start    ${s1_alias}
-    Check Running-config Fail    ${command_line}    3    show running-config
+    Check Running-config Fail    ${command_line}    4    show running-config
     Log Step End    ${s1_alias}
     [Teardown]    Uninit Multi Config Test
 
@@ -118,7 +118,7 @@ multi_config.5.2.2.5
     [Setup]    Init STEP
     Tools.Comment    Step1    保存当前配置为null.cfg
     Log Step Start    ${s1_alias}
-    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    ipv6 mld snooping
+    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    access-list 1 deny any-source
     Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
     Write Running-Config    ${BOOT_NULL_CFG}
     Write Running-Config    ${BOOT_STARTUP1_CFG}
@@ -144,7 +144,7 @@ multi_config.5.2.2.6
     [Setup]    Init STEP
     Tools.Comment    Step1    保存当前配置为null.cfg
     Log Step Start    ${s1_alias}
-    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    ipv6 mld snooping
+    ${command_line}    Create List    spanning-tree    ip dhcp snooping enable    ip igmp snooping    access-list 1 deny any-source
     Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
     Write Running-Config    ${BOOT_NULL_CFG}
     Log Step End    ${s1_alias}
@@ -169,15 +169,15 @@ multi_config.5.2.2.7
     Tools.Comment    Step1    修改配置
     Log Step Start    ${s1_alias}
     ${command_line}    Create List    monitor session 1 source interface ${s1p1}    monitor session 1 destination interface ${s1p2}    spanning-tree    ip dhcp snooping enable    ip igmp snooping
-    ...    ipv6 mld snooping    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2    access-list 1 deny any-source
+    ...    access-list 1 deny any-source    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2
     Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
     Log Step End    ${s1_alias}
     ##
     Tools.Comment    Step2    show running-config查看配置，存在上述配置
     Log Step Start    ${s1_alias}
     ${check_command_line}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    interface Vlan1    ip address ${HOST_IP} 255.255.255.0
-    ...    ip igmp snooping    ipv6 mld snooping    ip route 100.1.0.0/16 100.1.1.2    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}
-    Check Running-config    ${check_command_line}    11    show running-config
+    ...    ip igmp snooping    ip route 100.1.0.0/16 100.1.1.2    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}
+    Check Running-config    ${check_command_line}    10    show running-config
     Log Step End    ${s1_alias}
     ##
     Tools.Comment    Step3    新增配置，show running-config，存在新增的配置
@@ -194,7 +194,7 @@ multi_config.5.2.2.8
     Tools.Comment    Step1    修改配置
     Log Step Start    ${s1_alias}
     ${command_line}    Create List    monitor session 1 source interface ${s1p1}    monitor session 1 destination interface ${s1p2}    spanning-tree    ip dhcp snooping enable    ip igmp snooping
-    ...    ipv6 mld snooping    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2    access-list 1 deny any-source
+    ...    access-list 1 deny any-source    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2
     Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
     Write Config    ${s1_alias}
     Log Step End    ${s1_alias}
@@ -202,8 +202,8 @@ multi_config.5.2.2.8
     Tools.Comment    Step2    show startup.cfg查看配置，存在上述配置
     Log Step Start    ${s1_alias}
     ${check_command_line}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    interface Vlan1    ip address ${HOST_IP} 255.255.255.0
-    ...    ip igmp snooping    ipv6 mld snooping    ip route 100.1.0.0/16 100.1.1.2    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}
-    Check Running-config    ${check_command_line}    11    show startup-config ${BOOT_STARTUP_CONFIG_DEFAULT}
+    ...    ip igmp snooping    ip route 100.1.0.0/16 100.1.1.2    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}
+    Check Running-config    ${check_command_line}    10    show startup-config ${BOOT_STARTUP_CONFIG_DEFAULT}
     Log Step End    ${s1_alias}
     ##
     Tools.Comment    Step3    新增配置，show running-config startup.cfg查看，不存在新增的配置
@@ -251,7 +251,7 @@ multi_config.5.2.2.12
     Tools.Comment    Step1    修改配置，保存
     Log Step Start    ${s1_alias}
     ${command_line}    Create List    monitor session 1 source interface ${s1p1}    monitor session 1 destination interface ${s1p2}    spanning-tree    ip dhcp snooping enable    ip igmp snooping
-    ...    ipv6 mld snooping    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2    access-list 1 deny any-source
+    ...    access-list 1 deny any-source    interface vlan 1    ip address ${HOST_IP} 255.255.255.0    exit    ip route 100.1.0.1 255.255.0.0 100.1.1.2
     Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
     Write Config    ${s1_alias}
     Log Step End    ${s1_alias}
@@ -271,8 +271,8 @@ multi_config.5.2.2.12
     Tools.Comment    Step4    show running-config查看，不存在上述配置
     Log Step Start    ${s1_alias}
     ${check_command_line}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    interface Vlan1    ip address ${HOST_IP} 255.255.255.0
-    ...    ip igmp snooping    ipv6 mld snooping    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}    ip route 100.1.0.0/16 100.1.1.2
-    Check Running-config Fail    ${check_command_line}    11    show running-config
+    ...    ip igmp snooping    monitor session 1 source interface ${s1p1} rx    monitor session 1 source interface ${s1p1} tx    monitor session 1 destination interface ${s1p2}    ip route 100.1.0.0/16 100.1.1.2
+    Check Running-config Fail    ${check_command_line}    10    show running-config
     [Teardown]    Uninit Multi Config Test
 
 multi_config.5.2.2.13

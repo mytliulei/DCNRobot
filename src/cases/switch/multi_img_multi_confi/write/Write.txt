@@ -5,10 +5,6 @@ Suite Teardown    Uninit Write Suite
 Resource          ../resource_multi_img_multi_config.txt
 
 *** Variables ***
-${write_config_regexp}    Write running-config to current startup-config successful    # 保存配置
-${boot_flash_startup1_cfg}    flash:/startup1.cfg
-${boot_flash_startup_cfg}    flash:/startup.cfg
-${longer_config_file_name}    12345678901234567890123456789012345678901234567890123456789012345678901234567.cfg
 
 *** Test Cases ***
 Write.5.2.3.1
@@ -489,6 +485,7 @@ Write.5.2.4.1
     Log Step Start    ${s1_alias}
     Init Ixia
     Set stream    @{testerp1}    dlf    ${stream_rate}    ${packets_number_send}    ${stream_type}    00-00-00-00-00-01
+    ...    ${packets_number_send}
     Exec Cmd List    ${s1_alias}    clear counters
     Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${packets_number_send}
     Check Port Counter    ${s1p1}    ${packets_number_send}
@@ -502,15 +499,15 @@ Write.5.2.4.1
     ...    class 1    drop    exit    exit
     Exec Cmd List In ConfigMode    ${s1_alias}    @{command_line}
     ${packets_static_number}    Evaluate    ${da_number}+1
-    : FOR    ${index}    IN RANGE    1    ${packets_static_number}
+    : FOR    ${index}    IN RANGE    1    2
     \    ${mac_address}    Tools.Incr Mac    00-00-00-00-00-00    ${index}
     \    Telnet.Write    mac-address-table static address ${mac_address} vlan 1 interface ${s1p3}
     \    SLeep    50 ms
     Telnet.Read
     ${packets_number_deny}    Evaluate    ${da_number_deny}+1
-    : FOR    ${index}    IN RANGE    1    ${packets_number_deny}
+    : FOR    ${index}    IN RANGE    1    2
     \    ${mac_address}    Tools.Incr Mac    00-00-01-00-00-00    ${index}
-    \    Telnet.Write    access-list 1100 deny 00-00-00-00-0d-01 ff-ff-ff-ff-ff-ff ${mac_address} ff-ff-ff-ff-ff-00
+    \    Telnet.Write    access-list 1100 deny 00-01-00-00-0d-01 00-00-00-00-00-00 ${mac_address} 00-00-00-00-00-00
     \    SLeep    50 ms
     Telnet.Read
     Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    mac access-group 1100 in
@@ -518,9 +515,9 @@ Write.5.2.4.1
     ##
     Tools.Comment    Step3    保存当前配置到startup.cfg
     Log Step Start    ${s1_alias}
-    Write Running-Config    ${BOOT_STARTUP_CONFIG_DEFAULT}
-    Boot Startup-config With Postfix    ${BOOT_STARTUP_CONFIG_DEFAULT}
-    Reload Switch Without Write    ${s1_alias}
+    #Write Running-Config    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    #Boot Startup-config With Postfix    ${BOOT_STARTUP_CONFIG_DEFAULT}
+    #Reload Switch Without Write    ${s1_alias}
     Log Step End    ${s1_alias}
     ##
     Tools.Comment    Step4    TP2能收到${packets_number_send}个数据包，${s1p1}能收到{packets_number_send}-${da_number}个数据包
@@ -534,6 +531,7 @@ Write.5.2.4.1
     Tools.Comment    Step5    TP2和${s1p1}都只能收到${packets_number_send_deny}-${da_number_deny}个数据包
     Log Step Start    ${s1_alias}
     Set stream    @{testerp1}    dlf    ${stream_rate}    ${packets_number_send_deny}    ${stream_type}    00-00-01-00-00-01
+    ...    ${packets_number_send_deny}
     ${receive_packets}    Evaluate    ${packets_number_send_deny}-${da_number_deny}
     Exec Cmd List    ${s1_alias}    clear counters
     Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${receive_packets}
