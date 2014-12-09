@@ -1,0 +1,107 @@
+*** Settings ***
+Resource          ../../../resource/Switch.txt
+Library           ../../../lib/Tools.py
+Resource          vars_topo.txt
+Resource          vars_ixia.txt
+Resource          ../../../resource/ixiasend.txt
+
+*** Keywords ***
+Check Send Receive
+    [Arguments]    ${sport_chassis}    ${sport_card}    ${sport_port}    ${dport_chassis}    ${dport_card}    ${dport_port}
+    ...    ${received_type}    ${received_rate}    ${tolerance}=${0.05}    ${clear_tag}=True    ${transmit_tag}=False    ${stop_trans_tag}=False
+    [Documentation]    \ args:
+    ...    \- ${sport_chassis} ${sport_card} ${sport_port} #发送端口
+    ...    \- ${dport_chassis} ${dport_card} ${dport_port}#接收端口
+    ...    \- ${received_type}#接收流量单位(bps,pps)
+    ...    \- ${received_rate}#预期接收速率
+    ...    \- ${tolerance}#误差范围
+    ...    \- ${clear_tag}#check前，是否清除计数，缺省清除
+    ...    \- ${transimit_tag}#check前，是否发送流量，缺省不发送
+    ...    \- ${stop_trans_tag}#check后，是否在关闭流量发送，缺省不关闭
+    @{sport}=    Set Variable    ${sport_chassis}    ${sport_card}    ${sport_port}
+    @{dport}=    Set Variable    ${dport_chassis}    ${dport_card}    ${dport_port}
+    Comment    获取发送接收速率
+    Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{sport}
+    Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{dport}
+    Run Keyword If    ${transmit_tag}==True    Ixiasend.Start Transmit    @{sport}
+    ${tp1_tx}=    Get Statics    @{sport}    tx${received_type}
+    ${tp2_rx}=    Get Statics    @{dport}    rx${received_type}
+    ${ret}=    Evaluate    ${received_rate}*(1-${tolerance})<${tp2_rx}<${received_rate}*(1+${tolerance})
+    Log    ${received_rate}*(1-${tolerance})<${tp2_rx}<${received_rate}*(1+${tolerance})
+    Run Keyword If    ${stop_trans_tag}==True    Ixiasend.Stop Transmit    @{sport}
+    [Return]    ${ret}
+
+CheckPortStatus
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    检查端口状态,True 表示UP,False 表示Down
+    ${port_show}=    Exec Cmd    ${alias}    show interface ${port}
+    ${port_status}=    Tools.Is Match From String    ${port_show}    ${port} is up
+    [Return]    ${port_status}    # 端口状态
+
+Del Static Mac
+    [Arguments]    ${alias}    ${port}    ${vlan}    ${mac}
+    ${mac}=    Tools.Convert Macaddress Format    ${mac}    :    -
+    Exec Cmd List In ConfigMode    ${alias}    no mac-address-table static address ${mac} vlan ${vlan} interface ${port}
+
+Increase STEP
+    ${num}=    Tools.Get Value From String    ${STEP}    (\\d+)
+    Set Test Variable    ${num}    ${${num}+1}
+    Set Test Variable    ${STEP}    Step ${num}
+
+Init STEP
+    Set Test Variable    ${STEP}    Step 1
+
+Log Console
+    [Arguments]    ${alias}    ${message}
+    Exec Cmd List    ${alias}    \##################### ${message}########################
+
+Log Step End
+    [Arguments]    ${alias}    ${message}=${EMPTY}    ${Incr}=True
+    log Console    ${alias}    !!END!! \ ${TEST_NAME} ${STEP} ${message}
+    log    !!END!! \ ${TEST_NAME} ${STEP} ${message}
+    Run Keyword If    ${Incr}==True    Increase STEP
+
+Log Step Start
+    [Arguments]    ${alias}    ${message}=${EMPTY}
+    Log Console    ${alias}    !!Start!! \ ${TEST_NAME} ${STEP} ${message}
+    log    !!Start!! \ ${TEST_NAME} ${STEP} ${message}
+
+Set Static Mac
+    [Arguments]    ${alias}    ${port}    ${vlan}    ${mac}
+    ${mac}=    Tools.Convert Macaddress Format    ${mac}    :    -
+    Exec Cmd List In ConfigMode    ${alias}    mac-address-table static address ${mac} vlan ${vlan} interface ${port}
+
+Show switch port counter
+    [Arguments]    ${alias}    ${port}    ${times}=2 times
+    Repeat Keyword    ${times}    Exec Cmd List    ${alias}    show interface ${port} | begin Statistics
+
+Set mac and type for switch
+    [Arguments]    ${Vlanmac}=${Vlan-mac}    ${Cpumac}=${Cpu-mac}    ${typeid}=${type}
+    Telnet.Write    setmac
+    Telnet.Read Until Regexp    Mac    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    Telnet.Write    ${Vlanmac}
+    Telnet.Read Until Regexp    Mac    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    Telnet.Write    ${Cpumac}
+    Telnet.Read Until Prompt
+    Telnet.Write    settype
+    Telnet.Read Until Regexp    type    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    Telnet.Write    ${typeid}
+
+Stop-transmit
+    Ixiasend.Stop Transmit    @{testerp1}
+
+Reboot switch
+    [Arguments]    ${alias}    ${wait}=60    ${regexp_reload}=${sw_regexp_reload}    ${timeout}=20 minutes
+    Telnet.Set Timeout    ${timeout}
+    Exec Cmd Until Regexp    ${alias}    reboot    ${regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    ${wait}
+    Telnet.Read
+
+Run img
+    [Arguments]    ${alias}    ${wait}=60    ${regexp_reload}=${sw_regexp_reload}    ${timeout}=20 minutes
+    Telnet.Set Timeout    ${timeout}
+    Exec Cmd Until Regexp    ${alias}    run nos.img    ${regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    ${wait}
+    Telnet.Read
