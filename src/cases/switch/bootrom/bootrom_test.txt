@@ -1,0 +1,615 @@
+*** Settings ***
+Documentation     在给设备的文件命名时，请确保默认启动的img文件叫nos.img，默认启动的cfg文件为startup.cfg
+Suite Setup       Init Suite Test
+Suite Teardown    Uninit Suite Test
+Force Tags        Bootrom
+Resource          ../../../resource/Switch.txt
+Resource          vars_topo.txt
+Resource          proc.txt
+Library           ../../../lib/Tools.py
+Resource          resource_bootrom.txt
+
+*** Variables ***
+
+*** Test Cases ***
+05.02.01 dir
+    [Documentation]    boot下dir可以看见有img和startup.cfg文件
+    [Setup]    Init STEP
+    Tools.Comment    step1    dir可以看见img文件
+    Log Step Start    ${s1_alias}
+    ${output}    Exec Cmd    ${s1_alias}    dir
+    Log    ${output}
+    Should Contain    ${output}    nos.img
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    step2    dir可以看见cfg文件
+    Log Step Start    ${s1_alias}
+    ${output}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${output}    startup.cfg
+    Log Step End    ${s1_alias}
+
+05.02.03 update use tftp
+    [Documentation]    设定正确的bootrom参数，使用tftp加载rom/img，write后重启升级成功。（mixbox机器不支持boot下升级img文件）
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Tools.Comment    step1    设置bootrom参数用于升级
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    setconfig    ${HOST_IP}    ${SERVER_IP}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    saveconfig能都保存上一步设置的参数
+    Log Step Start    ${s1_alias}
+    Saveconfig from bootrom    ${s1_alias}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3    使用showconfig能够显示bootrom的配置参数
+    Log Step Start    ${s1_alias}
+    ${output}    Exec Cmd Until Regexp    ${s1_alias}    showconfig    ${SERVER_IP}
+    Telnet.Read
+    Log    ${output}
+    Should Contain    ${output}    ${HOST_IP}    ${SERVER_IP}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step4    ping命令能够检验网络连接是否成功
+    Log Step Start    ${s1_alias}
+    Check ping from bootrom    ${s1_alias}    ${SERVER_IP}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step5    5.通过load命令加载bootrom文件,write命令能够将刚通过load下载的文件写入存储器中。
+    Log Step Start    ${s1_alias}
+    Update boot.rom from bootroom    ${s1_alias}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step6    6.通过load命令加载img文件,write命令能够将刚通过load下载的文件写入存储器中。
+    Log Step Start    ${s1_alias}
+    #update nos.img from bootrom
+    Log Step End    ${s1_alias}
+    Tools.Comment    step7    重启通过流量转发查看升级是否生效
+    Log Step Start    ${s1_alias}
+    Reboot switch    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    exec cmd    ${s1_alias}    clear counters
+    sleep    5
+    Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}    ##流量正常转发认为正常启动
+    Log Step End    ${s1_alias}
+    Tools.Comment    step8    回到boot
+    Log Step Start    ${s1_alias}
+    Enter BootRom From Img    ${s1_alias}
+    Log Step End    ${s1_alias}
+
+05.02.05 update with stream
+    [Documentation]    环境中有流量的情况下load和write文件正常
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Tools.Comment    step1    打入广播流量
+    Log Step Start    ${s1_alias}
+    set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
+    Send Stream    @{testerp1}    ${STREAM_TYPE}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    load、write文件正常
+    Log Step Start    ${s1_alias}
+    Update boot.rom from bootroom    ${s1_alias}
+    #Update nos.img from bootrom
+    Ixiasend.Stop Transmit    @{testerp1}
+    Log Step End    ${s1_alias}
+
+05.02.07 upload file
+    [Documentation]    通过upload <filename>命令，以TFTP方式将将目标文件上传到PC
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Tools.Comment    step1    Upload IMG文件
+    Log Step Start    ${s1_alias}
+    Upload IMG    ${s1_alias}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    Upload cfg文件
+    Log Step Start    ${s1_alias}
+    Upload CFG    ${s1_alias}
+    Log Step End    ${s1_alias}
+
+05.02.09 ping
+    [Documentation]    为设备配置IP，通过PC可以ping通PC。Saveconfig重启后仍可以ping通
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Tools.Comment    step1    为设备配置IP
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    setconfig    ${HOST_IP}    ${SERVER_IP}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    可以ping通PC
+    Log Step Start    ${s1_alias}
+    Check ping from bootrom    ${s1_alias}    ${SERVER_IP}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3    saveconfig后重启
+    Log Step Start    ${s1_alias}
+    Saveconfig from bootrom    ${s1_alias}
+    Enter BootRom From BootRom    ${s1_alias}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step4    仍可以ping通PC
+    Log Step Start    ${s1_alias}
+    sleep    10
+    Check ping from bootrom    ${s1_alias}    ${SERVER_IP}
+    Log Step End    ${s1_alias}
+
+05.02.10 ping with A.B.C address
+    [Documentation]    为设备配置各种类型的IP，包括A,B,C类地址，通过PC可以ping通PC。Saveconfig重启后仍可以ping通
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Tools.Comment    step1    为设备配置B类IP,且能ping通，saveconfig重启后仍可ping通
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s2_alias}
+    Exec Cmd List    ${s2_alias}    config    interface vlan 1    ip add ${IP-B-2} 255.255.255.0
+    Exec Cmd List    ${s1_alias}    setconfig    ${IP-B-1}    ${IP-B-2}
+    Check ping from bootrom    ${s1_alias}    ${IP-B-2}
+    Saveconfig from bootrom    ${s1_alias}
+    Enter BootRom From BootRom    ${s1_alias}
+    sleep    10
+    Check ping from bootrom    ${s1_alias}    ${IP-B-2}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step 2    为设备配置C类IP,且能ping通，saveconfig重启后仍可ping通
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s2_alias}
+    Exec Cmd List    ${s2_alias}    config    interface vlan 1    ip add ${IP-C-2} 255.255.255.0
+    Exec Cmd List    ${s1_alias}    setconfig    ${IP-C-1}    ${IP-C-2}
+    Check ping from bootrom    ${s1_alias}    ${IP-C-2}
+    Saveconfig from bootrom    ${s1_alias}
+    Enter BootRom From BootRom    ${s1_alias}
+    sleep    10
+    Check ping from bootrom    ${s1_alias}    ${IP-C-2}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step 3    为设备配置A类IP,且能ping通，saveconfig重启后仍可ping通
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s2_alias}
+    Exec Cmd List    ${s2_alias}    config    interface vlan 1    ip add ${IP-A-2} 255.255.255.0
+    Exec Cmd List    ${s1_alias}    setconfig    ${IP-A-1}    ${IP-A-2}
+    Check ping from bootrom    ${s1_alias}    ${IP-A-2}
+    Saveconfig from bootrom    ${s1_alias}
+    Enter BootRom From BootRom    ${s1_alias}
+    sleep    10
+    Check ping from bootrom    ${s1_alias}    ${IP-A-2}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step4    恢复s2的配置
+    Log Step Start    ${s1_alias}
+    exec cmd list    ${s2_alias}    config    interface vlan 1    ip add ${S2_IP1}
+    Log Step End    ${s1_alias}
+
+05.02.15 bootrom with muti stream
+    [Documentation]    bootrom模式下持续线速打入多种流量系统无异常：包括二层广播，二层组播，二层单播，目的为cpu mac的arp request和ipv4/ipv6报文
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Tools.Comment    step1    线速打入多条流
+    Log Step Start    ${s1_alias}
+    Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}    stream_id=1    stream_mode=${IXIA_StreamMode_next}
+    ...    reset=True
+    Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}    2    ${IXIA_StreamMode_next}
+    ...    False
+    Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}    3    ${IXIA_StreamMode_next}
+    ...    False
+    set stream    @{testerp1}    arp-request    ${SEND_RATE}    ${STREAM_TYPE}    4    ${IXIA_StreamMode_next}
+    ...    False
+    set stream    @{testerp1}    ip    ${SEND_RATE}    ${STREAM_TYPE}    5    ${IXIA_StreamMode_return}
+    ...    False
+    Send Stream    @{testerp1}    ${STREAM_TYPE}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    5分钟后，交换机无异常
+    Log Step Start    ${s1_alias}
+    ${output}    Exec Cmd Until Timeout    ${s1_alias}    ${EMPTY}    300
+    Should Be Equal As Strings    ${output}    [Boot]:${SPACE}
+    Log Step End    ${s1_alias}
+    [Teardown]    Stop-transmit
+
+05.02.16 reboot with muti stream
+    [Documentation]    启动过程中持续线速打入多种流量系统无异常：包括二层广播，二层组播，二层单播，目的为cpu mac的arp request和ipv4/ipv6报文
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Log Step Start    ${s1_alias}    线速打入多条流
+    Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}    stream_id=1    stream_mode=${IXIA_StreamMode_next}
+    ...    reset=True
+    Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}    2    ${IXIA_StreamMode_next}
+    ...    False
+    Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}    3    ${IXIA_StreamMode_next}
+    ...    False
+    set stream    @{testerp1}    arp-request    ${SEND_RATE}    ${STREAM_TYPE}    4    ${IXIA_StreamMode_next}
+    ...    False
+    set stream    @{testerp1}    ip    ${SEND_RATE}    ${STREAM_TYPE}    5    ${IXIA_StreamMode_return}
+    ...    False
+    Send Stream    @{testerp1}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    流量保持，重启交换机,通过流量能正常转发判断已经正常启动
+    Log Step Start    ${s1_alias}
+    sleep    10
+    Reboot switch    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    exec cmd    ${s1_alias}    clear counters
+    sleep    5
+    Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3
+    Log Step Start    ${s1_alias}    恢复bootrom状态
+    Enter BootRom From Img    ${s1_alias}
+    Log Step End    ${s1_alias}
+    [Teardown]    Stop-transmit
+
+05.02.17&18 set board info
+    [Documentation]    设定mac，sn，硬件版本，生产日期，在show board里观察是否显示正确-----5.2.17
+    ...    修改mac，sn，硬件版本，生产日期重新启动交换机，启动后使用新的参数---5.2.18
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    ##获取boardinfo值以便后面配置恢复使用
+    ${outp}    exec cmd    ${s1_alias}    show board
+    ${vlan mac}    Get Value From String    ${outp}    Vlan\\sMAC:\\s(.*)\\s
+    ${cpu mac}    Get Value From String    ${outp}    CPU\\s\\sMAC:\\s(.*)\\s
+    ${sn num}    Get Value From String    ${outp}    S\\/N:\\s(.*)\\s
+    ${Hw num}    Get Value From String    ${outp}    H\\/W:\\s(.*)\\s
+    ${manuf}    Get Value From String    ${outp}    Manufacture Date:(.*)\\s
+    Tools.Comment    step1    boot下设置mac，show board能正常显示
+    Log Step Start    ${s1_alias}
+    Set mac    ${Vlan-mac}    ${Cpu-mac}
+    ${output}    exec cmd    ${s1_alias}    show board
+    Should Contain    ${output}    ${Vlan-mac}    ${Cpu-mac}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    boot下设置sn，show board能正常显示
+    Log Step Start    ${s1_alias}
+    Set SN    ${SN}
+    ${output}    Exec Cmd    ${s1_alias}    show board
+    Should Contain    ${output}    ${SN}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3    boot下设置硬件版本，show board能正常显示
+    Log Step Start    ${s1_alias}
+    Setver sw    ${HW}
+    ${output}    Exec Cmd    ${s1_alias}    show board
+    Should Contain    ${output}    ${HW}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step4    boot下设置生产日期，show board能正常显示
+    Log Step Start    ${s1_alias}
+    Setdate sw    ${Date_sw}
+    ${output}    Exec Cmd    ${s1_alias}    show board
+    Should Contain    ${output}    ${Date_sw}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step5    5.2.18:重启后show board，查看上面设置的mac、sn、生产日期、硬件版本是否生效
+    Log Step Start    ${s1_alias}
+    Enter BootRom From BootRom    ${s1_alias}
+    ${output}    Exec Cmd    ${s1_alias}    show board
+    Should Contain    ${output}    ${Date_sw}
+    Should Contain    ${output}    ${HW}
+    Should Contain    ${output}    ${SN}
+    Should Contain    ${output}    ${Vlan-mac}    ${Cpu-mac}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step6    恢复boardinfo配置
+    Log Step Start    ${s1_alias}
+    Set mac    ${vlan mac}    ${cpu mac}
+    Set SN    ${sn num}
+    Setver sw    ${Hw num}
+    Setdate sw    ${manuf}
+    Log Step End    ${s1_alias}
+
+05.02.19 clear boardinfo
+    [Documentation]    执行clear \ boardinfo 可以正常清除包括mac、sn、产品类型、板卡标记、硬件版本以及生产日期等所有设置的硬件信息，show board可以看到
+    [Setup]    Init STEP
+    [Template]
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    ${outp}    exec cmd    ${s1_alias}    show board
+    ${vlan mac}    Get Value From String    ${outp}    Vlan\\sMAC:\\s(.*)\\s
+    ${cpu mac}    Get Value From String    ${outp}    CPU\\s\\sMAC:\\s(.*)\\s
+    ${sn num}    Get Value From String    ${outp}    S\\/N:\\s(.*)\\s
+    ${Hw num}    Get Value From String    ${outp}    H\\/W:\\s(.*)\\s
+    ${manuf}    Get Value From String    ${outp}    Manufacture Date:(.*)\\s
+    ${an num}    Get Value From String    ${outp}    A\\/N:\\s(.*)\\s
+    ${pn num}    Get Value From String    ${outp}    P\\/N:\\s(.*)\\s
+    ${type num}    Get Value From String    ${outp}    Board Type is\\s(.*)\\s
+    Tools.Comment    step1    clear boardinfo
+    Log Step Start    ${s1_alias}
+    Clear boardinfo
+    ${output}    exec cmd    ${s1_alias}    show board
+    Run Keyword And Continue On Failure    Should Contain    ${output}    00-00-00-00-00-00    00-00-00-00-00-00
+    Run Keyword And Continue On Failure    Should Contain    ${output}    S/N: N/A
+    Run Keyword And Continue On Failure    Should Contain    ${output}    H/W: N/A
+    Run Keyword And Continue On Failure    Should Contain    ${output}    Manufacture Date:1900/1/0
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    恢复boardinfo配置
+    Log Step Start    ${s1_alias}
+    Set mac    ${vlan mac}    ${cpu mac}
+    Set SN    ${sn num}
+    Setver sw    ${Hw num}
+    Setdate sw    ${manuf}
+    Set AN    ${an num}
+    Set PN    ${pn num}
+    Set type    ${type num}
+    Log Step End    ${s1_alias}
+
+05.02.20 enter bootrom after clear boardinfo
+    [Documentation]    执行clear \ boardinfo后，重启后无法进入img，但是可以正常进入bootrom
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    ${outp}    exec cmd    ${s1_alias}    show board
+    ${vlan mac}    Get Value From String    ${outp}    Vlan\\sMAC:\\s(.*)\\s
+    ${cpu mac}    Get Value From String    ${outp}    CPU\\s\\sMAC:\\s(.*)\\s
+    ${sn num}    Get Value From String    ${outp}    S\\/N:\\s(.*)\\s
+    ${Hw num}    Get Value From String    ${outp}    H\\/W:\\s(.*)\\s
+    ${manuf}    Get Value From String    ${outp}    Manufacture Date:(.*)\\s
+    ${an num}    Get Value From String    ${outp}    A\\/N:\\s(.*)\\s
+    ${pn num}    Get Value From String    ${outp}    P\\/N:\\s(.*)\\s
+    ${type num}    Get Value From String    ${outp}    Board Type is\\s(.*)\\s
+    Tools.Comment    step1    clear boardinfo
+    Log Step Start    ${s1_alias}
+    Clear boardinfo
+    ${output}    exec cmd    ${s1_alias}    show board
+    Run Keyword And Continue On Failure    Should Contain    ${output}    00-00-00-00-00-00    00-00-00-00-00-00
+    Run Keyword And Continue On Failure    Should Contain    ${output}    S/N: N/A
+    Run Keyword And Continue On Failure    Should Contain    ${output}    H/W: N/A
+    Run Keyword And Continue On Failure    Should Contain    ${output}    Manufacture Date:1900/1/0
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    重启无法进入img，但是可以进boot
+    Log Step Start    ${s1_alias}
+    Telnet.Switch Connection    ${s1_alias}
+    Exec Cmd Until Regexp    ${s1_alias}    reboot    Can't get device type    ##读到Can't get device type证明无法进入img
+    Telnet.Set Timeout    3 minutes
+    Telnet.Read Until Regexp    Testing RAM
+    Telnet.Write    \x02
+    Telnet.Read Until Regexp    \\[Boot\\]
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3    恢复boardinfo配置
+    Log Step Start    ${s1_alias}
+    Set mac    ${vlan mac}    ${cpu mac}
+    Set SN    ${sn num}
+    Setver sw    ${Hw num}
+    Setdate sw    ${manuf}
+    Set AN    ${an num}
+    Set PN    ${pn num}
+    Set type    ${type num}
+    Log Step End    ${s1_alias}
+
+05.02.21 checkblank
+    [Documentation]    执行checkblank可以正常检查是否设置了mac、sn、产品类型、板卡标记、板卡最大消耗功率、硬件版本以及生产日期等所有设置的硬件信息，通常是用来检查
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    ${outp}    exec cmd    ${s1_alias}    show board
+    ${vlan mac}    Get Value From String    ${outp}    Vlan\\sMAC:\\s(.*)\\s
+    ${cpu mac}    Get Value From String    ${outp}    CPU\\s\\sMAC:\\s(.*)\\s
+    ${sn num}    Get Value From String    ${outp}    S\\/N:\\s(.*)\\s
+    ${Hw num}    Get Value From String    ${outp}    H\\/W:\\s(.*)\\s
+    ${manuf}    Get Value From String    ${outp}    Manufacture Date:(.*)\\s
+    ${an num}    Get Value From String    ${outp}    A\\/N:\\s(.*)\\s
+    ${pn num}    Get Value From String    ${outp}    P\\/N:\\s(.*)\\s
+    ${type num}    Get Value From String    ${outp}    Board Type is\\s(.*)\\s
+    Tools.Comment    step1    clear boardinfo后，checkblank
+    Log Step Start    ${s1_alias}
+    Clear boardinfo
+    ${output}    exec cmd    ${s1_alias}    checkblank
+    Run Keyword And Continue On Failure    Should Contain    ${output}    board information is blank
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    设置了mac、sn等信息后，checkblank的结果应该为non-blank
+    Log Step Start    ${s1_alias}
+    Set mac    ${Vlan-mac}    ${Cpu-mac}
+    Set SN    ${SN}
+    Setver sw    ${HW}
+    Setdate sw    ${Date_sw}
+    Telnet.Write    settype
+    Telnet.Read Until Regexp    new type    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    Telnet.Write    ${type}
+    ${output}    exec cmd    ${s1_alias}    checkblank
+    Run Keyword And Continue On Failure    Should Contain    ${output}    board information is non-blank
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3    恢复boardinfo配置
+    Log Step Start    ${s1_alias}
+    Set mac    ${vlan mac}    ${cpu mac}
+    Set SN    ${sn num}
+    Setver sw    ${Hw num}
+    Setdate sw    ${manuf}
+    Set AN    ${an num}
+    Set PN    ${pn num}
+    Set type    ${type num}
+    Log Step End    ${s1_alias}
+
+05.02.24&25 settype
+    [Documentation]    5.4.24 设定错误的板卡类型，重启交换机提示类型错误
+    ...    5.4.25 设定正确的板卡类型，重启交换机成功
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    ${outp}    exec cmd    ${s1_alias}    show board
+    ${type num}    Get Value From String    ${outp}    Board Type is\\s(.*)\\s
+    Tools.Comment    step1    设定错误的type值
+    Log Step Start    ${s1_alias}
+    ${error_type}    Generate Random String    4    [NUMBERS]0123456789
+    Set type    ${error_type}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    重启无法进入img
+    Log Step Start    ${s1_alias}
+    Telnet.Switch Connection    ${s1_alias}
+    Exec Cmd Until Regexp    ${s1_alias}    reboot    Can't get device type    ##读到Can't get device type证明因type不对无法进入img
+    Telnet.Set Timeout    3 minutes
+    Telnet.Read Until Regexp    Testing RAM
+    Telnet.Write    \x02
+    Telnet.Read Until Regexp    \\[Boot\\]
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3    设定正确板卡类型，重启成功
+    Log Step Start    ${s1_alias}
+    Set type    ${type num}
+    Exec Cmd Until Timeout    ${s1_alias}    reboot    210
+    Enable Mode    ${s1_alias}
+    exec cmd    ${s1_alias}    clear counters
+    sleep    5
+    Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
+    Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}    ##流量正常转发认为正常启动
+    Log Step End    ${s1_alias}
+    Tools.Comment    step4    恢复配置，回到boot
+    Log Step Start    ${s1_alias}
+    Enter BootRom From Img    ${s1_alias}
+    Log Step End    ${s1_alias}
+
+05.02.26 nopassword
+    [Documentation]    输入nopassword命令，然后引导img后，不需要输入enable密码直接从普通用户模式进入特权用户配置模式一次,再次从普通用户模式进入特权用户配置模式则需要输入密码。同时该命令不应影响enable password命令的配置保留。
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Tools.Comment    step1    img下enable password
+    Log Step Start    ${s1_alias}
+    Reboot switch    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    enable password ${password}
+    Write Config    ${s1_alias}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    boot下输入nopassword，然后run nos.img,此时不需要输入密码就可以进enable模式
+    Log Step Start    ${s1_alias}
+    Enter BootRom From Img    ${s1_alias}
+    Exec Cmd    ${s1_alias}    nopassword
+    sleep    1
+    Run img    ${s1_alias}
+    ${output}    exec cmd    ${s1_alias}    enable
+    Should Contain    ${output}    \#
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3    在#模式exit，然后再进入enable模式，此时需要输入密码
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    exec cmd    ${s1_alias}    exit
+    ${output}    exec cmd    ${s1_alias}    enable
+    Should Contain    ${output}    Password
+    Telnet.Write    ${password}
+    ${output}    exec cmd    ${s1_alias}    enable
+    Should Contain    ${output}    \#
+    Log Step End    ${s1_alias}
+    Tools.Comment    step4    show run查看enable password命令保留
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${output}    exec cmd    ${s1_alias}    show running-config
+    Should Contain    ${output}    enable password level 15 0 ${password}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step5    恢复配置
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    no enable password
+    Write Config    ${s1_alias}
+    Enter BootRom From Img    ${s1_alias}
+    Log Step End    ${s1_alias}
+
+05.02.28 copy test
+    [Documentation]    执行copy时，源路径盘符和目的路径盘符均为flash但文件名不同时，copy成功
+    [Setup]    Init STEP
+    ##Enter BootRom From Img    ${s1_alias}    若是单步调试，需执行此步进入boot
+    Tools.Comment    step1    源和目的均为绝对路径时，copy成功
+    Log Step Start    ${s1_alias}
+    Reboot switch    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-1}    ${file2-1}
+    ${file}    Get Value From String    ${file2-1}    flash:/(.*)\\.
+    log    ${file}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Contain    ${output}    ${file}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    恢复配置
+    Log Step Start    ${s1_alias}
+    Delete file    ${s1_alias}    ${file2-1}
+    Log Step End    ${s1_alias}
+
+05.02.31 copy test
+    [Documentation]    执行copy时，源路径为相对路径时，目的路径为相对路径时，copy成功，交换机无异常错误
+    [Setup]    Init STEP
+    Tools.Comment    step1    源和目的均为相对路径时，copy成功
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-2}    ${file2-2}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Contain    ${output}    ${file2-2}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    恢复配置
+    Log Step Start    ${s1_alias}
+    Delete file    ${s1_alias}    ${file2-2}
+    Log Step End    ${s1_alias}
+
+05.02.32 copy test
+    [Documentation]    执行copy时，源路径为绝对路径时，目的路径为相对路径时，copy成功，交换机无异常错误
+    [Setup]    Init STEP
+    Tools.Comment    step1    源为绝对，目的为相对路径时，copy成功
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-1}    ${file2-2}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Contain    ${output}    ${file2-2}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    恢复配置
+    Log Step Start    ${s1_alias}
+    Delete file    ${s1_alias}    ${file2-2}
+    Log Step End    ${s1_alias}
+
+05.02.33 copy test
+    [Documentation]    执行copy时，源路径为相对路径时，目的路径为绝对路径时，copy成功
+    [Setup]    Init STEP
+    Tools.Comment    step1    源为相对，目的为绝对路径时，copy成功
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-2}    ${file2-1}
+    ${file}    Get Value From String    ${file2-1}    flash:/(.*)\\.
+    log    ${file}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Contain    ${output}    ${file}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    恢复配置
+    Log Step Start    ${s1_alias}
+    Delete file    ${s1_alias}    ${file2-1}
+    Log Step End    ${s1_alias}
+
+05.02.34 copy test
+    [Documentation]    执行copy时，源路径为绝对路径时，目的路径为绝对路径时，copy成功
+    [Setup]    Init STEP
+    Tools.Comment    step1    源和目的均为绝对路径时，copy成功
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-1}    ${file2-1}
+    ${file}    Get Value From String    ${file2-1}    flash:/(.*)\\.
+    log    ${file}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Contain    ${output}    ${file}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    恢复配置
+    Log Step Start    ${s1_alias}
+    Delete file    ${s1_alias}    ${file2-1}
+    Log Step End    ${s1_alias}
+
+05.02.35 copy test
+    [Documentation]    执行copy时，源路径盘符存在，源文件不存在时，copy失败
+    [Setup]    Init STEP
+    Tools.Comment    step1    源文件不存在时，copy失败
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file2-2}    ${file2-1}
+    ${file}    Get Value From String    ${file2-1}    flash:/(.*)\\.
+    log    ${file}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Not Contain    ${output}    ${file}
+    Log Step End    ${s1_alias}
+
+05.02.36 copy test
+    [Documentation]    执行copy时，源路径盘符不存在，copy失败
+    [Setup]    Init STEP
+    Tools.Comment    step1    源路径盘符不存在，copy失败
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-3}    ${file2-1}
+    ${file}    Get Value From String    ${file2-1}    flash:/(.*)\\.
+    log    ${file}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Not Contain    ${output}    ${file}
+    Log Step End    ${s1_alias}
+
+05.02.38 copy test
+    [Documentation]    执行copy时，目的路径盘符不存在时，copy失败
+    [Setup]    Init STEP
+    Tools.Comment    step1    目的径盘符不存在，copy失败
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-1}    ${file2-3}
+    ${file}    Get Value From String    ${file2-3}    C:/(.*)\\.
+    log    ${file}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Not Contain    ${output}    ${file}
+    Log Step End    ${s1_alias}
+
+05.02.43 copy test
+    [Documentation]    copy文件时，文件名最大长度为80个字符（包括.后缀名），整个路径的最大长度为128个字符
+    [Setup]    Init STEP
+    Tools.Comment    step1    copy文件时，文件名长度为80个字符（含后缀名），成功
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-2}    ${file2-4}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Contain    ${output}    ${file2-4}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step2    copy文件时，文件名长度为81个字符（含后缀名），失败
+    Log Step Start    ${s1_alias}
+    Copy file    ${s1_alias}    ${file1-2}    ${file2-5}
+    ${output}    exec cmd    ${s1_alias}    dir
+    Should Not Contain    ${output}    ${file2-5}
+    Log Step End    ${s1_alias}
+    Tools.Comment    step3    恢复配置
+    Log Step Start    ${s1_alias}
+    Delete file    ${s1_alias}    ${file2-4}
+    Log Step End    ${s1_alias}

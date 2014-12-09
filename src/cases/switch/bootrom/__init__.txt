@@ -1,0 +1,44 @@
+*** Settings ***
+Documentation     拓扑结构：
+...
+...
+...               PC--------（S2P2）S2（S2P1）-----------（S1P3）S1（S1P1/S1P2）--------testerp1/testerp2
+...
+...
+...
+...               PC上需要开启TFTP服务器，IP地址要与变量中${SERVER_IP}中设置的一致；TFTP上传和下载的路径里需要有适配交换机的nos.img（对应${NOS.IMG}）和boot.rom（对应BOOT.ROM）文件
+Suite Setup       Init suite
+Suite Teardown    Uninit suite
+Resource          vars_topo.txt
+Resource          ../../../resource/Switch.txt
+Resource          proc.txt
+Resource          ../../../resource/ixiasend.txt
+Resource          resource_bootrom.txt
+Resource          vars_ixia.txt
+
+*** Keywords ***
+Init suite
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Open Console    ${s2_ccm_ip}    ${s2_ccm_port}    ${s2_alias}
+    Check Topo
+    Tools.Comment    开始初始化
+    Show Version    ${s1_alias}
+    ${s1_cpu_mac}=    Get Cpu Mac    ${s1_alias}
+    Set Global Variable    ${S1_CPU_MAC}    ${s1_cpu_mac}
+    ${s1_vlan_mac}=    Get Vlan Mac    ${s1_alias}
+    Set Global Variable    ${S1_VLAN_MAC}    ${s1_vlan_mac}
+    Tools.Comment    初始化结束
+    Sleep    5
+    Close Console    ${s1_alias}
+    Close Console    ${s2_alias}
+
+Uninit suite
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Tools.Comment    恢复完成
+    Close Console    ${s1_alias}
+
+Check Topo
+    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p1}
+    Should Be True    ${s1p1_status}    !!interface ${s1p1} \ isn't up!!
+    ${s2p1_status}=    CheckPortStatus    ${s2_alias}    ${s2p1}
+    Should Be True    ${s2p1_status}    !!interface ${s2p1} \ isn't up!!
