@@ -3,7 +3,6 @@ Resource          ../../../resource/Switch.txt
 Library           ../../../lib/Tools.py
 Resource          var_topo.txt
 Resource          var_proc_function.txt
-Resource          var_proc_general.txt
 Resource          ../../../resource/ixiasend.txt
 
 *** Keywords ***

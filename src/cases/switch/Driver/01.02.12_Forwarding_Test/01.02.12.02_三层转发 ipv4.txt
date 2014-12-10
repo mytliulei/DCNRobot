@@ -140,6 +140,7 @@ Resource          resource_forwarding.txt
     Log Step Start    step2    tp2发送组播源流量,tp1没有点播前,组播转发表项没有出接口
     Set ixia stream ip    @{testerp2}    dst_mac=01:00:5E:00:02:02    src_mac=00:00:00:22:22:22    dst_ip=225.0.2.2    src_ip=20.1.1.2    stream_rate=2000
     ...    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Ixiasend.Start Transmit    @{testerp2}
     Exec Cmd List    ${s1_alias}
     ${ret}=    Exec cmd    ${s1_alias}    show ip mroute
     ${res1}=    Tools.Is Match From String    ${ret}    225.0.2.2.*?0:0
@@ -148,6 +149,8 @@ Resource          resource_forwarding.txt
     Should Be True    ${res2}    tp1不应该收到流量
     Log Step End    step2
     ##
+    Log Step Start    step3    tp2发送组播源流量,tp1点播,组播转发表项建立
+    Log Step End    step3
 
 1.2.12.2.4 ttl=1的本地IP报文处理
     [Setup]    04_init
