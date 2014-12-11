@@ -347,6 +347,7 @@ Get Port Status
     [Arguments]    ${alias}    ${port}    @{args}
     ${speed_dict}=    Create Dictionary    1G=${1000}    100M=${100}    10M=${10}    10G=${10000}    40G=${40000}
     ${max_speed_dict}=    Create Dictionary    G-TX=${1000}    G-Combo=${1000}    SFP=${1000}    SFP+=${10000}    QSFP+=${40000}
+    ...    G-Combo:Copper=${1000}    G-Combo:Fiber=${1000}
     ${port_num}=    Tools.Get Value From String    ${port}    [a-zA-Z]+(.*)
     Enable Mode    ${alias}
     \    #为了规避使用show inlude导致的丢失字符缺陷,先输入命令,然后再输入回车
