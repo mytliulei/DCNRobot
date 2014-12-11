@@ -435,7 +435,7 @@ Check no arp
     ...    ${mac_incr}=${1}    ${arp_type}=dynamic
     ${result}=    Set Variable    ${True}
     Exec Cmd List    ${alias}
-    ${ret}=    exec cmd    ${alias}    show arp type dynamic
+    ${ret}=    exec cmd    ${alias}    show arp type ${arp_type}
     ${mac_temp}=    Set Variable    ${mac}
     ${j}=    Set Variable    ${1}
     : FOR    ${i}    IN RANGE    ${ip_incr}
@@ -533,3 +533,96 @@ delete file
     Telnet.Read Until Regexp    \\(Y/N\\)\\?\\[N\\]
     telnet.write    Y
     Telnet.Read Until Prompt
+
+Check nd
+    [Arguments]    ${alias}    ${if}    ${port}    ${ipv6}    ${mac}    ${ipv6_incr}=${1}
+    ...    ${mac_incr}=${1}    ${nd_type}=dynamic
+    ${result}=    Set Variable    ${True}
+    Exec Cmd List    ${alias}
+    ${ret}=    exec cmd    ${alias}    show ipv6 neighbors
+    ${mac_temp}=    Set Variable    ${mac}
+    ${j}=    Set Variable    ${1}
+    :FOR    ${i}    IN RANGE    ${ipv6_incr}
+    \    log    ${ipv6}
+    \    log    ${mac}
+    \    ${res}=    Tools.Is Match From String    ${ret}    (?i)${ipv6}\\s+${mac}\\s+vlan${if}\\s+${port}\\s+${nd_type}
+    \    ${result}=    Evaluate    ${res} and ${result}
+    \    ${ipv6}=    Tools.Incr Ipv6    ${ipv6}
+    \    ${mac}=    Run Keyword If    ${j}<${mac_incr}    tools.incr mac    ${mac}    ELSE
+    \    ...    Set Variable    ${mac_temp}
+    \    ${j}=    Run Keyword If    ${j}<${mac_incr}    Set Variable    ${${j}+1}    ELSE
+    \    ...    Set Variable    ${1}
+    Return From Keyword    ${result}
+
+Check no nd
+    [Arguments]    ${alias}    ${if}    ${port}    ${ipv6}    ${mac}    ${ipv6_incr}=${1}
+    ...    ${mac_incr}=${1}    ${nd_type}=dynamic
+    ${result}=    Set Variable    ${True}
+    Exec Cmd List    ${alias}
+    ${ret}=    exec cmd    ${alias}    show ipv6 neighbors
+    ${mac_temp}=    Set Variable    ${mac}
+    ${j}=    Set Variable    ${1}
+    :FOR    ${i}    IN RANGE    ${ipv6_incr}
+    \    log    ${ipv6}
+    \    log    ${mac}
+    \    ${res}=    Tools.Is Match From String    ${ret}    (?i)${ipv6}\\s+${mac}\\s+vlan${if}\\s+${port}\\s+${nd_type}
+    \    ${result}=    Evaluate    (not ${res}) and ${result}
+    \    ${ipv6}=    Tools.Incr Ipv6    ${ipv6}
+    \    ${mac}=    Run Keyword If    ${j}<${mac_incr}    tools.incr mac    ${mac}    ELSE
+    \    ...    Set Variable    ${mac_temp}
+    \    ${j}=    Run Keyword If    ${j}<${mac_incr}    Set Variable    ${${j}+1}    ELSE
+    \    ...    Set Variable    ${1}
+    Return From Keyword    ${result}
+
+Set Static Nd
+    [Arguments]    ${alias}    ${port}    ${if}    ${ip}    ${mac}
+    [Documentation]    功能:配置指定端口的静态nd配置
+    ...
+    ...    \ args:
+    ...    \- ${alias} #指定设备
+    ...    \- ${port} #指定端口
+    ...    \- ${if} #指定interface vlan(三层接口)
+    ...    \- ${ipv6} #静态arp ip地址
+    ...    \- ${mac} #静态arp mac地址
+    Exec Cmd List In ConfigMode    ${alias}    interface vlan ${if}
+    Exec Cmd    ${alias}    ipv6 neighbor ${ipv6} ${mac} interface ${port}
+
+set and check ipv6 static route
+    [Arguments]    ${alias}    ${route}    ${mask}    ${nextHop}    ${incrNum}=${1}    ${incrMask}=${64}
+    #    配置静态路由并检查
+    ${tempRoute}=    Set Variable    ${route}
+    :FOR    ${i}    IN RANGE    ${incrNum}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    ipv6 route ${tempRoute}/${mask} ${nextHop}
+    \    ${tempRoute}=    tools.incr ipv6    ${tempRoute}    mask=${incrMask}
+    ${showRouteStatic}=    Exec Cmd    ${s1_alias}    show ip route static
+    ${maskNum}=    convert mask to num    ${mask}
+    ${tempRoute}=    Set Variable    ${route}
+    ${result}=    Set Variable    ${True}
+    @{errList}=    Create List
+    :FOR    ${i}    IN RANGE    ${incrNum}
+    \    ${res}=    Tools.Is Match From String    ${showRouteStatic}    (?i)${tempRoute}/${maskNum}.*?${nextHop}
+    \    Run Keyword If    ${res} !=${True}    Append To List    ${errList}    ${tempRoute}/${maskNum}
+    \    ${result}=    Evaluate    ${res} and ${result}
+    \    ${tempRoute}=    tools.incr ip    ${tempRoute}    mask=${incrMask}
+    log    ${errList}
+    [Return]    ${result}
+
+Del and check ipv6 static route
+    [Arguments]    ${alias}    ${route}    ${mask}    ${nextHop}=${EMPTY}    ${incrNum}=${1}    ${incrMask}=${24}
+    #    删除静态路由并检查
+    ${tempRoute}=    Set Variable    ${route}
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    no ip route ${tempRoute} ${mask} ${nextHop}
+    \    ${tempRoute}=    tools.incr ip    ${tempRoute}    mask=${incrMask}
+    ${showRouteStatic}=    Exec Cmd    ${s1_alias}    show ip route static
+    ${maskNum}=    convert mask to num    ${mask}
+    ${tempRoute}=    Set Variable    ${route}
+    ${result}=    Set Variable    ${True}
+    @{errList}=    Create List
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    ${res}=    Tools.Is Match From String    ${showRouteStatic}    (?i)${tempRoute}/${maskNum}.*?${nextHop}
+    \    Run Keyword If    ${res} ==${True}    Append To List    ${errList}    ${tempRoute}/${maskNum}
+    \    ${result}=    Evaluate    (not ${res}) and ${result}
+    \    ${tempRoute}=    tools.incr ip    ${tempRoute}    mask=${incrMask}
+    log    ${errList}
+    [Return]    ${result}
