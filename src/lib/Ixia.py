@@ -772,7 +772,7 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def set_stream_packet_by_api(self,chasId,card,port,streamId):
+    def set_stream_packet_by_api(self,chasId,card,port,streamId,fcs=0):
         '''
         set a packet on stream of ixia port
 
@@ -783,6 +783,11 @@ class Ixia(object):
         - card:   ixia card
         - port:   ixia port
         - streamId: stream id
+        - fcs:    0: streamErrorGood
+                  1: streamErrorAlignment
+                  2: streamErrorDribble
+                  3: streamErrorBadCRC
+                  4: streamErrorNoCRC
 
         return:
         - 0: ok
@@ -790,7 +795,7 @@ class Ixia(object):
         '''
         streamStr = self._pkt_class.get_packet_list_ixiaapi()
         self._pkt_class.empty_packet_list()
-        cmd = 'set_stream_from_ixiaapi %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
+        cmd = 'set_stream_from_ixiaapi %s %s %s %s %s %s\n' % (chasId,card,port,streamId,fcs,streamStr)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:

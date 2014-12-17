@@ -694,7 +694,7 @@ proc SetStreamEnable {cmdstr} {
 proc SetStreamFromIxiaAPI {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
-    if {$cmdlen <= 4} {
+    if {$cmdlen <= 5} {
         return -100
     }
     global ixia_ip
@@ -708,7 +708,8 @@ proc SetStreamFromIxiaAPI {cmdstr} {
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
     set streamId [lindex $cmdlist 3]
-    set packetlist [lrange $cmdlist 4 end]
+    set fcs [lindex $cmdlist 4]
+    set packetlist [lrange $cmdlist 5 end]
     set packet [join $packetlist " "]
     if {$logflag == 1} {
         puts $logfid $packet
@@ -741,6 +742,7 @@ proc SetStreamFromIxiaAPI {cmdstr} {
             incr ilist
         }
     }
+    stream config -fcs $fcs
     stream set $chasId $port $card $streamId
     set portlist [list [list $chasId $port $card]]
     set ret [ixWriteConfigToHardware portlist -noProtocolServer]
