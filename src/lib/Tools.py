@@ -126,9 +126,13 @@ class Tools(object):
 
         examples:
         | Incr Ipv6 | 2000::1 | #结果2000::2 |
-        | Incr Ipv6 | 2000::1 | step=${2}  | #结果2000::3 |          
+        | Incr Ipv6 | 2000::1 | step=${2}  | #结果2000::3 |
         | Incr Ipv6 | 2000::1 | mask=${64} | #结果2000::1:0:0:0:1 |
         '''
+        flag = 0
+        if ipv6.endswith('::'):
+            flag = 1
+            ipv6 += '0'
         ipv6list = ipv6.split(':')
         if len(ipv6list) == 1 or len(ipv6list) >8 :
             logger.info('ipv6 format error')
@@ -174,7 +178,25 @@ class Tools(object):
                     shortres.append(reslist[i])
             else:
                 shortres.append(reslist[i])
-        return ':'.join(shortres)
+        return self._format_ipv6address(':'.join(shortres),flag)
+
+    def _format_ipv6address(self,ipv6,flag):
+        '''
+        '''
+        ipv6list1 = ipv6.split(':')
+        ipv6list2 = ipv6.split('::')
+        if len(ipv6list1) == 8:
+            return ipv6
+        else:
+            if len(ipv6list2) == 1:
+                if flag == 0:
+                    return ipv6+'::0'
+                elif flag == 1:
+                    return ipv6+'::'
+                else:
+                    return ipv6+'::0'
+            else:
+                return ipv6
 
 
     def get_value_from_string(self,string,regexp):
