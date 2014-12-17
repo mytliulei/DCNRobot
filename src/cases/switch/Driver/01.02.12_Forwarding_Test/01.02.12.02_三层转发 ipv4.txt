@@ -159,7 +159,7 @@ Resource          resource_forwarding.txt
     03_set tp1 ip igmp report
     Ixiasend.Start Transmit    @{testerp1}
     Switch.Enable Mode    ${s1_alias}
-    :FOR    ${i}    IN RANGE    1    4
+    : FOR    ${i}    IN RANGE    1    4
     \    sleep    20
     \    ${ret}=    Exec cmd    ${s1_alias}    show ip mroute
     \    ${res1}=    Tools.Is Match From String    ${ret}    225.0.2.2.*?${vlanoutIndex}:1\\s
@@ -175,7 +175,7 @@ Resource          resource_forwarding.txt
     Ixiasend.Start Transmit    @{testerp1}
     sleep    5
     Switch.Enable Mode    ${s1_alias}
-    :FOR    ${i}    IN RANGE    1    4
+    : FOR    ${i}    IN RANGE    1    4
     \    sleep    20
     \    ${ret}=    Exec cmd    ${s1_alias}    show ip mroute
     \    ${res1}=    Tools.Is Match From String    ${ret}    225.0.2.2.*?0:0
@@ -219,9 +219,7 @@ Resource          resource_forwarding.txt
     Ixiasend.Get Capture Packet    @{testerp1}
     Ixiasend.Get Capture Packet    @{testerp2}
     ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    dst host 10.1.1.2 and ip proto icmp
-    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    dst host 10.1.1.2 and ip proto icmp
     should be true    ${tp1_Rx}==${0}    ${TEST_NAME}\n Step1 tp1发送ttl=0的icmp报文后,收到icmp回复
-    should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step1 tp1发送ttl=0的icmp报文后,tp2收到了icmp报文
     Log Step End    step2
     #
     #
@@ -445,7 +443,6 @@ show for test failed
 03_uninit
     #    失败后的show检查
     Run Keyword If Test Failed    show for Test failed
-    Run Keyword If Test Failed    Del and check static route    ${s1_alias}    100.1.1.0    255.255.255.0    incrNum=${20}    incrMask=${8}
     #
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
     Ixiasend.Stop Transmit    @{testerp1}
