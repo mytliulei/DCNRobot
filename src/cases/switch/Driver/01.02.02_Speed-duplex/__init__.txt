@@ -1,0 +1,5 @@
+*** Settings ***
+Documentation     速率和双工模式功能
+Resource          resource_speed_duplex.txt
+
+*** Keywords ***

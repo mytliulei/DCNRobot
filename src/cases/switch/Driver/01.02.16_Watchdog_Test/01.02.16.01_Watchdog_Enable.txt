@@ -1,0 +1,42 @@
+*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_watchdog.txt
+
+*** Test Cases ***
+1.2.16.1 开启watchdog后,有任务异常,交换机会重新启动
+    [Setup]    01_init
+    Log Step Start    step1    开启watchdog,并查找tL2input任务进程号
+    Exec Cmd List In ConfigMode    ${s1_alias}    watchdog enable
+    Enter Superdiag Mode    ${s1_alias}    ${s1p1}
+    ${ret}=    exec cmd    ${s1_alias}    tshell debug call taskList
+    ${ptr}=    Tools.Get Value From String    ${ret}    tL2Input th: (.*?) s:
+    Run Keyword If    '${ptr}'=='${None}'    Fail    ${TEST_NAME}\n Step1 无法获取tL2Input任务的task地址
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    将tL2Input任务挂起,交换机会重新启动
+    Exec Cmd slowly    ${s1_alias}    tshell debug call pthread_kill 0x${ptr} 11
+    ${isRestart}    ${ret}=    Get Debug Output Until Regexp    ${s1_alias}    System is booting, please wait    timeout=2 minute
+    ${res1}=    Tools.Is Match From String    ${ret}    WD log begin
+    ${res2}=    Tools.Is Match From String    ${ret}    WD log end
+    Should be True    ${res1} or ${res2}    ${TEST_NAME}\n Step2 没有捕获watchdog 告警!!
+    Should be True    ${isRestart}    ${TEST_NAME}\n Step2 设备在指定时间内没有重启
+    Get Debug Output Until Regexp    ${s1_alias}    ${sw_prompt}    20 minute
+    sleep    1min    等待剩余打印信息
+    Read    # 读取剩余内容
+    Log Step End    step2
+    [Teardown]    01_uninit    ${ptr}    ${isRestart}
+
+*** Key Words ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Write Config    ${s1_alias}
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+01_uninit
+    [Arguments]    ${ptr}    ${reload}
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Exit from Superdiag Mode    ${s1_alias}
+    Run Keyword IF    '${ptr}'!='${None}' and ${reload}==${False}    Reload Switch    ${s1_alias}
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<

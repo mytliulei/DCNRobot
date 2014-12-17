@@ -1,0 +1,68 @@
+*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_abnormal_power_off.txt
+
+*** Test Cases ***
+01_异常断电对img文件无影响
+    [Setup]    01_init
+    Log Step Start    step1    进行acl和stp简单配置后,write
+    Exec Cmd List In ConfigMode    ${s1_alias}    ip igmp snooping enable    ip igmp snooping vlan 1
+    ${ip}=    Set Variable    1.1.1.1
+    : FOR    ${arg}    IN RANGE    ${20}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    access-list 1 permit ${ip} 0.0.0.255
+    \    ${ip}=    Tools.Incr Ip    ${ip}    mask=${24}
+    Exec Cmd List In ConfigMode    ${s1_alias}    firewall enable    interface ${s1p1}    ip access-group 1 in
+    Exec Cmd List    ${s1_alias}
+    ${ret1}=    Exec Cmd    ${s1_alias}    show running
+    #通过时间因子生成cfg文件名称
+    ${time}=    get time    epoch
+    ${new_cfg}=    Set Variable    test${time}.cfg
+    Exec Cmd List    ${s1_alias}    write running-config ${new_cfg}
+    ${old_cfg}=    set startup-config    ${s1_alias}    ${new_cfg}
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    发送流量后,重启,每次均能正常启动,启动后,流量恢复正常.
+    Set ixia stream ip    @{testerp1}    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    dst_mac=00:00:00:22:22:22    src_mac=00:00:00:11:11:11    reset=True
+    Set ixia stream ip    @{testerp2}    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    dst_mac=00:00:00:11:11:11    src_mac=00:00:00:22:22:22    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    : FOR    ${time}    IN RANGE    ${20}
+    \    Set Apc Port    ${apc_alias}    ${s1_apc_port}    OFF
+    \    Set Apc Port    ${apc_alias}    ${s1_apc_port}    ON
+    \    Get Debug Output Until Regexp    ${s1_alias}    ${sw_prompt}    20 minute
+    \    sleep    1min
+    \    read
+    \    Exec Cmd list    ${s1_alias}
+    \    ${ret2}=    Exec Cmd    ${s1_alias}    show running
+    \    Should Be True    '''${ret2}'''=='''${ret1}'''
+    \    Ixiasend.Start Transmit    @{testerp1}
+    \    Ixiasend.Start Transmit    @{testerp2}
+    \    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
+    \    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    \    Should Be True    ${res1}==${res2}==True
+    Log Step End    step2
+    #
+    #
+    [Teardown]    01_uninit    ${old_cfg}    ${new_cfg}
+
+*** Key Words ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Write Config    ${s1_alias}
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+01_uninit
+    [Arguments]    ${old_cfg}    ${new_cfg}
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+    set startup-config    ${s1_alias}    ${old_cfg}
+    delete file    ${s1_alias}    ${new_cfg}
+    Reload Switch    ${s1_alias}
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<

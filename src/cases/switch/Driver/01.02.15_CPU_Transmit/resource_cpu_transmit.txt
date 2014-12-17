@@ -1,0 +1,17 @@
+*** Settings ***
+Resource          ../resource_driver.txt
+
+*** Variables ***
+
+*** Keywords ***
+init suite test
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    tools.Comment    !!Start!! Test-Suite: ${SUITE_NAME}
+    Connect To Ixia    ${testerp1_ip}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+
+uninit suite test
+    tools.Comment    !!END!! Test-Suite: ${SUITE_NAME}
+    Close Console    ${s1_alias}

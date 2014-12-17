@@ -1,0 +1,103 @@
+*** Settings ***
+Documentation     bandwidthControl资源文件,包括:
+...               - 测试套变量
+...               - 功能测试关键字
+...               - 引用的其他资源文件
+Resource          ../resource_driver.txt
+
+*** Variables ***
+${CMD_BANDWIDTH_CONTROL}    bandwidth control
+
+*** Keywords ***
+Init Suite Test
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    tools.comment    ${s1_alias}    !!Start!! Test-Suite: ${SUITE_NAME}
+    Connect To Ixia    ${testerp1_ip}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Ixia.Set Port Mode Default    @{testerp2}
+
+Uninit Suite Test
+    Unset Bandwidth Control    ${s1_alias}    ${s1p1}
+    Unset Bandwidth Control    ${s1_alias}    ${s1p2}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    tools.comment    ${s1_alias}    !!END!! Test-Suite: ${SUITE_NAME}
+    Close Console    ${s1_alias}
+
+Set Bandwidth Control
+    [Arguments]    ${alias}    ${port}    ${cfg_value}    ${direction}=${EMPTY}
+    [Documentation]    功能:在指定设备的指定端口上配置带宽限制功能
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- port #配置端口
+    ...    \- cfg_value#限制值
+    ...    \- direction # 带宽限制方向,缺省为空(即both),可以指定为both,transmit,receive
+    ...
+    ...    return:
+    ...    \- expect_rate #返回配置带宽限制后，交换设备自适应的抑制值。返回值自动*1000，即以bps为单位（方便与ixia适配）。
+    tools.comment    配置端口带宽限制功能
+    ${cfg_bandwidth_control_config}=    Set Variable    ${CMD_BANDWIDTH_CONTROL} ${cfg_value} ${direction}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_bandwidth_control_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    #检查是否有配置错误信息返回
+    ${check_result}=    Check set error    ${ret}
+    Run Keyword If    '${check_result}'!='None'    Fail    the Device may be don't support the "${cfg_bandwidth_control_config}" \ or Set error.    TAG_CFG_ERROR
+    #获取交换机带宽限制配置的自调整值
+    ${scaled_value}=    Tools.Get Value From String    ${ret}    scaled to (\\d+)
+    ${scaled_value}=    Set Variable if    '${scaled_value}'!='None'    ${scaled_value}    ${cfg_value}
+    #测试kbps时，预期速率为自调整抑制值*1000(即bps)，方便ixia使用。
+    ${expect_value}=    Set Variable    ${${scaled_value}*1000}
+    [Return]    ${expect_value}    #返回值单位为bps
+
+Unset Bandwidth Control
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    功能:在指定设备的指定端口上配置带宽限制功能
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- port #配置端口
+    tools.comment    删除端口带宽限制配置
+    ${cfg_bandwidth_control_config}=    Set Variable    no ${CMD_BANDWIDTH_CONTROL}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_bandwidth_control_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    #检查是否有配置错误信息返回
+    ${check_result}=    Check set error    ${ret}
+    Run Keyword If    '${check_result}'!='None'    Fail    the Device may be don't support the "${cfg_bandwidth_control_config}" \ or Set error.    TAG_CFG_ERROR
+
+Set Bandwidth Control Fail
+    [Arguments]    ${alias}    ${port}    ${cfg_value}    ${direction}=${EMPTY}
+    [Documentation]    功能:在指定设备的指定端口上配置带宽限制功能
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- port #配置端口
+    ...    \- cfg_value#限制值
+    ...    \- direction # 带宽限制方向,缺省为空(即both),可以指定为both,transmit,receive
+    tools.comment    配置端口带宽限制功能
+    ${cfg_bandwidth_control_config}=    Set Variable    ${CMD_BANDWIDTH_CONTROL} ${cfg_value} ${direction}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_bandwidth_control_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword If    ${check_result} ==False    Fail    May be set Bandwidth Control sussessful and check no error!
+    [Return]    ${check_result}    #True表示设置失败,False表示设置成功
+
+Unset Bandwidth Control Fail
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    功能:在指定设备的指定端口上配置带宽限制功能
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- port #配置端口
+    tools.comment    删除端口带宽限制配置
+    ${cfg_bandwidth_control_config}=    Set Variable    no ${CMD_BANDWIDTH_CONTROL}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_bandwidth_control_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword If    '${check_result}'!='True'    Fail    May be unset Bandwidth Control sussessful and check no error!
+    [Return]    ${check_result}

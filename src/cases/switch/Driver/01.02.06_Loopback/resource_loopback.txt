@@ -1,0 +1,61 @@
+*** Settings ***
+Resource          ../resource_driver.txt
+
+*** Variables ***
+${CMD_LOOPBACK}    loopback
+
+*** Keywords ***
+init suite test
+    [Documentation]    初始化测试套运行
+    ...
+    ...    - 打开console
+    ...    - 连接ixia
+    ...    - 设置缺省流量
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    tools.Comment    !!Start!! Test-Suite: ${SUITE_NAME}
+    Connect To Ixia    ${testerp1_ip}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+
+uninit suite test
+    [Documentation]    恢复测试套配置
+    ...
+    ...    - 删除端口上可能遗留的loopback配置
+    ...    - 将ixia端口set default
+    ...    - 关闭console
+    tools.Comment    !!END!! Test-Suite: ${SUITE_NAME}
+    Close Console    ${s1_alias}
+
+Set Loopback
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    设置loopaback
+    ...
+    ...    args:
+    ...    - alias
+    ...    - port
+    log    配置端口环回功能
+    ${cfg_config}=    Set Variable    ${CMD_LOOPBACK}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_config}
+    sleep    5s    等待端口UP
+    Exec Cmd    ${alias}    show run interface ${port}
+    #检查是否有配置错误信息返回
+    ${check_result}=    Check set error    ${ret}
+    Run Keyword If    '${check_result}'!='None'    Fail    the Device may be don't support the "${cfg_config}" \ or Set error.    TAG_CFG_ERROR
+
+Unset Loopback
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    删除loopback配置
+    ...
+    ...    args:
+    ...    - alias
+    ...    - port
+    log    删除端口环回配置
+    ${cfg_config}=    Set Variable    no ${CMD_LOOPBACK}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cfg_config}
+    Exec Cmd    ${alias}    show run interface ${port}
+    #检查是否有配置错误信息返回
+    ${check_result}=    Check set error    ${ret}
+    Run Keyword If    '${check_result}'!='None'    Fail    the Device may be don't support the "${cfg_config}" \ or Set error.    TAG_CFG_ERROR

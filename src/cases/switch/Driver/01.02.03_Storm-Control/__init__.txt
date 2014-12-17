@@ -1,0 +1,10 @@
+*** Settings ***
+Documentation     Strom-Control功能
+...               - kbps
+...               - pps
+...
+...               通过关键字Init StormControl Test初始化时会根据命令行的输出判断是否支持基于kbps或者pps来限速，如果支持则设置相关的全局变量。
+...
+...               若不支持kbps和pps的命令行配置，则默认为支持kbps。
+Suite Setup       Init StormControl Test
+Resource          resource_storm_control.txt

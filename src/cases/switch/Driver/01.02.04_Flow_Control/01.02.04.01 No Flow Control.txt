@@ -1,0 +1,77 @@
+*** Settings ***
+Documentation     没有开启Flowcontrol且出端口带宽不足导致丢包时,不发送Pause帧
+...
+...               - init 初始化配置,实现拓扑
+...               - step 1 没有开启Flowcontrol且出端口带宽不足导致丢包时,不发送Pause帧
+...               - uninit 恢复初始化配置
+...
+...               Topo:
+...               | \ \ \ \ \ tp1 \ \ tp2
+...               | \ \ \ \ \ \ | \ \ \ \ |
+...               | \ \ \ \ \ \ | \ \ \ \ |
+...               | \ \ +---|-----|---+
+...               | \ \ | s1p1 \ \ s1p2 |
+...               | \ \ | \ \ \ \ \ \ \ \ \ \ \ \ |
+...               | \ \ | \ \ \ s1p3 \ \ \ \ |
+...               | \ \ +----|--|-----+
+...               | \ \ \ \ \ \ \ | \ |
+...               | \ \ \ \ \ \ \ +--+
+...
+...
+...               s1p1 hybrid, native vlan 10, allowed vlan 10,30 untag
+...
+...               s1p2 access, vlan 20
+...
+...               s1p3 hybrid, native vlan 30, allowed vlan 10,20,30 untag, *loopback*
+...
+...               通过上述配置,模拟s1p1,s1p2两个端口向s1p3端口发送流量, 形成出端口带宽不足的情况.s1p3环回后,流量从s1p1转出。
+...
+...               注意:s1p1,s1p2的端口总速率要大于s1p3的端口速率,否则无法形成出端口带宽不足的情况.
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_flow_control.txt
+
+*** Test Cases ***
+01_未配置FlowControl时,不会发送Pause帧
+    [Setup]    01_init
+    Log Step Start    Step1    没有开启Flowcontrol且出端口带宽不足导致丢包时,不发送Pause帧
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    ${tp1_tx}=    Get Statics    @{testerp1}    txbps
+    ${tp2_tx}=    Get Statics    @{testerp2}    txbps
+    ${tp1_rx}=    Get Statics    @{testerp1}    rxbps
+    sleep    10s    等待端口计数
+    #读取端口s1p1与s1p2发送的pause以及collisions计数
+    ${p1_tx}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    tx_pause    tx_collisions
+    ${p2_tx}=    Get Show Interface Port    ${s1_alias}    ${s1p2}    tx_pause    tx_collisions
+    ${p1_pause}=    Get From Dictionary    ${p1_tx}    tx_pause
+    ${p2_pause}=    Get From Dictionary    ${p2_tx}    tx_pause
+    ${p1_collisions}=    Get From Dictionary    ${p1_tx}    tx_collisions
+    ${p2_collisions}=    Get From Dictionary    ${p2_tx}    tx_collisions
+    should be true    ${p1_pause}==${p2_pause}==${p1_collisions}==${p2_collisions}==${0}    s1p1与s1p2不会发送pause帧,也没有冲突帧产生。
+    Log Step End    Step1
+    #
+    #
+    [Teardown]    01_uninit
+
+*** Keywords ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>>
+    #配置初始拓扑>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport mode hybrid    switchport hybrid native vlan 10    switchport hybrid allowed vlan 10;30 untag
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    switchport mode hybrid    switchport hybrid native vlan 30    switchport hybrid allowed vlan 10;20;30 untag
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    loopback
+    #配置完成<<<
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<<<
+
+01_uninit
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置>>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport mode access    switchport access vlan 1
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport mode access    switchport access vlan 1
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    switchport mode access    switchport access vlan 1
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    no loopback
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置完成<<<<<<

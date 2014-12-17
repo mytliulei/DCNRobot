@@ -1,0 +1,469 @@
+*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_forwarding.txt
+
+*** Test Cases ***
+1.2.12.3.1 主机表项建立删除正常,流量转发正常
+    [Setup]    01_init
+    Log Step Start    step1    未建立主机表项时,打入三层转发流量,收不到流量
+    #    设置tp2发送ipv6流量
+    Ixia.Set Port Mode Default    @{testerp2}
+    01_set tp2 ipv6 stream for dynamic
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res}=    CheckIxiaReceiveRate    @{testerp1}    pps    2000    tolerance=0.05
+    Should not be true    ${res}    ${TEST_NAME}\n Step1 tp1收不到tp2发送的三层流量
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    动态学习neibor,主机表项创建正常,流量转发正常
+    #    让设备学习动态nd
+    Builtin.Comment    Ixia.Set Port Mode Default    @{testerp1}
+    Builtin.Comment    01_set tp1 nd stream
+    Builtin.Comment    Ixiasend.Start Transmit    @{testerp1}
+    Builtin.Comment    sleep    5s    等待流量发送完成
+    Builtin.Comment    Ixiasend.Stop Transmit    @{testerp1}
+    Builtin.Comment    ${res1}=    Check nd    ${s1_alias}    port=${s1p1}    if=10    ipv6=2010::100
+    ...    ipv6_incr=20    mac=00-00-10-01-01-64    mac_incr=20
+    Builtin.Comment    should be true    ${res1}    ${TEST_NAME}\n Step2 交换机学习到20个neibor
+    Builtin.Comment    Ixiasend.Start Transmit    @{testerp2}
+    Builtin.Comment    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    ...    tolerance=0.05
+    Builtin.Comment    should be true    ${res2}    ${TEST_NAME}\n Step2 tp1能收到tp2发送的ip流量
+    Builtin.Comment    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step2
+    #
+    #
+    Log Step Start    step3    配置静态neibor,主机表项创建正常,流量转发正常
+    #    配置静态neibor
+    ${ipv6}=    Set Variable    2010::200
+    ${mac}=    Set Variable    00-00-10-01-01-c8
+    : FOR    ${i}    IN RANGE    20
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ipv6 neighbor ${ipv6} ${mac} interface ${s1p1}
+    \    ${ipv6}=    tools.incr ipv6    ${ipv6}
+    \    ${mac}=    tools.incr mac    ${mac}
+    ${res1}=    Check nd    ${s1_alias}    port=${s1p1}    if=10    ipv6=2010::200    ipv6_incr=20
+    ...    mac=00-00-10-01-01-c8    mac_incr=20    nd_type=permanent
+    should be true    ${res1}    ${TEST_NAME}\n Step3 s1p1有20个静态neibor
+    Ixia.Set Port Mode Default    @{testerp2}
+    01_set tp2 ipv6 stream for static
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=0.05
+    should be true    ${res2}    ${TEST_NAME}\n Step3 tp1能收到tp2发送的ip流量
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step3
+    #
+    #
+    Log Step Start    step4    删除动态学习的neibor,对应的ipv6流量无法转发,对于静态neibor没有影响
+    Exec Cmd List    ${s1_alias}    clear ipv6 neighbors
+    Ixia.Set Port Mode Default    @{testerp2}
+    01_set tp2 ipv6 stream for dynamic
+    ${res1}=    Check no nd    ${s1_alias}    port=${s1p1}    if=10    ipv6=2010::100    ipv6_incr=20
+    ...    mac=00-00-10-01-01-64    mac_incr=20
+    should be true    ${res1}    ${TEST_NAME}\n Step4 s1p1不应该有动态neibor表项
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=30
+    should be true    ${res2}    ${TEST_NAME}\n Step4 tp1不能收到tp2发送的ip流量
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step4
+    #
+    #
+    Log Step Start    step5    删除静态neibor,流量不再转发
+    #    删除静态neibor
+    ${ipv6}=    Set Variable    2010::200
+    : FOR    ${i}    IN RANGE    20
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    no ipv6 neighbor ${ipv6}
+    \    ${ipv6}=    tools.incr ipv6    ${ipv6}
+    ${res1}=    Check no nd    ${s1_alias}    port=${s1p1}    if=10    ipv6=2010::200    ipv6_incr=20
+    ...    mac=00-00-10-01-01-c8    mac_incr=20    nd_type=permanent
+    should be true    ${res1}    ${TEST_NAME}\n Step5 s1p1不应该有静态neibor表项
+    Ixia.Set Port Mode Default    @{testerp2}
+    01_set tp2 ipv6 stream for static
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=30
+    should be true    ${res2}    ${TEST_NAME}\n Step5 tp1能收到tp2发送的ip流量
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step5
+    [Teardown]    01_uninit
+
+1.2.12.3.2 路由表项建立删除正常,流量转发正常
+    [Setup]    02_init
+    Log Step Start    step1    未建立路由表项时,打入三层转发流量,收不到流量
+    #    设置tp2发送ip流量
+    Ixia.Set Port Mode Default    @{testerp2}
+    02_set tp2 ipv6 stream for route
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res}=    CheckIxiaReceiveRate    @{testerp1}    pps    2000    tolerance=0.05
+    Should not be true    ${res}    ${TEST_NAME}\n Step1 tp1收不到tp2发送的三层流量
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    配置静态路由,路由表项创建正常,流量转发正常
+    Set Static Nd    ${s1_alias}    ${s1p1}    10    2010::100    00-00-00-00-10-10
+    ${res1}=    set and check ipv6 static route    ${s1_alias}    2030::    16    2010::100    incrNum=${20}
+    ...    incrMask=${16}
+    should be true    ${res1}    ${TEST_NAME}\n Step2 静态路由创建失败,请检查
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=0.05
+    should be true    ${res2}    ${TEST_NAME}\n Step2 tp1能收到tp2发送的ip流量
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step2
+    #
+    #
+    Log Step Start    step3    删除配置的静态路由,对应的ip流量无法转发
+    ${res1}=    Del and check ipv6 static route    ${s1_alias}    2030::    16    incrNum=${20}    incrMask=${16}
+    should be true    ${res1}    ${TEST_NAME}\n Step3 删除静态路由失败,请检查
+    Ixiasend.Start Transmit    @{testerp2}
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=30
+    should be true    ${res2}    ${TEST_NAME}\n Step3 tp1不应该收到tp2发送的ip流量
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step3
+    [Teardown]    02_uninit
+
+1.2.12.3.3 组播表项建立删除正常,流量转发正常
+    [Setup]    03_init
+    Log Step Start    step1    配置组播协议
+    Exec Cmd List In ConfigMode    ${s1_alias}    ipv6 pim multicast-routing
+    Exec Cmd List In ConfigMode    ${s1_alias}    ipv6 pim bsr-candidate vlan 10    ipv6 pim rp-candidate vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ipv6 pim sparse-mode
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 20    ipv6 pim sparse-mode
+    Switch.Enable Mode    ${s1_alias}
+    :FOR    ${i}    IN RANGE    1    4
+    \    ${ret}=    exec cmd    ${s1_alias}    show ipv6 pim bsr-router
+    \    ${res}=    Tools.Is Match From String    ${ret}    BSR address: 2010::1
+    \    Exit For Loop If    ${res}==${True}
+    \    sleep    1min
+    Should Be True    ${res}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    tp2发送组播源流量,tp1没有点播前,组播转发表项没有出接口
+    Ixiasend.Stop Transmit    @{testerp2}
+    03_set tp2 ipv6 stream for multicast
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5
+    Switch.Enable Mode    ${s1_alias}
+    ${ret}=    Exec cmd    ${s1_alias}    show ipv6 mroute
+    ${res1}=    Tools.Is Match From String    ${ret}    ff1f::1:203.*?0:0
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=5
+    Should Be True    ${res1}    组播转发表项的出接口应该为空
+    Should Be True    ${res2}    tp1不应该收到流量
+    ${vlanoutIndex}=    Tools.Get Value From String    ${ret}    Name:\\s+Vlan10,\\s+Index:\\s+(\\d+)
+    Log Step End    step2
+    ##
+    Log Step Start    step3    tp2发送组播源流量,tp1发送report点播,组播转发表项建立
+    Ixiasend.Stop Transmit    @{testerp1}
+    03_set tp1 ipv6 mld report
+    Ixiasend.Start Transmit    @{testerp1}
+    Switch.Enable Mode    ${s1_alias}
+    :FOR    ${i}    IN RANGE    1    4
+    \    sleep    20
+    \    ${ret}=    Exec cmd    ${s1_alias}    show ipv6 mroute
+    \    ${res1}=    Tools.Is Match From String    ${ret}    ff1f::1:203.*?${vlanoutIndex}:1\\s
+    \    Exit For Loop If    ${res1}==${True}
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=5
+    Should Be True    ${res1}    组播转发表项的出接口应该为空
+    Should Be True    ${res2}    tp1应该收到流量
+    Log Step End    step3
+    ##
+    Log Step Start    step4    tp2发送组播源流量,tp1点播,组播转发表项建立
+    Ixiasend.Stop Transmit    @{testerp1}
+    03_set tp1 ipv6 mld done
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    5
+    Switch.Enable Mode    ${s1_alias}
+    :FOR    ${i}    IN RANGE    1    4
+    \    sleep    20
+    \    ${ret}=    Exec cmd    ${s1_alias}    show ipv6 mroute
+    \    ${res1}=    Tools.Is Match From String    ${ret}    ff1f::1:203.*?0:0
+    \    Exit For Loop If    ${res1}==${True}
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=5
+    Should Be True    ${res1}    组播转发表项的出接口应该为空
+    Should Be True    ${res2}    tp1不应该收到流量
+    Log Step End    step4
+    [Teardown]    03_uninit
+
+1.2.12.3.4 ttl=1的本地IPv6报文处理
+    [Setup]    04_init
+    Log Step Start    step1    收到ttl=1的本地IPv6 icmp request报文,不转发到同vlan的其他端口,cpu能够正常回复icmp reply
+    Ixia.Set Port Mode Default    @{testerp1}
+    04_set tp1 ipv6 icmp request    ttl=${1}
+    Ixiasend.Start Capture    @{testerp1}
+    Ixiasend.Start Capture    @{testerp2}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    3s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp2}
+    Ixiasend.Get Capture Packet    @{testerp1}
+    Ixiasend.Get Capture Packet    @{testerp2}
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    ip6 dst host 2010::101 and ip6[40]==129
+    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    ip6 dst host 2010::1 and ip6[40]==128
+    should be true    ${tp1_Rx}==${5}    ${TEST_NAME}\n Step1 tp1发送ttl=1的icmpv6报文后,应该收到icmpv6回复
+    should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step1 tp1发送ttl=1的icmp报文后,tp2不应该收到icmp报文
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    收到ttl=0的本地IP icmp request报文,不转发到同vlan的其他端口,丢弃该报文
+    04_set tp1 ipv6 icmp request    ttl=${0}
+    Ixiasend.Start Capture    @{testerp1}
+    Ixiasend.Start Capture    @{testerp2}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    3s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp2}
+    Ixiasend.Get Capture Packet    @{testerp1}
+    Ixiasend.Get Capture Packet    @{testerp2}
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    ip6 dst host 2010::101 and ip6[40]==129
+    should be true    ${tp1_Rx}==${0}    ${TEST_NAME}\n Step2 tp1发送ttl=0的icmp报文后,不应收到icmp回复
+    Log Step End    step2
+    #
+    [Teardown]    04_uninit
+
+1.2.12.3.5 ttl=1的转发IPv6报文处理
+    Log Step Start    step1    ttl=1的转发IP报文处理
+    05_set tp1 ipv6 icmp request    ttl=${1}
+    Ixiasend.Start Capture    @{testerp1}
+    Ixiasend.Start Capture    @{testerp2}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    3s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp2}
+    Ixiasend.Get Capture Packet    @{testerp1}
+    Ixiasend.Get Capture Packet    @{testerp2}
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    ip6 dst host 2010::100 and ip6[40]==3
+    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    ip6 dst host 2020::100 and ip6[40]==128
+    Builtin.Comment    should be true    ${tp1_Rx}==${5}    ${TEST_NAME}\n Step1 tp1发送ttl=1的icmp报文后,没有收到icmp超时回复
+    Builtin.Comment    should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step1 tp1发送ttl=1的icmp报文后,tp2不应该收到icmp报文
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    ttl=0的本地IP报文处理
+    05_set tp1 ipv6 icmp request    ttl=${0}
+    Ixiasend.Start Capture    @{testerp1}
+    Ixiasend.Start Capture    @{testerp2}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    3s    #等待流量发送完成
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp2}
+    Ixiasend.Get Capture Packet    @{testerp1}
+    Ixiasend.Get Capture Packet    @{testerp2}
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    ip6 dst host 2010::100 and ip6[40]==3
+    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    ip6 dst host 2020::100 and ip6[40]==128
+    should be true    ${tp1_Rx}==${0}    ${TEST_NAME}\n Step2 tp1发送ttl=0的icmp报文后,收到icmp回复
+    should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step2 tp1发送ttl=0的icmp报文后,tp2收到了icmp报文
+    Log Step End    step2
+    #
+
+*** Keywords ***
+01_init
+    #    检查设备是否支持三层转发功能
+    Run Keyword If    ${DEVICE_TYPE}==${1}    Fail    设备不支持三层转发功能
+    #
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ipv6 address 2010::1/64
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 20    ipv6 address 2020::1/64
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+01_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no interface vlan 10    no interface vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10;20
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+show for test failed
+    tools.Comment    debug for ${TEST_NAME}
+    Exec Cmd List    ${s1_alias}    show ipv6 neighbors
+    Exec Cmd List    ${s1_alias}    show l3-table ipv6
+    Repeat Keyword    3 times    Exec Cmd List    ${s1_alias}    show interface ${s1p1}
+    Repeat Keyword    3 times    Exec Cmd List    ${s1_alias}    show interface ${s1p2}
+
+01_set tp2 ipv6 stream for dynamic
+    Ixiasend.Build Ether    dst=${S1_VLAN_MAC}    src=00:00:20:01:01:02
+    ${ex_dict_ipv6}=    Make Kwargs    destMask=96    destAddrMode=ipV6IncrInterfaceId    destAddrRepeatCount=20
+    Ixiasend.Build Ipv6    src=2020::2    dst=2010::100    kwargs=${ex_dict_ipv6}
+    Ixiasend.Build Packet
+    Ixiasend.Set Stream Packet By Api    @{testerp2}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp2}    streamId=1    streamRate=2000    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+01_set tp2 ipv6 stream for static
+    Ixiasend.Build Ether    dst=${S1_VLAN_MAC}    src=00:00:20:01:01:02
+    ${ex_dict_ipv6}=    Make Kwargs    destMask=96    destAddrMode=ipV6IncrInterfaceId    destAddrRepeatCount=20
+    Ixiasend.Build Ipv6    src=2020::2    dst=2010::200    kwargs=${ex_dict_ipv6}
+    Ixiasend.Build Packet
+    Ixiasend.Set Stream Packet By Api    @{testerp2}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp2}    streamId=1    streamRate=2000    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+02_init
+    #    检查设备是否支持三层转发功能
+    Run Keyword If    ${DEVICE_TYPE}==${1}    Fail    设备不支持三层转发功能
+    #
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ipv6 address 2010::1/64
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 20    ipv6 address 2020::1/64
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+02_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    Run Keyword If Test Failed    Del and check ipv6 static route    ${s1_alias}    2030::    16    incrNum=${20}    incrMask=${16}
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no interface vlan 10    no interface vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10;20
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+02_set tp2 ipv6 stream for route
+    Ixiasend.Build Ether    dst=${S1_VLAN_MAC}    src=00:00:20:01:01:02
+    ${ex_dict_ipv6}=    Make Kwargs    destAddrMode=ipV6IncrGlobalUnicastTopLevelAggrId    destAddrRepeatCount=20    destMask=4
+    Ixiasend.Build Ipv6    src=2020::2    dst=2030::100    kwargs=${ex_dict_ipv6}
+    Ixiasend.Build Packet
+    Ixiasend.Set Stream Packet By Api    @{testerp2}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp2}    streamId=1    streamRate=2000    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+03_init
+    #    检查设备是否支持三层转发功能
+    Run Keyword If    ${MC_ROUTE_SUPPORT}==${False}    Fail    设备不支持组播路由功能
+    #
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ipv6 address 2010::1/64
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 20    ipv6 address 2020::1/64
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+03_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no ipv6 pim multicast-routing
+    Exec Cmd List In ConfigMode    ${s1_alias}    no ipv6 pim bsr-candidate    no ipv6 pim rp-candidate
+    Exec Cmd List In ConfigMode    ${s1_alias}    no interface vlan 10    no interface vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10;20
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+03_set tp2 ipv6 stream for multicast
+    Ixiasend.Set Port Mode Default    @{testerp2}
+    Ixiasend.Build Ether    dst=33:33:00:01:02:03    src=00:00:20:01:01:02
+    Ixiasend.Build Ipv6    src=2020::2    dst=ff1f::1:203
+    Ixiasend.Build Packet
+    Ixiasend.Set Stream Packet By Api    @{testerp2}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp2}    streamId=1    streamRate=2000    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+03_set tp1 ipv6 mld report
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Build Ether    dst=33:33:00:01:02:03    src=00:00:00:11:11:11
+    Ixiasend.Build Ipv6    src=fe80::20:ff:fe11:1111    dst=ff1f::1:203    hlim=1
+    Ixiasend.Build Icmpv6 Mldv1 Report    mladdr=ff1f::1:203
+    Ixiasend.Build Packet
+    Ixiasend.Set Stream Packet By Api    @{testerp1}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_continue}
+
+03_set tp1 ipv6 mld done
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Build Ether    dst=33:33:00:01:02:03    src=00:00:00:11:11:11
+    Ixiasend.Build Ipv6    src=fe80::20:ff:fe11:1111    dst=ff1f::1:203    hlim=1
+    Ixiasend.Build Icmpv6 Mldv1 Done    mladdr=ff1f::1:203
+    Ixiasend.Build Packet
+    Ixiasend.Set Stream Packet By Api    @{testerp1}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_continue}
+
+04_init
+    #    检查设备是否支持三层转发功能
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ipv6 address 2010::1/64
+    Set Static Nd    ${s1_alias}    ${s1p1}    10    2010::101    00-00-00-00-11-11
+    Set Static Nd    ${s1_alias}    ${s1p2}    10    2010::102    00-00-00-00-22-22
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+04_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    Del Static Nd    ${s1_alias}    10    2010::101
+    Del Static Nd    ${s1_alias}    10    2010::102
+    Exec Cmd List In ConfigMode    ${s1_alias}    no interface vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+04_set tp1 ipv6 icmp request
+    [Arguments]    ${ttl}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Build Ether    dst=${S1_VLAN_MAC}    src=00:00:00:00:11:11
+    Ixiasend.Build Ipv6    src=2010::101    dst=2010::1    hlim=${ttl}
+    Ixiasend.Build Icmpv6 Echo Request
+    Ixiasend.Build Packet
+    Ixiasend.Set Stream Packet By Api    @{testerp1}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=5    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}
+
+05_init
+    #    检查设备是否支持三层转发功能
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ipv6 address 2010::1/64
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 20    ipv6 address 2020::1/64
+    Set Static Nd    ${s1_alias}    ${s1p1}    10    2010::100    00-00-00-00-11-11
+    Set Static Nd    ${s1_alias}    ${s1p2}    20    2020::100    00-00-00-00-22-22
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+05_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    Del Static Nd    ${s1_alias}    10    2010::100
+    Del Static Nd    ${s1_alias}    10    2020::100
+    Exec Cmd List In ConfigMode    ${s1_alias}    no interface vlan 10    no interface vlan 20
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10    no vlan 20
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+05_set tp1 ipv6 icmp request
+    [Arguments]    ${ttl}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Build Ether    dst=${S1_VLAN_MAC}    src=00:00:00:00:11:11
+    Ixiasend.Build Ipv6    src=2010::100    dst=2020::100    hlim=${ttl}
+    Ixiasend.Build Icmpv6 Echo Request
+    Ixiasend.Build Packet
+    Ixiasend.Set Stream Packet By Api    @{testerp1}    streamId=1
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=5    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}

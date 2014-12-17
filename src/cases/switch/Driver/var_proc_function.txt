@@ -1,0 +1,637 @@
+*** Settings ***
+Resource          ../../../resource/Switch.txt
+Library           ../../../lib/Tools.py
+Resource          var_topo.txt
+Resource          var_proc_ixia.txt
+Resource          ../../../resource/ixiasend.txt
+Resource          var_proc_general.txt
+
+*** Keywords ***
+CheckPortUpdown
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    检查端口状态,True 表示UP,False 表示Down
+    ${port_show}=    Exec Cmd    ${alias}    show interface ${port}
+    ${port_status}=    Tools.Is Match From String    ${port_show}    ${port} is up
+    [Return]    ${port_status}    # 端口状态
+
+Del Static Mac
+    [Arguments]    ${alias}    ${port}    ${vlan}    ${mac}
+    [Documentation]    功能:删除指定端口的静态mac配置
+    ...
+    ...    \ args:
+    ...    \- ${alias} #指定设备
+    ...    \- ${port} #指定端口
+    ...    \- ${vlan} #指定vlan
+    ...    \- ${mac} #mac地址,格式为00-00-00-01-01-01 或者 00:00:00:01:01:01
+    ${mac}=    Tools.Convert Macaddress Format    ${mac}    :    -
+    Exec Cmd List In ConfigMode    ${alias}    no mac-address-table static address ${mac} vlan ${vlan} interface ${port}
+
+Set Static Mac
+    [Arguments]    ${alias}    ${port}    ${vlan}    ${mac}
+    [Documentation]    功能:配置指定端口的静态mac配置
+    ...
+    ...    \ args:
+    ...    \- ${alias} #指定设备
+    ...    \- ${port} #指定端口
+    ...    \- ${vlan} #指定vlan
+    ...    \- ${mac} #mac地址,格式为00-00-00-01-01-01 或者 00:00:00:01:01:01
+    ${mac}=    Tools.Convert Macaddress Format    ${mac}    :    -
+    Exec Cmd List In ConfigMode    ${alias}    mac-address-table static address ${mac} vlan ${vlan} interface ${port}
+
+Check set error
+    [Arguments]    ${str}    ${loglevel}=WARN
+    [Documentation]    功能:检查给定的输入字符串中是否有指定类型错误
+    ...
+    ...    \args:
+    ...    \- str #输入字符串,一般将某条命令的输入返回座位本关键字的输入
+    ...    \- loglevel#检查到错误时,以何种log级别记录,参数参考"log"关键字的级别取值
+    ...
+    ...    return:
+    ...    \- check_result #返回检查到的错误类型,Warn,Error表示指定类型错误,None表示没有错误.
+    ${check_result}=    Set Variable    None
+    ${ret}=    Tools.Get Value From String    ${str}    (Invalid input|error)
+    ${check_result}=    Set Variable if    '${ret}'=='Invalid input'    Warn    '${ret}'=='error'    Error
+    Run Keyword if    '${check_result}'=='Warn'    log    the Device may be not support this Command    ${loglevel}
+    Run Keyword if    '${check_result}'=='Error'    log    an Error was occurred！    ${loglevel}
+    [Return]    ${check_result}    # 返回错误类型，None表示没有错误
+
+Get Port Speed
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    获取端口当前速率
+    ${speed_dict}=    Create Dictionary    1G=${1000000000}    100M=${100000000}    10M=${10000000}    10G=${10000000000}    40G=${40000000000}
+    ${port_num}=    Tools.Get Value From String    ${port}    [a-zA-Z]+(.*)
+    Enable Mode    ${alias}
+    #为了规避使用show | inlude导致的丢失字符缺陷,先输入命令,然后再输入回车
+    Write bare    show interface ethernet status | include ${port_num}${SPACE}+
+    Write    ${SPACE}
+    ${ret}=    Read Until Prompt
+    ${speed}=    Get Value From String    ${ret}    [af]-(\\d+\\w+)    #获取a-1G,或者f-100M
+    Return From Keyword If    '${speed}'=='None'    ${0}
+    ${port_speed}=    Get From Dictionary    ${speed_dict}    ${speed}
+    [Return]    ${port_speed}    #单位为bps
+
+Check Port Show Run
+    [Arguments]    ${alias}    ${port}    ${regexp}    @{more}
+    Enable Mode    ${alias}
+    ${ret}=    Exec Cmd    ${alias}    show running-config interface ${port}
+    ${result}=    Tools.Is Match From String    ${ret}    ${regexp}
+    [Return]    ${result}    # 返回True表示匹配到指定内容,返回False表示匹配不到指定内容
+
+Unset Port Channel Member
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    功能:删除port-channel成员端口
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- port #指定端口
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    no port-group
+
+Check Port Channel Member
+    [Arguments]    ${alias}    ${port}    ${channel_name}    ${loglevel}=WARN
+    [Documentation]    功能:检查端口是否是指定port-channel的成员端口
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- port #指定端口端口
+    ...    \- channel_name # port-channel名称
+    ...    \- loglevel # 检查到指定错误后,记录log日志的级别.
+    ...
+    ...    return:
+    ...    \- check_result #检查结果,为True时表示端口为指定port-channel的成员端口,为False时表示未检查到。
+    Exec Cmd List    ${alias}    show run interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    show interface port-channel ${channel_name}
+    ${check_result_channel}=    Tools.Is Match From String    ${ret}    ${port}
+    ${ret}=    Exec Cmd    ${alias}    show interface ${port}
+    ${check_result_port}=    Tools.Is Match From String    ${ret}    LAG port:Port-Channel${channel_name}
+    Run Keyword unless    ${check_result_channel} or ${check_result_port}    log    Can not find port-channel member "${port}"    ${loglevel}
+    ${check_result}=    Evaluate    ${check_result_channel} or ${check_result_port}
+    [Return]    ${check_result}
+
+Set Port Channel Member
+    [Arguments]    ${alias}    ${port}    ${channel_name}    ${mode}
+    [Documentation]    功能:配置port-channel成员端口
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- port #指定端口
+    ...    \- channel_name#port-channel名称
+    ...    \- mode#port-channel模式(on,active,passive)
+    ...
+    ...    return:
+    ...    \- res#设置结果,True表示设置成功,False表示设置失败
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd Until Timeout    ${alias}    port-group ${channel_name} mode ${mode}    timeout=5 seconds
+    ${check_result}=    Tools.Is Match From String    ${ret}    (different from Port-Channel|not existing|not allowed to join)
+    Exec Cmd    ${alias}    show run interface ${port}
+    ${res}=    Set Variable If    ${check_result}    ${False}    ${True}
+    Run Keyword If    ${check_result}    Fail    May be set port-channel error!
+    [Return]    ${res}
+
+Set Port Channel Member Fail
+    [Arguments]    ${alias}    ${port}    ${channel_name}    ${mode}
+    [Documentation]    功能:检查配置port-channel成员端口时是否出现"different from Port-Channel"错误
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- port #指定端口端口
+    ...    \- channel_name#port-channel名称
+    ...    \- mode#port-channel模式(on,active,passive)
+    ...
+    ...    return:
+    ...    \- check_result #检查结果,为True时表示检查到指定错误,为False时表示未检查到指定错误。
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd Until Timeout    ${alias}    port-group ${channel_name} mode ${mode}    timeout=5 seconds
+    ${check_result}=    Tools.Is Match From String    ${ret}    (different from Port-Channel|not allowed to join)
+    Exec Cmd    ${alias}    show run interface ${port}
+    Run Keyword If    ${check_result} !=True    Fail    May be set port-channel sussessful and check no error!
+    [Return]    ${check_result}
+
+Get Show Interface Port
+    [Arguments]    ${alias}    ${port}    @{args}
+    ${ret}=    Exec Cmd    ${alias}    show interface ${port}
+    ${res_dict}=    Create Dictionary
+    : FOR    ${arg}    IN    @{args}
+    \    ${value}=    Run Keyword If    '${arg}'=='5s_in_bps'    Tools.Get Value From String    ${ret}    5 second input rate (\\d+) bits
+    \    ...    ELSE IF    '${arg}'=='5s_in_pps'    Tools.Get Value From String    ${ret}    5 second input rate \\d+ bits/sec, (\\d+) packets/sec
+    \    ...    ELSE IF    '${arg}'=='5m_in_bps'    Tools.Get Value From String    ${ret}    5 minute input rate \\d+ bits/sec, (\\d+) packets/sec
+    \    ...    ELSE IF    '${arg}'=='5m_in_pps'    Tools.Get Value From String    ${ret}    5 minute input rate \\d+ bits/sec, (\\d+) packets/sec
+    \    ...    ELSE IF    '${arg}'=='in_packets'    Tools.Get Value From String    ${ret}    (\\d+) input packets
+    \    ...    ELSE IF    '${arg}'=='out_packets'    Tools.Get Value From String    ${ret}    (\\d+) output packets
+    \    ...    ELSE IF    '${arg}'=='5s_out_bps'    Tools.Get Value From String    ${ret}    5 second output rate (\\d+) bits
+    \    ...    ELSE IF    '${arg}'=='5s_out_pps'    Tools.Get Value From String    ${ret}    5 second output rate \\d+ bits/sec, (\\d+) packets/sec
+    \    ...    ELSE IF    '${arg}'=='5m_out_bps'    Tools.Get Value From String    ${ret}    5 minute output rate \\d+ bits/sec, (\\d+) packets/sec
+    \    ...    ELSE IF    '${arg}'=='5m_out_pps'    Tools.Get Value From String    ${ret}    5 minute output rate \\d+ bits/sec, (\\d+) packets/sec
+    \    ...    ELSE IF    '${arg}'=='tx_collisions'    Tools.Get Value From String    ${ret}    (\\d+) collisions
+    \    ...    ELSE IF    '${arg}'=='tx_pause'    Tools.Get Value From String    ${ret}    (?s)Output packets statistics.*?(\\d+) pause frame
+    \    ...    ELSE IF    '${arg}'=='rx_pause'    Tools.Get Value From String    ${ret}    (?s)Input packets statistics.*?(\\d+) pause frame
+    \    ...    ELSE IF    '${arg}'=='updown'    Tools.Get Value From String    ${ret}    line protocol is (up|down)
+    \    ...    ELSE IF    '${arg}'=='in_uc'    Tools.Get Value From String    ${ret}    (?s)Input packets statistics:.*?(\\d+) unicast packets
+    \    ...    ELSE IF    '${arg}'=='in_mc'    Tools.Get Value From String    ${ret}    (?s)Input packets statistics:.*?(\\d+) multicast packets
+    \    ...    ELSE IF    '${arg}'=='in_bc'    Tools.Get Value From String    ${ret}    (?s)Input packets statistics:.*?(\\d+) broadcast packets
+    \    ...    ELSE IF    '${arg}'=='in_crc'    Tools.Get Value From String    ${ret}    (?s)Input packets statistics:.*?(\\d+) CRC
+    \    ...    ELSE IF    '${arg}'=='in_bytes'    Tools.Get Value From String    ${ret}    (?s)Input packets statistics:.*?(\\d+) bytes
+    \    ...    ELSE IF    '${arg}'=='out_bytes'    Tools.Get Value From String    ${ret}    (?s)Output packets statistics:.*?(\\d+) bytes
+    \    ...    ELSE IF    '${arg}'=='out_uc'    Tools.Get Value From String    ${ret}    (?s)Output packets statistics:.*?(\\d+) unicast packets
+    \    ...    ELSE IF    '${arg}'=='out_mc'    Tools.Get Value From String    ${ret}    (?s)Output packets statistics:.*?(\\d+) multicast packets
+    \    ...    ELSE IF    '${arg}'=='out_bc'    Tools.Get Value From String    ${ret}    (?s)Output packets statistics:.*?(\\d+) broadcast packets
+    \    ...    ELSE    log    Can't recognized ${arg},Please Check args!!    WARN
+    \    Set To Dictionary    ${res_dict}    ${arg}    ${value}
+    [Return]    ${res_dict}
+
+Get Port Hardware
+    [Arguments]    ${alias}    ${port}
+    ${hw_dict}=    Create Dictionary    Gigabit-TX=Copper    SFP=Fiber    SFP+=Fiber
+    Enable Mode    ${alias}
+    #为了规避使用show inlude导致的丢失字符缺陷,先输入命令,然后再输入回车
+    Write bare    show interface ${port}${SPACE}
+    sleep    500ms
+    Write    ${SPACE}
+    ${ret}=    Read Until Prompt
+    ${hw}=    Get Value From String    ${ret}    Hardware is (.*?),
+    ${type}=    Run Keyword If    '${hw}'!='Gigabit-Combo'    Get From Dictionary    ${hw_dict}    ${hw}    ELSE
+    ...    Get Value From String    ${ret}    Hardware is Gigabit-Combo, active is (.*?),
+    [Return]    ${type}    # 返回端口类型,Copper 或者 Fiber
+
+Check Cross with Port Channel type 3
+    [Arguments]    ${alias}    ${cmd}    ${no_cmd}    ${chk_cmd}    @{portlist}
+    [Documentation]    与port-channel交叉测试,3类:
+    ...
+    ...    - port-channel不能修改和删除
+    ...    - 成员端口不能修改和删除
+    ...    - 加入port-channel时,配置要一致,配置不一致无法加入
+    ...
+    ...    args:
+    ...    - alias 设备别名
+    ...    - cmd 功能配置命令
+    ...    - no_cmd 功能删除命令
+    ...    - chk_cmd 功能检查命令,用于检查功能是否配置成功,部分命令例如bandwidth control由于配置后交换机会自适配配置值,因此不能用${cmd}来判断,只能通过chk_cmd来判断。
+    tools.comment    !!Start!!Check Cross with Port channel    Step1    端口配置对应命令"${cmd}"后, 加入聚合端口, 检查聚合成功,有对应配置.
+    Exec Cmd List In ConfigMode    ${alias}    port-group 100
+    : FOR    ${port}    IN    @{portlist}
+    \    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${cmd}
+    \    ${port_status}=    Check Port Show Run    ${alias}    ${port}    ${chk_cmd}
+    \    Should be true    ${port_status}    ${cmd} should set successful!!
+    \    Set Port Channel Member    ${alias}    ${port}    channel_name=100    mode=on
+    tools.comment    !!End!!Check Cross with Port channel    Step1    端口配置对应命令"${cmd}"后, 加入聚合端口, 检查聚合成功,有对应配置.
+    #
+    #
+    tools.comment    !!Start!!Check Cross with Port channel    step 2    port-channel下没有该功能配置
+    ${res}=    Check Port Show Run    ${alias}    port-channel 100    ${chk_cmd}
+    Should be true    ${res}==False    port-channel下没有'${chk_cmd}'配置
+    tools.comment    !!End!!Check Cross with Port channel    step 2    port-channel下没有该功能配置
+    #
+    #
+    tools.comment    !!Start!!Check Cross with Port channel    step 3    port-channel不能修改和删除该配置
+    Exec Cmd List In ConfigMode    ${alias}    interface port-channel 100
+    ${ret}=    Exec Cmd    ${alias}    ${cmd}
+    Exec Cmd    ${alias}    show run interface port-channel 100
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword If    ${check_result} ==False    Fail    port-channel不能修改${cmd}配置
+    ${ret}=    Exec Cmd    ${alias}    ${no_cmd}
+    Exec Cmd    ${alias}    show run interface port-channel 100
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword If    ${check_result} ==False    Fail    ${SUITE_NAME} ${TEST_NAME} ${STEP} port-channel不能删除${cmd}配置
+    tools.comment    !!End!!Check Cross with Port channel    step 3    port-channel不能修改和删除该配置
+    #
+    #
+    tools.comment    !!Start!!Check Cross with Port channel    step 4    port-channel成员端口不能修改和删除配置
+    ${port}=    get from list    ${portlist}    0
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cmd}
+    Exec Cmd    ${alias}    show run interface ${port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword If    ${check_result} ==False    Fail    port-channel的成员端口不能修改${cmd}配置
+    ${ret}=    Exec Cmd    ${alias}    ${no_cmd}
+    Exec Cmd    ${alias}    show run interface$ {port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword If    ${check_result} ==False    Fail    port-channel的成员端口不能删除${cmd}配置
+    tools.comment    !!End!!Check Cross with Port channel    step 4    port-channel成员端口不能修改和删除配置
+    #
+    #
+    tools.comment    !!Start!!Check Cross with Port channel    step 5    删除端口的port-channel配置, 修改端口的配置为不同值后, 重新聚合,聚合失败
+    ${port}=    get from list    ${portlist}    0
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    no port-group    ${no_cmd}
+    Exec Cmd    ${alias}    show run interface ${port}
+    Set Port Channel Member Fail    ${alias}    ${port}    channel_name=100    mode=on
+    ${check_result}=    Check Port Channel Member    ${alias}    ${port}    channel_name=100    loglevel=INFO
+    Should be true    ${check_result}==False    ${port} shouldn't be port-channel 100 's member!!
+    tools.comment    !!End!!Check Cross with Port channel    step 5    删除端口的port-channel配置, 修改端口的配置为不同值后, 重新聚合,聚合失败
+    #
+    #
+    tools.comment    !!Start!!Check Cross with Port channel    step 6    恢复初始配置
+    Exec Cmd List In ConfigMode    ${alias}    no port-group 100
+    : FOR    ${port}    IN    @{portlist}
+    \    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${no_cmd}
+    \    ${port_status}=    Check Port Show Run    ${alias}    ${port}    ${chk_cmd}
+    \    Should be true    ${port_status}==False    ${no_cmd} should set successful!!
+    tools.comment    !!End!!Check Cross with Port channel    step 6    恢复初始配置
+
+Check Cross with Port Channel type 1
+    [Arguments]    ${alias}    ${cmd}    ${no_cmd}    ${chk_cmd}    @{portlist}
+    [Documentation]    与port-channel交叉测试,1类:
+    ...
+    ...    - 配置后无法加入port-channel
+    ...    - port-channel不能修改和删除
+    ...    - 成员端口不能修改和删除
+    tools.comment    !!Start!! Check Cross with Port channel    Step1    端口配置对应命令"${cmd}"后, 无法加入port-channel
+    Exec Cmd List In ConfigMode    ${alias}    port-group 100
+    ${port}=    get from list    ${portlist}    0
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${cmd}
+    ${port_status}=    Check Port Show Run    ${alias}    ${port}    ${chk_cmd}
+    Should be true    ${port_status}    ${cmd} should set successful!!
+    Set Port Channel Member Fail    ${alias}    ${port}    channel_name=100    mode=on
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${no_cmd}
+    tools.comment    !!End!!Check Cross with Port channel    Step1    端口配置对应命令"${cmd}"后, 无法加入port-channel
+    #
+    #
+    tools.comment    !!Start!!Check Cross with Port channel    step 2    port-channel不能修改和删除该配置
+    : FOR    ${port}    IN    @{portlist}
+    \    Set Port Channel Member    ${alias}    ${port}    channel_name=100    mode=on
+    Exec Cmd List In ConfigMode    ${alias}    interface port-channel 100
+    ${ret}=    Exec Cmd    ${alias}    ${cmd}
+    Exec Cmd    ${alias}    show run interface port-channel 100
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword unless    ${check_result}    Fail    ${SUITE_NAME} ${TEST_NAME} port-channel不能配置${cmd}
+    ${ret}=    Exec Cmd    ${alias}    ${no_cmd}
+    Exec Cmd    ${alias}    show run interface port-channel 100
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
+    Run Keyword unless    ${check_result}    Fail    ${SUITE_NAME} ${TEST_NAME} port-channel不能配置${no_cmd}
+    tools.comment    !!End!!Check Cross with Port channel    step 2    port-channel不能修改和删除该配置
+    #
+    #
+    tools.comment    !!Start!!Check Cross with Port channel    step 3    port-channel成员端口不能修改和删除配置
+    ${port}=    get from list    ${portlist}    0
+    Exec Cmd List In ConfigMode    ${alias}    interface ${port}
+    ${ret}=    Exec Cmd    ${alias}    ${cmd}
+    Exec Cmd    ${alias}    show run interface ${port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input|cannot be set)
+    Run Keyword unless    ${check_result}    Fail    ${SUITE_NAME} ${TEST_NAME} port-channel的成员端口不能配置${cmd}
+    ${ret}=    Exec Cmd    ${alias}    ${no_cmd}
+    Exec Cmd    ${alias}    show run interface$ {port}
+    ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input|cannot be set)
+    Run Keyword unless    ${check_result}    Fail    ${SUITE_NAME} ${TEST_NAME} port-channel的成员端口不能配置${no_cmd}
+    tools.comment    !!End!!Check Cross with Port channel    step 3    port-channel成员端口不能修改和删除配置
+    #
+    #
+    tools.comment    !!Start!!Check Cross with Port channel    step 4    恢复初始配置
+    Exec Cmd List In ConfigMode    ${alias}    no port-group 100
+    tools.comment    !!End!!Check Cross with Port channel    step 4    恢复初始配置
+
+Get Port Show Run
+    [Arguments]    ${alias}    ${port}    @{regexps}
+    @{cfg_list}=    Create List
+    Enable Mode    ${alias}
+    ${ret}=    Exec Cmd    ${alias}    show running-config interface ${port}
+    : FOR    ${reg}    IN    @{regexps}
+    \    ${match}=    Tools.Get Value From String    ${ret}    ${reg}
+    \    Run Keyword if    '${match}' != 'None'    append to list    @{cfg_list}    ${match}
+    [Return]    @{cfg_list}    # 返回show running-config interface port中匹配到指定内容,无匹配时返回空
+
+Set Speed-duplex
+    [Arguments]    ${alias}    ${port}    ${arg}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${s1p1}
+    ${ret}=    Exec Cmd    ${alias}    speed-duplex ${arg}
+    Exec Cmd List In ConfigMode    ${alias}    show running interface ${s1p1}
+    ${res}=    Tools.Is Match From String    ${ret}    Cannot config
+    Run Keyword If    ${res}    Fail    Can't config "speed-duplex ${arg}" on "interface ${s1p1}"
+
+Unset Speed-duplex
+    [Arguments]    ${alias}    ${port}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${s1p1}
+    ${ret}=    Exec Cmd    ${alias}    no speed-duplex
+    Exec Cmd List In ConfigMode    ${alias}    show running interface ${s1p1}
+    ${res}=    Tools.Is Match From String    ${ret}    Cannot config| Invalid
+    Run Keyword If    ${res}    Fail    Can't config "no speed-duplex" on "interface ${s1p1}"
+
+Get Port Status
+    [Arguments]    ${alias}    ${port}    @{args}
+    ${speed_dict}=    Create Dictionary    1G=${1000}    100M=${100}    10M=${10}    10G=${10000}    40G=${40000}
+    ${max_speed_dict}=    Create Dictionary    G-TX=${1000}    G-Combo=${1000}    SFP=${1000}    SFP+=${10000}    QSFP+=${40000}
+    ...    G-Combo:Copper=${1000}    G-Combo:Fiber=${1000}
+    ${port_num}=    Tools.Get Value From String    ${port}    [a-zA-Z]+(.*)
+    Enable Mode    ${alias}
+    \    #为了规避使用show inlude导致的丢失字符缺陷,先输入命令,然后再输入回车
+    Write bare    show interface ethernet status | include ${port_num}${SPACE}+
+    sleep    500ms
+    Write    ${SPACE}
+    ${ret}=    Read Until Regexp    \\r
+    Read Until Prompt
+    ${updown}=    Get Value From String    ${ret}    (?i)${port_num}\\s+(UP|DOWN)
+    ${duplex}=    Get Value From String    ${ret}    (?i)[af]-(FULL|HALF)    #获取a/f-FULL,或者a/f-HALF
+    ${speed}=    Get Value From String    ${ret}    [af]-(\\d+\\w+)    #获取a-1G,或者f-100M
+    ${maxSpeed}=    Get Value From String    ${ret}    ${port_num}\\s+.*?\\s+.*?\\s+.*?\\s+\\d+\\s+(.*?)\\s+
+    ${updown}=    Run Keyword If    '${updown}'!='None'    Evaluate    "${updown}".upper()    #转换为大写
+    ${duplex}=    Run Keyword If    '${duplex}'!='None'    Evaluate    "${duplex}".upper()    #转换为大写
+    ${speed}=    Run Keyword If    '${speed}'!='None'    Get From Dictionary    ${speed_dict}    ${speed}
+    ${maxSpeed}=    Run Keyword If    '${maxSpeed}'!='None'    Get From Dictionary    ${max_speed_dict}    ${maxSpeed}
+    #
+    #返回信息处理
+    ${len}=    Get Length    ${args}
+    ${status_dict}=    Create Dictionary    updown=${updown}    duplex=${duplex}    speed=${speed}    maxSpeed=${maxSpeed}
+    Return From Keyword If    ${len}==0    ${status_dict}    #返回端口状态的字典类变量
+    @{status_list}=    Create list
+    : FOR    ${arg}    IN    @{args}
+    \    Run Keyword If    '${arg}'=='updown'    Append To List    ${status_list}    ${updown}
+    \    Run Keyword If    '${arg}'=='speed'    Append To List    ${status_list}    ${speed}
+    \    Run Keyword If    '${arg}'=='duplex'    Append To List    ${status_list}    ${duplex}
+    \    Run Keyword If    '${arg}'=='maxSpeed'    Append To List    ${status_list}    ${maxSpeed}
+    Return From Keyword If    ${len}==1    ${status_list[0]}    #返回单个值
+    Return From Keyword    @{status_list}    #返回指定端口状态的list变量
+
+Set Negoation
+    [Arguments]    ${alias}    ${port}    ${arg}
+    Exec Cmd List In ConfigMode    ${alias}    interface ${s1p1}
+    ${ret}=    Exec Cmd    ${alias}    negoation ${arg}
+    Exec Cmd List In ConfigMode    ${alias}    show running interface ${s1p1}
+    ${res}=    Tools.Is Match From String    ${ret}    Cannot config
+    Run Keyword If    ${res}    Fail    Can't config "negoation ${arg}" on "interface ${s1p1}"
+
+Set Static Arp
+    [Arguments]    ${alias}    ${port}    ${if}    ${ip}    ${mac}
+    [Documentation]    功能:配置指定端口的静态arp配置
+    ...
+    ...    \ args:
+    ...    \- ${alias} #指定设备
+    ...    \- ${port} #指定端口
+    ...    \- ${if} #指定interface vlan(三层接口)
+    ...    \- ${ip} #静态arp ip地址
+    ...    \- ${mac} #静态arp mac地址
+    Exec Cmd List In ConfigMode    ${alias}    interface vlan ${if}
+    Exec Cmd    ${alias}    arp ${ip} ${mac} interface ${port}
+
+Del Static Arp
+    [Arguments]    ${alias}    ${if}    ${ip}
+    [Documentation]    功能:删除指定端口的静态arp配置
+    ...
+    ...    \ args:
+    ...    \- ${alias} #指定设备
+    ...    \- ${if} #指定interface vlan(三层接口)
+    ...    \- ${ip} #静态arp ip地址
+    Exec Cmd List In ConfigMode    ${alias}    interface vlan ${if}
+    Exec Cmd    ${alias}    no arp ${ip}
+
+Check arp
+    [Arguments]    ${alias}    ${if}    ${port}    ${ip}    ${mac}    ${ip_incr}=${1}
+    ...    ${mac_incr}=${1}    ${arp_type}=dynamic
+    ${result}=    Set Variable    ${True}
+    Exec Cmd List    ${alias}
+    ${ret}=    exec cmd    ${alias}    show arp type ${arp_type}
+    ${mac_temp}=    Set Variable    ${mac}
+    ${j}=    Set Variable    ${1}
+    : FOR    ${i}    IN RANGE    ${ip_incr}
+    \    log    ${ip}
+    \    log    ${mac}
+    \    ${res}=    Tools.Is Match From String    ${ret}    (?i)${ip}\\s+${mac}\\s+vlan${if}\\s+${port}\\s+${arp_type}
+    \    ${result}=    Evaluate    ${res} and ${result}
+    \    ${ip}=    Tools.Incr Ip    ${ip}
+    \    ${mac}=    Run Keyword If    ${j}<${mac_incr}    tools.incr mac    ${mac}    ELSE
+    \    ...    Set Variable    ${mac_temp}
+    \    ${j}=    Run Keyword If    ${j}<${mac_incr}    Set Variable    ${${j}+1}    ELSE
+    \    ...    Set Variable    ${1}
+    Return From Keyword    ${result}
+
+Check no arp
+    [Arguments]    ${alias}    ${if}    ${port}    ${ip}    ${mac}    ${ip_incr}=${1}
+    ...    ${mac_incr}=${1}    ${arp_type}=dynamic
+    ${result}=    Set Variable    ${True}
+    Exec Cmd List    ${alias}
+    ${ret}=    exec cmd    ${alias}    show arp type ${arp_type}
+    ${mac_temp}=    Set Variable    ${mac}
+    ${j}=    Set Variable    ${1}
+    : FOR    ${i}    IN RANGE    ${ip_incr}
+    \    log    ${ip}
+    \    log    ${mac}
+    \    ${res}=    Tools.Is Match From String    ${ret}    ${ip}\\s+${mac}\\s+vlan${if}\\s+${port}\\s+${arp_type}
+    \    ${result}=    Evaluate    (not ${res}) and ${result}
+    \    ${ip}=    Tools.Incr Ip    ${ip}
+    \    ${mac}=    Run Keyword If    ${j}<${mac_incr}    tools.incr mac    ${mac}    ELSE
+    \    ...    Set Variable    ${mac_temp}
+    \    ${j}=    Run Keyword If    ${j}<${mac_incr}    Set Variable    ${${j}+1}    ELSE
+    \    ...    Set Variable    ${1}
+    Return From Keyword    ${result}
+
+set and check static route
+    [Arguments]    ${alias}    ${route}    ${mask}    ${nextHop}    ${incrNum}=${1}    ${incrMask}=${24}
+    #    配置静态路由并检查
+    ${tempRoute}=    Set Variable    ${route}
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    ip route ${tempRoute} ${mask} ${nextHop}
+    \    ${tempRoute}=    tools.incr ip    ${tempRoute}    mask=${incrMask}
+    ${showRouteStatic}=    Exec Cmd    ${s1_alias}    show ip route static
+    ${maskNum}=    convert mask to num    ${mask}
+    ${tempRoute}=    Set Variable    ${route}
+    ${result}=    Set Variable    ${True}
+    @{errList}=    Create List
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    ${res}=    Tools.Is Match From String    ${showRouteStatic}    (?i)${tempRoute}/${maskNum}.*?${nextHop}
+    \    Run Keyword If    ${res} !=${True}    Append To List    ${errList}    ${tempRoute}/${maskNum}
+    \    ${result}=    Evaluate    ${res} and ${result}
+    \    ${tempRoute}=    tools.incr ip    ${tempRoute}    mask=${incrMask}
+    log    ${errList}
+    [Return]    ${result}
+
+Del and check static route
+    [Arguments]    ${alias}    ${route}    ${mask}    ${nextHop}=${EMPTY}    ${incrNum}=${1}    ${incrMask}=${24}
+    #    删除静态路由并检查
+    ${tempRoute}=    Set Variable    ${route}
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    no ip route ${tempRoute} ${mask} ${nextHop}
+    \    ${tempRoute}=    tools.incr ip    ${tempRoute}    mask=${incrMask}
+    ${showRouteStatic}=    Exec Cmd    ${s1_alias}    show ip route static
+    ${maskNum}=    convert mask to num    ${mask}
+    ${tempRoute}=    Set Variable    ${route}
+    ${result}=    Set Variable    ${True}
+    @{errList}=    Create List
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    ${res}=    Tools.Is Match From String    ${showRouteStatic}    (?i)${tempRoute}/${maskNum}.*?${nextHop}
+    \    Run Keyword If    ${res} ==${True}    Append To List    ${errList}    ${tempRoute}/${maskNum}
+    \    ${result}=    Evaluate    (not ${res}) and ${result}
+    \    ${tempRoute}=    tools.incr ip    ${tempRoute}    mask=${incrMask}
+    log    ${errList}
+    [Return]    ${result}
+
+Enter Superdiag Mode
+    [Arguments]    ${alias}    ${port}    ${chassis}=${False}
+    ${vsf}=    Get device vsf    ${alias}
+    ${memNum}=    Run Keyword If    ${vsf}==${True}    Tools.Get Value From String    ${port}    Ethernet(\\d+)/
+    ${slotNum}=    Run Keyword If    ${vsf}==${True}    Tools.Get Value From String    ${port}    Ethernet\\d+/(\\d+)/    ELSE
+    ...    Tools.Get Value From String    ${port}    Ethernet(\\d+)/
+    Run Keyword If    ${vsf}==${True} and ${chassis}==${True}    Exec Cmd List    ${alias}    su ${memNum} ${slotNum}    ELSE IF    ${vsf}==${True} and ${chassis}!=${True}
+    ...    Exec Cmd List    ${alias}    su ${memNum}    ELSE IF    ${chassis}==${True}    Exec Cmd List
+    ...    ${alias}    su ${slotNum}    ELSE    Exec Cmd List    ${alias}    su
+
+Get device vsf
+    [Arguments]    ${alias}
+    Exec Cmd List    ${alias}
+    #确定是否堆叠设备
+    Write bare    show run | \ include switch
+    sleep    500ms
+    Write    ${SPACE}
+    ${ret}=    Read Until Prompt
+    ${vsf}=    Tools.Is Match From String    ${ret}    switch convert mode vsf
+    [Return]    ${vsf}
+
+Exit from Superdiag Mode
+    [Arguments]    ${alias}
+    Telnet.Switch Connection    ${alias}
+    ${ret}=    Exec Cmd    ${alias}    ${SPACE}
+    ${isInSdiag}=    Tools.Is Match From String    ${ret}    sdiag
+    Run Keyword If    ${isInSdiag}==True    Exec Cmd    ${alias}    exit
+
+set startup-config
+    [Arguments]    ${alias}    ${cfg}
+    exec cmd list    ${alias}
+    ${ret}=    exec cmd    ${alias}    show boot-files
+    ${old_cfg}=    Tools.Get Value From String    ${ret}    The startup-config file at the next boot time: \ \ \ flash:/(.*?cfg)
+    exec cmd    ${alias}    boot startup-config ${cfg}
+    [Return]    ${old_cfg}
+
+delete file
+    [Arguments]    ${alias}    ${file}
+    Exec Cmd List    ${alias}
+    telnet.write    delete ${file}
+    Telnet.Read Until Regexp    \\(Y/N\\)\\?\\[N\\]
+    telnet.write    Y
+    Telnet.Read Until Prompt
+
+Check nd
+    [Arguments]    ${alias}    ${if}    ${port}    ${ipv6}    ${mac}    ${ipv6_incr}=${1}
+    ...    ${mac_incr}=${1}    ${nd_type}=dynamic
+    ${result}=    Set Variable    ${True}
+    Exec Cmd List    ${alias}
+    ${ret}=    exec cmd    ${alias}    show ipv6 neighbors
+    ${mac_temp}=    Set Variable    ${mac}
+    ${j}=    Set Variable    ${1}
+    : FOR    ${i}    IN RANGE    ${ipv6_incr}
+    \    log    ${ipv6}
+    \    log    ${mac}
+    \    ${res}=    Tools.Is Match From String    ${ret}    (?i)${ipv6}\\s+${mac}\\s+vlan${if}\\s+${port}\\s+${nd_type}
+    \    ${result}=    Evaluate    ${res} and ${result}
+    \    ${ipv6}=    Tools.Incr Ipv6    ${ipv6}
+    \    ${mac}=    Run Keyword If    ${j}<${mac_incr}    tools.incr mac    ${mac}    ELSE
+    \    ...    Set Variable    ${mac_temp}
+    \    ${j}=    Run Keyword If    ${j}<${mac_incr}    Set Variable    ${${j}+1}    ELSE
+    \    ...    Set Variable    ${1}
+    Return From Keyword    ${result}
+
+Check no nd
+    [Arguments]    ${alias}    ${if}    ${port}    ${ipv6}    ${mac}    ${ipv6_incr}=${1}
+    ...    ${mac_incr}=${1}    ${nd_type}=dynamic
+    ${result}=    Set Variable    ${True}
+    Exec Cmd List    ${alias}
+    ${ret}=    exec cmd    ${alias}    show ipv6 neighbors
+    ${mac_temp}=    Set Variable    ${mac}
+    ${j}=    Set Variable    ${1}
+    : FOR    ${i}    IN RANGE    ${ipv6_incr}
+    \    log    ${ipv6}
+    \    log    ${mac}
+    \    ${res}=    Tools.Is Match From String    ${ret}    (?i)${ipv6}\\s+${mac}\\s+vlan${if}\\s+${port}\\s+${nd_type}
+    \    ${result}=    Evaluate    (not ${res}) and ${result}
+    \    ${ipv6}=    Tools.Incr Ipv6    ${ipv6}
+    \    ${mac}=    Run Keyword If    ${j}<${mac_incr}    tools.incr mac    ${mac}    ELSE
+    \    ...    Set Variable    ${mac_temp}
+    \    ${j}=    Run Keyword If    ${j}<${mac_incr}    Set Variable    ${${j}+1}    ELSE
+    \    ...    Set Variable    ${1}
+    Return From Keyword    ${result}
+
+Set Static Nd
+    [Arguments]    ${alias}    ${port}    ${if}    ${ipv6}    ${mac}
+    [Documentation]    功能:配置指定端口的静态nd配置
+    ...
+    ...    \ args:
+    ...    \- ${alias} #指定设备
+    ...    \- ${port} #指定端口
+    ...    \- ${if} #指定interface vlan(三层接口)
+    ...    \- ${ipv6} #静态neibor ip地址
+    ...    \- ${mac} #静态arp mac地址
+    Exec Cmd List In ConfigMode    ${alias}    interface vlan ${if}
+    Exec Cmd    ${alias}    ipv6 neighbor ${ipv6} ${mac} interface ${port}
+
+set and check ipv6 static route
+    [Arguments]    ${alias}    ${route}    ${mask}    ${nextHop}    ${incrNum}=${1}    ${incrMask}=${64}
+    #    配置静态路由并检查
+    ${tempRoute}=    Set Variable    ${route}
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    ipv6 route ${tempRoute}/${mask} ${nextHop}
+    \    ${tempRoute}=    tools.incr ipv6    ${tempRoute}    mask=${incrMask}
+    ${showRouteStatic}=    Exec Cmd    ${s1_alias}    show ipv6 route
+    ${tempRoute}=    Set Variable    ${route}
+    ${result}=    Set Variable    ${True}
+    @{errList}=    Create List
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    ${res}=    Tools.Is Match From String    ${showRouteStatic}    (?i)${tempRoute}/${mask}.*?${nextHop}
+    \    Run Keyword If    ${res} !=${True}    Append To List    ${errList}    ${tempRoute}/${mask}
+    \    ${result}=    Evaluate    ${res} and ${result}
+    \    ${tempRoute}=    tools.incr ipv6    ${tempRoute}    mask=${incrMask}
+    log    ${errList}
+    [Return]    ${result}
+
+Del and check ipv6 static route
+    [Arguments]    ${alias}    ${route}    ${mask}    ${nextHop}=${EMPTY}    ${incrNum}=${1}    ${incrMask}=${64}
+    #    删除静态路由并检查
+    ${tempRoute}=    Set Variable    ${route}
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    no ipv6 route ${tempRoute}/${mask} ${nextHop}
+    \    ${tempRoute}=    tools.incr ipv6    ${tempRoute}    mask=${incrMask}
+    ${showRouteStatic}=    Exec Cmd    ${s1_alias}    show ipv6 route
+    ${tempRoute}=    Set Variable    ${route}
+    ${result}=    Set Variable    ${True}
+    @{errList}=    Create List
+    : FOR    ${i}    IN RANGE    ${incrNum}
+    \    ${res}=    Tools.Is Match From String    ${showRouteStatic}    (?i)${tempRoute}/${mask}.*?${nextHop}
+    \    Run Keyword If    ${res} ==${True}    Append To List    ${errList}    ${tempRoute}/${mask}
+    \    ${result}=    Evaluate    (not ${res}) and ${result}
+    \    ${tempRoute}=    tools.incr ipv6    ${tempRoute}    mask=${incrMask}
+    log    ${errList}
+    [Return]    ${result}
+
+Del Static Nd
+    [Arguments]    ${alias}    ${if}    ${ipv6}
+    [Documentation]    功能:删除指定端口的静态nd配置
+    ...
+    ...    \ args:
+    ...    \- ${alias} #指定设备
+    ...    \- ${if} #指定interface vlan(三层接口)
+    ...    \- ${ipv6} #静态neibor ip地址
+    Exec Cmd List In ConfigMode    ${alias}    interface vlan ${if}
+    Exec Cmd    ${alias}    no ipv6 neighbor ${ipv6}

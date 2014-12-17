@@ -1,0 +1,25 @@
+*** Settings ***
+
+*** Variables ***
+${s1_ccm_ip}      172.16.11.120
+${s1_ccm_port}    10001
+${s1_alias}       s1
+${s1p1}           Ethernet1/0/1    # 主测端口
+${s1p2}           Ethernet1/0/2    # 辅测端口
+${testerp1_ip}    172.16.1.252    # ixia ip for tp1
+${testerp2_ip}    172.16.1.252    # ixia ip for tp2
+@{testerp1}       1    9    1
+@{testerp2}       1    9    2
+${CROSS_CHIP}     0    # 跨芯片标记位 0为同芯片,1为跨芯片
+${CROSS_SLOT}     0    # 跨槽位标记位 0为同槽位,1为跨板卡
+${CROSS_STACK_MEMBER}    0    # 跨堆叠成员标记位 0为同member,1为跨member
+${s1p3}           Ethernet1/0/3    # 辅测端口
+${DEVICE_TYPE}    0    # 支持三层功能:0,不支持三层功能:1
+${s1_chassis}     ${False}
+${apc_ccm_ip}     172.16.11.120
+${apc_ccm_port}    10003
+${apc_alias}      apc
+${s1_apc_port}    1
+${MC_ROUTE_SUPPORT}    ${True}    # 支持组播路由协议: ${True}, 不支持组播路由协议:${False}
+
+*** Keywords ***

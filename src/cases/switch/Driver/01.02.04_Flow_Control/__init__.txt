@@ -1,0 +1,55 @@
+*** Settings ***
+Documentation     FlowControl功能
+...
+...               *测试时s1p2,s1p3应该选用与主测端口s1p1缺省速率一致的端口*
+...
+...               1.2.4.1及1.2.4.3通过配置,使用如下拓扑
+...               Topo:
+...               | \ \ \ \ \ tp1 \ \ tp2
+...               | \ \ \ \ \ \ | \ \ \ \ |
+...               | \ \ \ \ \ \ | \ \ \ \ |
+...               | \ \ +---|-----|---+
+...               | \ \ | s1p1 \ \ s1p2 |
+...               | \ \ | \ \ \ \ \ \ \ \ \ \ \ \ |
+...               | \ \ | \ \ \ s1p3 \ \ \ \ |
+...               | \ \ +----|--|-----+
+...               | \ \ \ \ \ \ \ | \ |
+...               | \ \ \ \ \ \ \ +--+
+...
+...
+...               s1p1 hybrid, native vlan 10, allowed vlan 10,30 untag
+...
+...               s1p2 access, vlan 20
+...
+...               s1p3 hybrid, native vlan 30, allowed vlan 10,20,30 untag, *loopback*
+...
+...               通过上述配置,模拟s1p1,s1p2两个端口向s1p3端口发送流量, 形成出端口带宽不足的情况.s1p3环回后,流量从s1p1转出。
+...
+...               注意:s1p1,s1p2的端口总速率要大于s1p3的端口速率,否则无法形成出端口带宽不足的情况.
+Suite Setup       init Flow Control test
+Suite Teardown    uninit flow control test
+Resource          resource_flow_control.txt
+
+*** Keywords ***
+init Flow Control test
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    tools.Comment    !!START!! Test-Suite: ${SUITE_NAME}
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20;30
+    check topo
+    Close Console    ${s1_alias}
+
+uninit Flow Control test
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    tools.Comment    !!END!! Test-Suite: ${SUITE_NAME}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10    no vlan 20    no vlan 30
+    Close Console    ${s1_alias}
+
+check topo
+    [Documentation]    拓扑检查中,要求s1p1与s1p2的端口速率必须大于s1p3的端口速率
+    ${p1_spd}=    Get Port Speed    ${s1_alias}    ${s1p1}
+    ${p2_spd}=    Get Port Speed    ${s1_alias}    ${s1p2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    loopback
+    sleep    5s
+    ${p3_spd}=    Get Port Speed    ${s1_alias}    ${s1p3}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    no loopback
+    Should Be True    ${${p1_spd}+${p2_spd}}>${p3_spd}    s1p1与s1p2的端口速率必须大于s1p3的端口速率

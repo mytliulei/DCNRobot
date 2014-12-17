@@ -42,6 +42,7 @@ class PacketBase(object):
         self._ixia_ipv6_icmpv6_mld_flag = 0
         self._ixia_mld_kwargs_flag = 0
         self._ixia_mld_kwargs_detail = None
+        self._ixia_ipv6_icmpv6_echo_flag = 0
         self._packet_scapy_length = 0
 
     def _set_ixia_flag(self,flag):
@@ -108,6 +109,9 @@ class PacketBase(object):
             #add icmpv6 mld
             if self._ixia_ipv6_icmpv6_mld_flag:
                 self._create_ixia_ipv6_icmpv6_mld(cmd,scapy_length)
+            #add icmpv6 echo
+            if self._ixia_ipv6_icmpv6_echo_flag:
+                self._create_ixia_ipv6_icmpv6_echo(cmd,scapy_length)
             #add framLength
             self._ixia_packetField[0] += '!stream config -frameSizeType sizeFixed!stream config -framesize %s!stream config -frameSizeMIN %s!stream config -frameSizeMAX %s' % (length,length,length)
             #add frameType
@@ -165,18 +169,24 @@ class PacketBase(object):
             xcmd = '@'.join(self._ixia_packetField)
             ycmd = '@'.join(self._ixia_write_cmd)
             self._ixia_packet_cmd = xcmd + '$' + ycmd
-            self._ixia_packetField = []
-            self._ixia_write_cmd = []
-            self._ixia_frameType = None
-            self._ixia_ipProto_flag = 0
-            self._ixia_ipv6Proto_flag = 0
-            self._ixia_ipProto = 0
-            self._ixia_ipv6Proto = 0
-            self._ixia_etherType = 0
-            self._ixia_ipv6_icmpv6_mld_flag = 0
-            self._ixia_mld_kwargs_detail = None
-            self._ixia_mld_kwargs_flag = 0
-        return 0
+            self._reset_ixia_parameter()
+            return 0
+
+    def _reset_ixia_parameter(self):
+        '''
+        '''
+        self._ixia_packetField = []
+        self._ixia_write_cmd = []
+        self._ixia_frameType = None
+        self._ixia_ipProto_flag = 0
+        self._ixia_ipv6Proto_flag = 0
+        self._ixia_ipProto = 0
+        self._ixia_ipv6Proto = 0
+        self._ixia_etherType = 0
+        self._ixia_ipv6_icmpv6_mld_flag = 0
+        self._ixia_mld_kwargs_detail = None
+        self._ixia_mld_kwargs_flag = 0
+        self._ixia_ipv6_icmpv6_echo_flag = 0
 
     def build_ether(self,dst='ff:ff:ff:ff:ff:ff',src='00:00:00:00:00:00',typeid=None,kwargs=None):
         '''build Ethernet field packet
@@ -1205,6 +1215,130 @@ class PacketBase(object):
             self._ixia_mld_kwargs_detail = None
         return True
 
+    def build_icmpv6_echo_request(self,code=0,chksum=None,iden=0,seq=0,data='',kwargs=None):
+        '''build icmpv6 echo request field packet
+
+           args:
+           - code        = 0
+           - chksum      = None;
+           - iden        = 0;
+           - seq         = 0;
+           - data        = ''
+
+           return:
+           packet field length
+
+           exapmle:
+           | Build Icmpv6 Echo Request |
+        '''
+        if issubclass(type(code),basestring):
+            if code.startswith('0x'):
+                code = int(code,16)
+            else:
+                code = int(code)
+        if issubclass(type(iden),basestring):
+            if iden.startswith('0x'):
+                iden = int(iden,16)
+            else:
+                iden = int(iden)
+        if issubclass(type(seq),basestring):
+            if seq.startswith('0x'):
+                seq = int(seq,16)
+            else:
+                seq = int(seq)
+        if chksum:
+            if issubclass(type(chksum),basestring):
+                if chksum.startswith('0x'):
+                    chksum = int(chksum,16)
+                else:
+                    chksum = int(chksum)
+        cmd = "ICMPv6EchoRequest(code=%i,id=%i,seq=%i,data='%s'" % (code,iden,seq,data)
+        if chksum:
+            cmd += ",cksum=%i" % chksum
+        cmd += ")"
+        try:
+            exec('p=%s' % cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_icmpv6_echo_request_ixia(code,chksum,iden,seq,data,kwargs)
+            return len(p)
+
+    def _build_icmpv6_echo_request_ixia(self,code,chksum,iden,seq,data,kwargs):
+        '''
+        '''
+        cmdlist = []
+        #stream config -patternType nonRepeat
+        #stream config -dataPattern userpattern
+        #stream config -pattern $pattern
+        self._ixia_ipv6_icmpv6_echo_flag = 1
+        return True
+
+    def build_icmpv6_echo_reply(self,code=0,chksum=None,iden=0,seq=0,data='',kwargs=None):
+        '''build icmpv6 echo reply field packet
+
+           args:
+           - code        = 0
+           - chksum      = None;
+           - iden        = 0;
+           - seq         = 0;
+           - data        = ''
+
+           return:
+           packet field length
+
+           exapmle:
+           | Build Icmpv6 Echo Reply |
+        '''
+        if issubclass(type(code),basestring):
+            if code.startswith('0x'):
+                code = int(code,16)
+            else:
+                code = int(code)
+        if issubclass(type(iden),basestring):
+            if iden.startswith('0x'):
+                iden = int(iden,16)
+            else:
+                iden = int(iden)
+        if issubclass(type(seq),basestring):
+            if seq.startswith('0x'):
+                seq = int(seq,16)
+            else:
+                seq = int(seq)
+        if chksum:
+            if issubclass(type(chksum),basestring):
+                if chksum.startswith('0x'):
+                    chksum = int(chksum,16)
+                else:
+                    chksum = int(chksum)
+        cmd = "ICMPv6EchoReply(code=%i,id=%i,seq=%i,data='%s'" % (code,iden,seq,data)
+        if chksum:
+            cmd += ",cksum=%i" % chksum
+        cmd += ")"
+        try:
+            exec('p=%s' % cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            self._packetField.append(cmd)
+            if self._ixia_flag:
+                self._build_icmpv6_echo_reply_ixia(code,chksum,iden,seq,data,kwargs)
+            return len(p)
+
+    def _build_icmpv6_echo_reply_ixia(self,code,chksum,iden,seq,data,kwargs):
+        '''
+        '''
+        cmdlist = []
+        #stream config -patternType nonRepeat
+        #stream config -dataPattern userpattern
+        #stream config -pattern $pattern
+        self._ixia_ipv6_icmpv6_echo_flag = 1
+        return True
+
     def build_dot1q(self,prio=0,cfi=0,vlan=1,typeid=None,kwargs=None):
         '''
            build 802.1Q field packet
@@ -1405,7 +1539,19 @@ class PacketBase(object):
             ipv6Icmpv6MldCmd = '!'.join(cmdlist)
             self._ixia_packetField[0] += '!' + ipv6Icmpv6MldCmd
             self._ixia_ipv6_icmpv6_mld_flag = 0
-        #config mld kwargs used by udf1 and udf 2
+        #config ipv6 hopbyhop nextheader to 58
+        cmdlist = []
+        cmdlist.append('udf setDefault')
+        cmdlist.append('udf config -enable true')
+        offset1 = 54 + self._ixia_vlan_flag * 4
+        initval1 = '3A'
+        cmdlist.append('udf config -offset %s' % offset1)
+        cmdlist.append('udf config -initval %s' % initval1)
+        cmdlist.append('udf set 1')
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        self._ixia_write_cmd.append("none")
+        #config mld kwargs used by udf2 and udf 3
         if self._ixia_mld_kwargs_flag:
             if self._ixia_mld_kwargs_detail:
                 mask = self._ixia_mld_kwargs_detail['mld_kwargs_addrmask']
@@ -1422,7 +1568,7 @@ class PacketBase(object):
                 cmdlist.append('udf config -repeat %s' % count)
                 cmdlist.append('udf config -updown %s' % mode)
                 cmdlist.append('udf config -step %s' % size)
-                cmdlist.append('udf set 1')
+                cmdlist.append('udf set 2')
                 #compute crc
                 offset2 = scapylen - 24 + 2
                 initval21 = mldStr.split()[offset2]
@@ -1438,9 +1584,46 @@ class PacketBase(object):
                 else:
                     cmdlist.append('udf config -updown uuuu')
                 cmdlist.append('udf config -step %s' % size)
-                cmdlist.append('udf set 2')
+                cmdlist.append('udf set 3')
                 cmd = '!'.join(cmdlist)
                 self._ixia_packetField.append(cmd)
                 self._ixia_write_cmd.append("none")
             self._ixia_mld_kwargs_detail = None
             self._ixia_mld_kwargs_flag = 0
+
+    def _create_ixia_ipv6_icmpv6_echo(self,pktstr,scapylen):
+        '''
+        '''
+        cmd = 'p=' + pktstr
+        try:
+            exec(cmd)
+        except Exception,ex:
+            logger.info('cmd %s format may wrong' % cmd)
+            return -1
+        else:
+            ptklen = len(p)
+        #config mld icmpv6 packet field
+        if self._ixia_ipv6_icmpv6_echo_flag:
+            mldStr = hexstr(str(p),0,1)
+            cmdlist = []
+            cmdlist.append('stream config -patternType nonRepeat')
+            cmdlist.append('stream config -dataPattern userpattern')
+            pattern = ' '.join(mldStr.split()[scapylen-ptklen-8:scapylen-ptklen])
+            cmdlist.append('stream config -pattern "%s"' % pattern)
+            ipv6Icmpv6EchoCmd = '!'.join(cmdlist)
+            self._ixia_packetField[0] += '!' + ipv6Icmpv6EchoCmd
+            self._ixia_ipv6_icmpv6_echo_flag = 0
+        #disable ipv6 Proto
+        self._ixia_ipv6Proto_flag = 0
+        #config ipv6 nextheader to 58
+        cmdlist = []
+        cmdlist.append('udf setDefault')
+        cmdlist.append('udf config -enable true')
+        offset1 = 20 + self._ixia_vlan_flag * 4
+        initval1 = '3A'
+        cmdlist.append('udf config -offset %s' % offset1)
+        cmdlist.append('udf config -initval %s' % initval1)
+        cmdlist.append('udf set 1')
+        cmd = '!'.join(cmdlist)
+        self._ixia_packetField.append(cmd)
+        self._ixia_write_cmd.append("none")

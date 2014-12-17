@@ -67,6 +67,7 @@ ${sw_regexp_reload}    Mac\\sAddr\\s
 ${sw_monitor}     ${True}
 ${sw_monitor_loglevel}    INFO
 ${sw_newline}     LF
+${apc_prompt}     (?m)^User\\s+Name\\s+:|^Password\\s+:|^APC>
 
 *** Keywords ***
 Open Console
@@ -452,3 +453,46 @@ Exec Cmd Until Timeout
     Run Keyword If    ${timeout} is not None    Sleep    ${timeout}
     ${output}=    Telnet.Read
     [Return]    ${output}
+
+APC ON
+    [Arguments]    ${alias}    ${id}    ${user}=apc    ${pwd}=apc -c
+    Switch.APC Login    ${alias}    ${user}    ${pwd}
+    Telnet.Read
+    ${output}=    Telnet.Execute Command    on ${id}
+    Switch.APC Logout    ${alias}
+
+Open APC
+    [Arguments]    ${ip}    ${port}    ${alias}
+    Telnet.Open Connection    ${ip}    ${alias}    ${port}    timeout=1 minute    prompt_is_regexp=${True}    prompt=${apc_prompt}
+    ...    default_log_level=${None}    terminal_emulation=${False}    monitor=${sw_monitor}    newline=CR
+
+Close APC
+    [Arguments]    ${alias}    ${monitor_loglevel}=${sw_monitor_loglevel}    ${monitor}=${sw_monitor}
+    Telnet.Switch Connection    ${alias}
+    Telnet.Set Monitor    ${monitor}
+    Telnet.Close Connection    ${monitor_loglevel}
+
+APC Login
+    [Arguments]    ${alias}    ${username}=apc    ${password}=apc-c
+    Telnet.Switch Connection    ${alias}
+    Telnet.Read
+    Telnet.Write Bare    \r
+    Telnet.Write Bare    \r
+    Telnet.Write    ${username}
+    Telnet.Read Until Regexp    Password\\s+:
+    Telnet.Write    ${password}
+    Telnet.Read Until Prompt
+
+APC Logout
+    [Arguments]    ${alias}
+    Telnet.Switch Connection    ${alias}
+    Telnet.Read
+    Telnet.Write    exit
+    Telnet.Read Until Regexp    Bye.
+
+APC OFF
+    [Arguments]    ${alias}    ${id}    ${user}=apc    ${pwd}=apc-c
+    Switch.APC Login    ${alias}    ${user}    ${pwd}
+    Telnet.Read
+    ${output}=    Telnet.Execute Command    off ${id}
+    Switch.APC Logout    ${alias}

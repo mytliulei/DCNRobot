@@ -1,0 +1,56 @@
+*** Settings ***
+Documentation     不同速率下满流量配置loopback测试
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_loopback.txt
+
+*** Test Cases ***
+01_Loopback与速率双工交叉
+    [Setup]    01_init
+    Log Step Start    step1    'set speed and check loopback'
+    Run Keyword if    ${S1P1_MAX_SPD}==${1000}    set speed and check loopback    force1G-full    #千兆
+    Run Keyword if    ${S1P1_MAX_SPD}>=${100}    set speed and check loopback    force100-full    #百兆
+    Run Keyword if    ${S1P1_MAX_SPD}>=${10}    set speed and check loopback    force10-full    #十兆
+    log step end    step1
+    [Teardown]    01_uninit
+
+*** Keywords ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>>
+    \    #获取端口类型
+    ${s1p1_hw}=    Get Port Hardware    ${s1_alias}    ${s1p1}
+    Pass Execution If    '${s1p1_hw}' =='Fiber'    光口不支持速率双工配置,无须执行
+    \    #获取tp2的最大速率
+    ${tp2_ls}=    Get Statics    @{testerp2}    lineSpeed
+    Set Test Variable    ${tp2_ls}
+    \    #获取s1p1的speed配置
+    @{s1p1_config}=    Get Port Show Run    ${s1_alias}    ${s1p1}    (speed.*)\\r
+    Set Test Variable    @{s1p1_config}    #确定s1p1原来的speed配置,以便测试完成后uninit恢复.
+    \    #初始化流量
+    Set ixia stream ip    @{testerp2}    stream_rate=100    stream_rate_mode=${IXIA_StreamRateMode_percent}    reset=True    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:02:02:02
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<<<
+
+01_uninit
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no speed-duplex
+    : FOR    ${cfg}    IN    @{s1p1_config}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    ${cfg}
+    Unset Loopback    ${s1_alias}    ${s1p1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixia.Set Port Mode Default    @{testerp2}
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束
+
+set speed and check loopback
+    [Arguments]    ${speed_duplex}
+    tools.comment    check "${speed_duplex}"
+    Set Speed-duplex    ${s1_alias}    ${s1p1}    ${speed_duplex}
+    Set Loopback    ${s1_alias}    ${s1p1}
+    ${s1p1_spd}=    Get Port Speed    ${s1_alias}    ${s1p1}
+    Ixiasend.Start Transmit    @{testerp2}
+    ${tp2_rx}=    Get Statics    @{testerp2}    rxbps
+    ${speed}=    Set Variable If    1000000*${tp2_ls}<${s1p1_spd}    ${1000000*${tp2_ls}*0.762}    ${${s1p1_spd}*0.762}    #乘以0.762是因为64字节线速发包时，速率只有线速的76.2%
+    ${res}=    Check More or Less    ${tp2_rx}    ${speed}    0.1
+    Run Keyword And Continue On Failure    Should be true    ${res}    tp2应该收到s1p1的环回流量
+    Unset Loopback    ${s1_alias}    ${s1p1}
+    Unset Speed-duplex    ${s1_alias}    ${s1p1}
+    Ixiasend.Stop Transmit    @{testerp2}
