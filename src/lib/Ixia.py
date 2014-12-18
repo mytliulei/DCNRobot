@@ -637,7 +637,7 @@ class Ixia(object):
         self._capture_packet_buffer[capture_index] = None
         return 0
 
-    def filter_capture_packet(self,chasId,card,port,capFilter):
+    def filter_capture_packet(self,chasId,card,port,capFilter=None):
         '''
         filter the capture packet,and return a list including filter num and filter packets
 
@@ -647,7 +647,7 @@ class Ixia(object):
         - chasId: normally should be 1
         - card:   ixia card
         - port:   ixia port
-        - capFilter: filter expression, to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html
+        - capFilter: filter expression, default None,not filter capture packets;to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html
 
         return:
         - (num of filter,packet of filter)
@@ -659,26 +659,107 @@ class Ixia(object):
             return -1,[]
         if not self._capture_packet_buffer[capture_index]:
             return 0,[]
-        if not issubclass(type(capFilter),basestring):
-            raise AssertionError('capFilter must be a string')
-        try:
-            import pcapy
-        except Exception:
-            raise AssertionError('can not load pcap,may be not installed')
-        try:
-            matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
-        except Exception:
-            raise AssertionError('filter express error')
-        #filter packet 
+        if capFilter:
+            if not issubclass(type(capFilter),basestring):
+                raise AssertionError('capFilter must be a string')
+            try:
+                import pcapy
+            except Exception:
+                raise AssertionError('can not load pcap,may be not installed')
+            try:
+                matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
+            except Exception:
+                raise AssertionError('filter express error')
+        else:
+            matchPkt = None
+        #filter packet
         pktFiltered = []
         i = 0
         for ipkt in self._capture_packet_buffer[capture_index]:
-            if matchPkt.filter(str(ipkt)) > 0:
+            if not matchPkt or matchPkt.filter(str(ipkt)) > 0:
                 pktFiltered.append(ipkt)
                 i += 1
         return i,pktFiltered
 
-    def _write_capture_packet(self,chasId,card,port):
+    def modify_capture_packet(self,pkt,offset=None,hexstring=None):
+        '''
+        modify a capture packet using offset and hexstr
+
+        Note:please use this keyword after Filter Capture Packet
+
+        args:
+        - packet:    the item in list of the sencond return value of Filter Capture Packet or the return value of itself to continue modify
+        - offset:    offset of hexstr packet
+        - hexstr:    a byte hexstr using space to split, for exapmle: 'FF 00'
+
+        return:
+        - packet of scapy format
+        '''
+        try:
+            pStr = hexstr(str(pkt),0,1)
+        except Exception,ex:
+            raise AssertionError('packet format is error: %s' % ex)
+        if issubclass(type(offset),basestring):
+            if offset.startswith('0x'):
+                offset = int(offset,16)
+            else:
+                offset = int(offset)
+        #modify packet using offset and hexstr
+        if offset and hexstring:
+            mod_pkt_list = pStr.split()
+            hexstr_list = hexstring.split()
+            for mp in hexstr_list:
+                mod_pkt_list[offset] = mp
+                offset += 1
+            pStr = ' '.join(mod_pkt_list)
+        #transfer packet into scapy cmd str
+        pktStr = ''.join(pStr.split())
+        if len(pktStr) % 2 == 1:
+            raise AssertionError('get capture packet error:pkt str is not even')
+        chr_ipstr_list = [
+            chr(int(pktStr[i:i+2],16)) for i in range(0,len(pktStr)-1,2)
+        ]
+        chr_ipstr = ''.join(chr_ipstr_list)
+        ret_pkt = Ether(chr_ipstr)
+        return ret_pkt
+
+    def set_stream_packet_by_capture(self,chasId,card,port,streamId,pkt):
+        '''
+        set a capture packet on stream of ixia port
+
+        Note:please use this keyword after Modify Capture Packet or Filter Capture Packet
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - streamId: stream id
+        - packet:   the return value of keyword Modify Capture Packet or the item in list of the sencond return value of Filter Capture Packet
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        try:
+            pStr = hexstr(str(pkt),0,1)
+        except Exception,ex:
+            raise AssertionError('packet format is error: %s' % ex)
+        streamStr = '#'.join(pStr.split())
+        cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception:
+            self._close_ixia_client()
+            raise AssertionError('write cmd to proxy server error')
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+
+    def _save_capture_packet(self,chasId,card,port):
         '''
         write the capture packet,normally saved in the path tools/ixia/pcapfile/
 
