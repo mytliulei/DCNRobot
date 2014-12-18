@@ -357,7 +357,7 @@ Get Capture Packet Num
     [Return]    ${rc}
 
 Filter Capture Packet
-    [Arguments]    ${chasId}    ${card}    ${port}    ${fliter}
+    [Arguments]    ${chasId}    ${card}    ${port}    ${fliter}=${None}
     [Documentation]    filter the capture packet,and return a list including filter num and filter packets
     ...
     ...    Note:please use this keyword after Get Capture Packet
@@ -366,7 +366,7 @@ Filter Capture Packet
     ...    - chasId: normally should be 1
     ...    - card: \ \ ixia card
     ...    - port: \ \ ixia port
-    ...    - filter: filter expression, to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html WinPcap用户指南--过滤串表达式的语法
+    ...    - filter: filter expression, default None,not filter capture packets;to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html WinPcap用户指南--过滤串表达式的语法
     ...
     ...    return:
     ...    - (num of filter,packet of filter)
@@ -1022,3 +1022,39 @@ Build Icmpv6 Echo Reply
     ...    | Build Icmpv6 Echo Request |
     ${packetlen}=    Ixia.Build Icmpv6 Echo Reply    ${code}    ${chksum}    ${identifier}    ${seq}
     [Return]    ${packetlen}
+
+Modify Capture Packet
+    [Arguments]    ${packet}    ${offset}=${None}    ${value}=${None}
+    [Documentation]    modify a capture packet using offset and hexstr
+    ...
+    ...    Note:please use this keyword after Filter Capture Packet
+    ...
+    ...    args:
+    ...    - packet: \ \ \ the item in list of the sencond return value of Filter Capture Packet or the return value of itself to continue modify
+    ...    - offset: \ \ \ offset of hexstr packet
+    ...    - hexstr: \ \ \ a byte hex string using space to split, for exapmle: 'FF 00'
+    ...
+    ...    return:
+    ...    - packet of scapy format
+    ${ret_packet}=    Ixia.Modify Capture Packet    ${packet}    ${offset}    ${value}
+    [Return]    ${ret_packet}
+
+Set Stream Packet By Capture
+    [Arguments]    ${chasId}    ${card}    ${port}    ${streamId}    ${packet}
+    [Documentation]    set a capture packet on stream of ixia port
+    ...
+    ...    Note:please use this keyword after Modify Capture Packet or Filter Capture Packet
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - streamId: stream id
+    ...    - packet: \ \ the return value of keyword Modify Capture Packet or the item in list of the sencond return value of Filter Capture Packet
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Stream Packet By Capture    ${chasId}    ${card}    ${port}    ${streamId}    ${packet}
+    Should Be Equal As Integers    ${rc}    0
+    [Return]    ${rc}
