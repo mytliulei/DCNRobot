@@ -107,35 +107,6 @@ doubel_img.5.2.1.4
     Log Step End    ${s1_alias}
     [Teardown]    Uninit Double Img Test For Updata
 
-doubel_img.5.2.1.5
-    [Documentation]    单主控启动时,首先用第一IMG启动，若该文件存在,并且是本机的启动img,但img文件本身被损坏,则使用第二IMG启动。如果第二img也启动失败，则等待网络管理人员介入
-    [Tags]    Double Img
-    [Setup]    Init STEP
-    Tools.Comment    Step1    img文件被损坏，强制升级img，第一img启动失败，以第二img启动
-    Log Step Start    ${s1_alias}
-    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
-    Check Ping    ${SERVER_IP}
-    Force Updata In Img By Tftp    ${SERVER_IP}    ${DESTORY_IMG_NAME}    ${BOOT_PRIMARY_IMG_NAME}
-    Telnet.Write    reload
-    Telnet.Read Until Regexp    \\[Y/N\\]
-    Telnet.Write    Y
-    ${boot_file_regexp}=    Create List    ${BOOT_PRIMARY_INFOR_REGEXP}    ${CRC_ERROR_REGEXP}    ${BOOT_PRIMARY_FAIL_OTHER_IMG_REGEXP}    ${BOOT_BACKUP_INFOR_REGEXP}
-    Check Boot Primary Fail    4    ${boot_file_regexp}
-    Sleep    240
-    Check Version    ${BACKUP_IMG_VERSION}
-    Log Step End    ${s1_alias}
-    ##
-    Tools.Comment    Step2    第一img和第二img都启动失败
-    Log Step Start    ${s1_alias}
-    Exec Cmd    ${s1_alias}    rename ${BOOT_BACKUP_IMG_NAME} ${BOOT_IMG_DEFAULT}
-    Telnet.Write    reload
-    Telnet.Read Until Regexp    \\[Y/N\\]
-    Telnet.Write    Y
-    ${boot_file_regexp}=    Create List    ${BOOT_PRIMARY_INFOR_REGEXP}    ${CRC_ERROR_REGEXP}    ${BOOT_PRIMARY_FAIL_OTHER_IMG_REGEXP}    ${BOOT_BACKUP_INFOR_REGEXP}    ${BOOT_BACKUP_NOT_EXIST_REGEXP}
-    Check Boot Backup Fail    5    ${boot_file_regexp}
-    Log Step End    ${s1_alias}
-    [Teardown]    Uninit Double Img Test For Updata
-
 doubel_img.5.2.1.10
     [Documentation]    通过show boot-file查看系统启动的第一img,第二img及CFG文件的配置
     [Tags]    Double Img

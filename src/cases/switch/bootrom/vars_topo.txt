@@ -1,0 +1,50 @@
+*** Settings ***
+Documentation     拓扑结构：
+...
+...
+...               PC--------（S2P2）S2（S2P1）-----------（S1P3）S1（S1P1/S1P2）--------testerp1/testerp2
+...
+...
+...
+...               PC上需要开启TFTP服务器，IP地址要与变量中${SERVER_IP}中设置的一致；TFTP上传和下载的路径里需要有适配交换机的nos.img（对应${NOS.IMG}）和boot.rom（对应BOOT.ROM）文件
+
+*** Variables ***
+${s1_ccm_ip}      172.17.100.29
+${s1_ccm_port}    10005
+${s1_alias}       s1
+${s1p1}           Ethernet1/0/21
+${HOST_IP}        11.1.1.1
+${SERVER_IP}      11.1.1.2
+${BOOT.ROM}       S5750E_(28X(P))(-P)(52X(P))(24F)_7.1.37_256M_boot.rom
+${NOS.IMG}        DCN-S5750E-10.9.28-vendor_7.0.3.5(R0102.0100)_nos.img
+@{testerp1}       1    2    1
+${testerp1_ip}    172.17.100.250
+${testerp2_ip}    172.17.100.250
+@{testerp2}       1    2    2
+${s1p2}           Ethernet1/0/22
+${s2_ccm_ip}      172.17.100.29
+${s2_ccm_port}    10001
+${s2_alias}       s2
+${s2p1}           Ethernet1/0/36
+${S2_IP1}         11.1.1.3 255.255.255.0
+${type}           234
+${IP-B-1}         160.1.1.2
+${IP-B-2}         160.1.1.1
+${IP-C-1}         192.168.1.2
+${IP-C-2}         192.168.1.1
+${IP-A-1}         12.1.1.2
+${IP-A-2}         12.1.1.1
+${SN}             SN20141111
+${Vlan-mac}       00-03-0F-11-22-01
+${Cpu-mac}        00-03-0F-11-22-02
+${HW}             zw123456
+${Date_sw}        2014/11/14
+${password}       dcn
+${file1-1}        flash:/startup.cfg
+${file2-1}        flash:/123654.cfg    # 该value为交换机原本不存在的一个文件名
+${file1-2}        startup.cfg
+${file2-2}        abcxyz.cfg    # 该value为交换机原本不存在的一个文件名
+${file1-3}        C:/startup.cfg
+${file2-3}        C:/123789.cfg
+${file2-4}        1234567890123456789012345678901234567890123456789012345678901234567890123456.cfg    # 80个字符（含后缀）
+${file2-5}        98765432109876543210987654321098765432109876543210987654321098765432109876543.cfg    # 81个字符（含后缀）

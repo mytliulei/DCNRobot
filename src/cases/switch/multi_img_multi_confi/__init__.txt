@@ -4,36 +4,39 @@ Documentation     测试套名称:多IMG多配置文件测试
 ...
 ...               测试注意事项说明:
 ...               - *执行前需要修改VARS_XXX文件*
-...               - *本测试套需要用到tftp或者tfp升级方式，ftp用户名和密码为admin/admin，根据自己需要在服务器上开启
+...               - *本测试套升级需要用到tftp服务器，请务必在服务器上开启
 ...
 ...               测试拓扑:
 ...
 ...               \ testerp1 \ testerp2
-...               \ \ \ \ \| \ \ \ \ \ \ \ \ \ \ \ \|
+...               \ \ \ \ | \ \ \ \ |
 ...               +----------+-----------+
-...               | \ \ \ s1p2 \ \ \ \ \ s1p3 \ |
-...               | \ \ \ \ \ \ \ \ \ s1 \ \ \ \ \ \ \ \ \ \ \ |
-...               | \ \ \ \ \ \ \ \ s1p1 \ \ \ \ \ \ \ \ |
+...               | \ \\ s1p2 \s1p3 \ |
+...               | \ \ \ \ \ s1 \ \ \ \ |
+...               | \ \ \ \ s1p1 \ \ \ |
 ...               +-----+----------+-----+
+...               |
 ...               +-----+----------+----+
-...               | \ \ \ \ \ \ \ \ s2p1 \ \ \ \ \ \ \ \ |
-...               | \ \ \ \ \ \ \ \ \ s2 \ \ \ \ \ \ \ \ \ \ |
-...               | \ \ \ \ \ \ \ \ s2p2 \ \ \ \ \ \ \ \ |
+...               | \ \ \ \s2p1 \ \\ \ |
+...               | \ \ \ \ s2 \ \ \ \ \ |
+...               | \ \ \ \ s2p2 \ \ \ |
 ...               +----------+-----------+
 ...               |
 ...               PC
 ...
+...               ... \ \ \ s1的s1p1连接s2的s2p1，s2p2连接pc，s1p2接TP1，s1p3接TP2...
 ...
 ...               本用例执行前请满足如下条件:
 ...               - 跑该脚本前，请确保flash中只有1个img，名称为nos.img
 ...               - 如果跑Load Config From Remote Server.5.2.5.6，辅助测试设备s2需要和s1相同型号
-...               - 确保服务器上有对应的nos.img（nos.ing包括destory_img_file_nos.img、other_device_img_file_nos.img）和配置文件（remote_server_config.cfg、config_file_1m.cfg、invalid_startup_config.cfg）
-...               - destory_img_file_nos.img为被破坏的img，通过修改img的16进制文件实现，但是必须修改数据部分，测试之前先试下，否则即使修改了数据也有可能起来
+...               - 确保服务器上有对应的nos.img（nos.ing包括other_device_img_file_nos.img）和配置文件（remote_server_config.cfg、config_file_1m.cfg、invalid_startup_config.cfg）
 ...               - other_device_img_file_nos.img为其它设备的img，比如5750等设备的
 ...               - remote_server_config.cfg 至少需要配置ip dhcp snooping enable、spanning-tree、access-list 1 deny any-source、ip igmp snooping这4条命令行
 ...               - invalid_startup_config.cfg 为非法的配置文件，例如word文件
-...               - config_file_1m.cfg在10.1.145.36服务器上下载
-Force Tags        driver    #Suite Setup    Init Multi Img Multi Confi Suite    #Suite Teardown    Uninit Multi Img Multi Confi Suite
+...               - config_file_1m.cfg在10.1.145.36服务器上下载，由于配置中acl下发到端口1/0/13（TP1），静态mac配置在1/0/14（TP2），因此根据实际情况修改配置文件，或者topo
+Suite Setup       Init Multi Img Multi Confi Suite
+Suite Teardown    Uninit Multi Img Multi Confi Suite
+Force Tags        Multi Img Multi Config
 Resource          ../../../resource/Switch.txt
 Resource          proc.txt
 Resource          resource_multi_img_multi_config.txt
@@ -56,8 +59,9 @@ Init Multi Img Multi Confi Suite
     Set Default    ${s2_alias}
     Reload Switch    ${s2_alias}
     Enable Mode    ${s1_alias}
-    Check Topo
     Init Ixia
+    Check Topo
+    Enable Mode    ${s1_alias}
     Exec Cmd    ${s1_alias}    rename ${BOOT_IMG_DEFAULT} ${BOOT_PRIMARY_IMG_NAME}
     Copy img    ${s1_alias}    ${BOOT_PRIMARY_IMG_NAME}    ${BOOT_BACKUP_IMG_NAME}
     Exec Cmd List    ${s1_alias}    config    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
@@ -92,13 +96,63 @@ Uninit Multi Img Multi Confi Suite
     Close Console    ${s2_alias}
 
 Check Topo
+    ##
+    Tools.Comment    先检查端口是否全部up
     ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p1}
-    Should Be True    ${s1p1_status}    !!interface ${s1p1} \ isn't up!!
-    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
-    Should Be True    ${s1p2_status}    !!interface ${s1p2} \ isn't up!!
-    ${s1p3_status}=    CheckPortStatus    ${s1_alias}    ${s1p3}
-    Should Be True    ${s1p1_status}    !!interface ${s1p1} \ isn't up!!
+    Should Be True    ${s1p1_status}    !!interface ${s1p1} isn't up!!
+    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p1_status}    !!interface ${s1p2} isn't up!!
+    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p3}
+    Should Be True    ${s1p1_status}    !!interface ${s1p3} isn't up!!
     ${s2p1_status}=    CheckPortStatus    ${s2_alias}    ${s2p1}
-    Should Be True    ${s2p1_status}    !!interface ${s2p1} \ isn't up!!
+    Should Be True    ${s2p1_status}    !!interface ${s2p1} isn't up!!
     ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
-    Should Be True    ${s2p2_status}    !!interface ${s2p2} \ isn't up!!
+    Should Be True    ${s2p2_status}    !!interface ${s2p2} isn't up!!
+    ##
+    Tools.Comment    检查${s1p1}是否连接${s2p1}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    shutdown
+    Sleep    5
+    ${s2p1_status}=    CheckPortStatus    ${s2_alias}    ${s2p1}
+    Should Not Be True    ${s2p1_status}    !!interface ${s2p1} doesn't connect to ${s1p1}!!
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no shutdown
+    Sleep    30
+    ${s2p1_status}=    CheckPortStatus    ${s2_alias}    ${s2p1}
+    Should Be True    ${s2p1_status}    !!interface ${s2p1} doesn't connect to ${s1p1}!!
+    ##
+    Tools.Comment    检查${s2p2}是否连接PC
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    shutdown
+    Sleep    5
+    ${ping_result}    Check Ping Fail    ${SERVER_IP}
+    Run Keyword If    ${ping_result}>0    !!interface ${s2p2} doesn't connect to PC!!
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    no shutdown
+    Sleep    1 minutes
+    Check Ping    ${SERVER_IP}
+    ##
+    Tools.Comment    检查TP1是否连接${s1p2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    shutdown
+    Sleep    10
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Not Be True    ${s1p2_status}    !!interface ${s1p2} is up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Should Not Be True    ${tp1_status}    !!interface ${s1p2} doesn't connect to TP1!!
+    Exec Cmd    ${s1_alias}    no shutdown
+    Sleep    30
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p2} isn't up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Should Be True    ${tp1_status}    !!interface ${s1p2} doesn't connect to TP1!!
+    ##
+    Tools.Comment    检查TP2是否连接${s1p3}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    shutdown
+    Sleep    10
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p3}
+    Should Not Be True    ${s1p2_status}    !!interface ${s1p3} is up!!
+    ${tp1_status}=    Get Statics    @{testerp2}    updown
+    Should Not Be True    ${tp1_status}    !!interface ${s1p3} doesn't connect to TP2!!
+    Exec Cmd    ${s1_alias}    no shutdown
+    Sleep    30
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p3} isn't up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Log    ${tp1_status}
+    Should Be True    ${tp1_status}    !!interface ${s1p3} doesn't connect to TP2!!

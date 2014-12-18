@@ -5,14 +5,10 @@ Suite Teardown    Uninit Load Config Suite
 Resource          ../resource_multi_img_multi_config.txt
 
 *** Variables ***
-${config_file_from_remote_server}    remote_server_config.cfg    # 远端服务器上配置文件
-${config_file_more_than_one_m}    config_file_1m.cfg    # 大于1M的配置文件
-${receive_data_timeout}    receive data timeout
-${load_config_end_regexp}    Loading running-config end    # 配置传输完成
 
 *** Test Cases ***
 Load Config From Remote Server.5.2.5.1
-    [Documentation]    通过TFTP或者FTP服务器，利用load running-config form WORD功能加载running-config文件到当前交换机，待出现Begin to receive …后show run来看此时交换机的配置应该变为远端服务器上配置文件的配置。
+    [Documentation]    通过TFTP服务器，利用load running-config form WORD功能加载running-config文件到当前交换机，待出现Begin to receive …后show run来看此时交换机的配置应该变为远端服务器上配置文件的配置。
     [Tags]    Load Config From Remote Server
     [Setup]    Init STEP
     Tools.Comment    Step1    通过tftp下载配置文件到交换机
@@ -35,13 +31,12 @@ Load Config From Remote Server.5.2.5.2
     [Setup]    Init STEP
     Tools.Comment    Step1
     Log Step Start    ${s1_alias}    通过shutdown连接服务器的端口模拟关闭服务器软件
-    ${command_list}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    ip igmp snooping    monitor session 1 source interface Ethernet1/0/1
-    ...    monitor session 1 destination interface Ethernet1/0/2
+    ${command_list}    Create List    ip dhcp snooping enable    spanning-tree    access-list 1 deny any-source    ip igmp snooping
     Exec Cmd List In ConfigMode    ${s2_alias}    @{command_list}
     Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    shutdown
     Sleep    5
     ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
-    Should Not Be True    ${s2p2_status}    !!interface ${s2p2} \ is up!!
+    Should Not Be True    ${s2p2_status}    !!interface ${s2p2} is up!!
     Load Config From Remote Server Fail By Tftp    ${SERVER_IP}    ${config_file_from_remote_server}    ${SERVER_IS_UNREACHABLE}
     Exec Cmd List In ConfigMode    ${s1_alias}    no load running-config
     Log Step End    ${s1_alias}
@@ -49,19 +44,19 @@ Load Config From Remote Server.5.2.5.2
     Tools.Comment    Step2    配置错误的ip地址，下载配置文件，提示错误信息
     Log Step Start    ${s1_alias}
     Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    no shutdown
-    Sleep    20
+    Sleep    1 minutes
     ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
-    Should Be True    ${s2p2_status}    !!interface ${s2p2} \ isn't up!!
+    Should Be True    ${s2p2_status}    !!interface ${s2p2} isn't up!!
     Load Config From Remote Server Fail By Tftp    ${NOT_EXIESTED_SERVER_IP}    ${config_file_from_remote_server}    ${SERVER_IS_UNREACHABLE}
     Exec Cmd List In ConfigMode    ${s1_alias}    no load running-config
-    Check Running-config Fail    ${command_list}    6    show running-config
+    Check Running-config Fail    ${command_list}    4    show running-config
     ##
     Tools.Comment    Step3    源配置文件不存在
     Log Step Start    ${s1_alias}
     Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
     Check Ping    ${SERVER_IP}
     Load Config From Remote Server Fail By Tftp    ${SERVER_IP}    111.cfg    ${SOURCE_FILE_IS_NOT_EXISED}
-    Check Running-config Fail    ${command_list}    6    show running-config
+    Check Running-config Fail    ${command_list}    4    show running-config
     Log Step End    ${s1_alias}
     [Teardown]    Uninit Load Config Test
 
@@ -70,33 +65,19 @@ Load Config From Remote Server.5.2.5.3
     [Tags]    Load Config From Remote Server
     [Setup]    Init STEP
     Tools.Comment    Step1
-    Log Step Start    ${s1_alias}    升级加载配置文件
+    Log Step Start    ${s1_alias}    升级加载配置文件,通过shutdown连接服务器的端口模拟关闭服务器软件
     Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
     Check Ping    ${SERVER_IP}
     Enable Mode    ${s1_alias}
     Exec Cmd    ${s1_alias}    config
     Telnet.Write    load running-config from tftp://${server_ip}/${config_file_more_than_one_m}
-    Log Step End    ${s1_alias}
-    ##
-    Tools.Comment    Step2    通过shutdown连接服务器的端口模拟关闭服务器软件
-    Log Step Start    ${s1_alias}
+    Telnet.Read Until Regexp    ${BEGIN_TO_RECEIVE}
+    Sleep    5
     Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    shutdown
-    ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
-    Should Not Be True    ${s2p2_status}    !!interface ${s2p2} \ is up!!
-    Sleep    1 minutes
-    Log Step End    ${s1_alias}
-    ##
-    Tools.Comment    Step3
-    Log Step Start    ${s1_alias}
-    Enable Mode    ${s1_alias}
-    : FOR    ${index}    IN RANGE    1    20
-    \    Telnet.Write    ${EMPTY}
-    Enable Mode    ${s1_alias}
-    Telnet.Read
-    ${check_command_line}    Create List
-    : FOR    ${index}    IN RANGE    2    102
-    \    Collections.Append To List    ${check_command_line}    ip access-list extended acl_${index}
-    Check Running-config Fail    ${check_command_line}    100    show running-config
+    Telnet.Switch Connection    ${s1_alias}
+    Telnet.Set Timeout    5 minutes
+    Telnet.Read Until Regexp    ${receive_data_timeout}
+    Telnet.Set Timeout    ${sw_timeout}
     Log Step End    ${s1_alias}
     [Teardown]    Uninit Load Config Test For Reload
 
@@ -108,9 +89,11 @@ Load Config From Remote Server.5.2.5.5
     Log Step Start    ${s1_alias}
     Init Ixia
     Set stream    @{testerp1}    dlf    ${stream_rate}    ${packets_number_send}    ${stream_type}    00-00-00-00-00-01
+    ...    ${packets_number_send}
     Exec Cmd List    ${s1_alias}    clear counters
     Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${packets_number_send}
     Check Port Counter    ${s1p1}    ${packets_number_send}
+    Log Step End    ${s1_alias}
     ##
     Tools.Comment    Step2    通过tftp下载一个大于1M的配置文件到交换机
     Log Step Start    ${s1_alias}
@@ -120,16 +103,7 @@ Load Config From Remote Server.5.2.5.5
     Load Config From Remote Server By Tftp    ${SERVER_IP}    ${config_file_more_than_one_m}
     Log Step End    ${s1_alias}
     ##
-    Tools.Comment    Step3    s1 show cpu 使用率，低于80%
-    Log Step Start    ${s1_alias}
-    Enable Mode    ${s1_alias}
-    ${check_cpu_utili}=    Exec Cmd    ${s1_alias}    show cpu utilization
-    ${cpu_utili}=    Get Value From String    ${check_cpu_utili}    Last 30 second CPU USAGE:\\s(.*)\%
-    ${ret}    Evaluate    ${cpu_utili}>=80
-    Run Keyword If    ${ret}    Fail    The cpu is over 80%!
-    Log Step End    ${s1_alias}
-    ##
-    Tools.Comment    Step4    TP2能收到${packets_number_send}个数据包，${s1p1}能收到{packets_number_send}-${da_number}个数据包
+    Tools.Comment    Step3    TP2能收到${packets_number_send}个数据包，${s1p1}能收到{packets_number_send}-${da_number}个数据包
     Log Step Start    ${s1_alias}
     ${receive_packets}    Evaluate    ${packets_number_send}-${da_number}
     Exec Cmd List    ${s1_alias}    clear counters
@@ -137,9 +111,10 @@ Load Config From Remote Server.5.2.5.5
     Check Port Counter    ${s1p1}    ${receive_packets}
     Log Step End    ${s1_alias}
     ##
-    Tools.Comment    Step5    TP2和${s1p1}都只能收到${packets_number_send_deny}-${da_number_deny}个数据包
+    Tools.Comment    Step4    TP2和${s1p1}都只能收到${packets_number_send_deny}-${da_number_deny}个数据包
     Log Step Start    ${s1_alias}
     Set stream    @{testerp1}    dlf    ${stream_rate}    ${packets_number_send_deny}    ${stream_type}    00-00-01-00-00-01
+    ...    ${packets_number_send_deny}
     ${receive_packets}    Evaluate    ${packets_number_send_deny}-${da_number_deny}
     Exec Cmd List    ${s1_alias}    clear counters
     Send Stream And Check    @{testerp1}    @{testerp2}    ${stream_type}    ${receive_packets}
@@ -174,14 +149,6 @@ Load Config From Remote Server.5.2.5.6
     Check Running-config    ${command_list}    4    show running-config
     Log Step End    ${s1_alias}
     ##
-    Tools.Comment    Step4    s1 show cpu 使用率，低于80%
-    Log Step Start    ${s1_alias}
-    Enable Mode    ${s1_alias}
-    ${check_cpu_utili}=    Exec Cmd    ${s1_alias}    show cpu utilization
-    ${cpu_utili}=    Get Value From String    ${check_cpu_utili}    Last 30 second CPU USAGE:\\s(.*)\%
-    ${ret}    Evaluate    ${cpu_utili}>=80
-    Run Keyword If    ${ret}    Fail    The cpu is over 80%!
-    Log Step End    ${s1_alias}
     [Teardown]    Uninit Load Config Test
 
 *** Keywords ***
@@ -198,12 +165,12 @@ Uninit Load Config Test
     [Arguments]    ${alias}=${s1_alias}
     [Documentation]    初始化配置
     Enable Mode    ${alias}
-    Exec Cmd List    ${alias}    config    no monitor session 1 source interface ${s1p1}    no monitor session 1 destination interface ${s1p2}    no ip dhcp snooping enable    no ip igmp snooping
-    ...    no spanning-tree    no access-list 1    no mac-address-table static address 00-00-00-00-00-01 vlan 10 interface ${s1p1}    no ipv6 mld snooping    watchdog disable    no load running-config
+    Exec Cmd List    ${alias}    config    no ip dhcp snooping enable    no ip igmp snooping    no spanning-tree    no access-list 1
+    ...    watchdog disable    no load running-config
     Delete Files    ${BOOT_STARTUP1_CFG}
     Boot Startup-config In Img Without Postfix    ${BOOT_NULL}
     Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    no shutdown    exit    no ip igmp snooping    no access-list 1
-    ...    no ipv6 mld snooping    no interface vlan 1    no spanning-tree
+    ...    no interface vlan 1    no spanning-tree
     Sleep    1 minutes
     ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
     Should Be True    ${s2p2_status}    !!interface ${s2p2} \ is not up!!

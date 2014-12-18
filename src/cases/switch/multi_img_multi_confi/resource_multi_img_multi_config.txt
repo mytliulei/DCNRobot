@@ -105,7 +105,7 @@ Check Boot-files img
     [Return]    ${check_result}
 
 Check Running-config
-    [Arguments]    ${check_config_command}    ${number_config_command}    ${check_command_line}    ${timeout}=60 minutes    # 需要查询的配置命令
+    [Arguments]    ${check_config_command}    ${number_config_command}    ${check_command_line}    ${timeout}=10 minutes    # 需要查询的配置命令
     [Documentation]    show running-config配置是否成功下发
     Enable Mode    ${s1_alias}
     Telnet.Set Timeout    ${timeout}
@@ -308,7 +308,7 @@ Updata In Img By Tftp Fail
     Telnet.Set Timeout    ${sw_timeout}
 
 Load Config From Remote Server By Tftp
-    [Arguments]    ${server_ip}    ${source_file_name}    ${begin_to_receive}=${BEGIN_TO_RECEIVE}    ${timeout}=60 minutes    ${load_config_end}=${load_config_end_regexp}
+    [Arguments]    ${server_ip}    ${source_file_name}    ${begin_to_receive}=${BEGIN_TO_RECEIVE}    ${timeout}=5 minutes    ${load_config_end}=${load_config_end_regexp}
     [Documentation]    从远程服务器下载配置
     Enable Mode    ${s1_alias}
     Exec Cmd    ${s1_alias}    config
@@ -329,7 +329,7 @@ Load Config From Remote Server Fail By Tftp
     Telnet.Set Timeout    ${sw_timeout}
 
 Load Config From Remote Server By Ftp
-    [Arguments]    ${server_ip}    ${source_file_name}    ${username}=${USERNAME_FTP}    ${password}=${PASSWORD_FTP}    ${timeout}=60 minutes    ${load_config_end}=${load_config_end_regexp}
+    [Arguments]    ${server_ip}    ${source_file_name}    ${username}=${USERNAME_FTP}    ${password}=${PASSWORD_FTP}    ${timeout}=10 minutes    ${load_config_end}=${load_config_end_regexp}
     [Documentation]    通过ftp从远程服务器上下载配置
     Enable Mode    ${s1_alias}
     Exec Cmd    ${s1_alias}    config
@@ -398,14 +398,14 @@ Send Stream And Check
     ${ret}    Check Send Receive    @{sport}    @{dport}    ${received_type}    ${received_packets}    ${tolerance}
     Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n ${STEP} check stream \ error!
     #若检查有误, 则debug交换机
-    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p1}
+    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p3}
     Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p2}
     Run Keyword If    ${stop_trans_tag}==True    Ixiasend.Stop Transmit    @{sport}
     [Return]    ${ret}
 
 Set stream
     [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_type}    ${stream_rate}    ${dmac_number}
-    ...    ${stream_rate_mode}    ${dmac}    ${stream_id}=${1}    ${stream_mode}=${IXIA_StreamMode_stop}    ${reset}=True    ${numPacket}=${packets_number_send}
+    ...    ${stream_rate_mode}    ${dmac}    ${numPacket}    ${stream_id}=${1}    ${stream_mode}=${IXIA_StreamMode_stop}    ${reset}=True
     ...    ${returnID}=${1}
     [Documentation]    \ args:
     ...    \- ${tp_chassis} ${tp_card} ${tp_port} #设置端口
@@ -419,16 +419,16 @@ Set stream
     ...    ${IXIA_StreamRateMode_pencent}
     @{sport}=    Set Variable    ${tp_chassis}    ${tp_card}    ${tp_port}
     Run Keyword If    ${reset}==True    Ixia.Set Port Mode Default    @{sport}
-    Run Keyword    Set stream ${stream_type}    @{sport}    ${stream_rate}    ${da_number}    ${stream_rate_mode_set}    ${dmac}
-    ...    ${stream_id}    ${stream_mode}    ${numPacket}    ${returnID}
+    Run Keyword    Set stream ${stream_type}    @{sport}    ${stream_rate}    ${dmac_number}    ${stream_rate_mode_set}    ${dmac}
+    ...    ${numPacket}    ${stream_id}    ${stream_mode}    ${returnID}
 
 Set stream dlf
     [Arguments]    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_rate}    ${dmac_number}    ${stream_rate_mode}
-    ...    ${dmac}    ${stream_id}    ${stream_mode}=${IXIA_StreamMode_stop}    ${numPacket}=${packets_number_send}    ${returnID}=${1}
+    ...    ${dmac}    ${numPacket}    ${stream_id}    ${stream_mode}=${IXIA_StreamMode_stop}    ${returnID}=${1}
     [Documentation]    设置广播流
     [Timeout]
-    ${dict}    Make Kwargs    daRepeatCounter=0    numDA=${packets_number_send}
-    Ixiasend.Build Ether    ${dmac}    00:00:00:00:0d:01    kwargs=${dict}
+    ${dict}    Make Kwargs    daRepeatCounter=0    numDA=${dmac_number}
+    Ixiasend.Build Ether    ${dmac}    00:01:00:00:0d:01    kwargs=${dict}
     Ixiasend.Build Packet    ${64}
     Ixiasend.Set Stream Packet By Api    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}
     Ixiasend.Set Stream Control    ${tp_chassis}    ${tp_card}    ${tp_port}    ${stream_id}    ${stream_rate}    ${stream_rate_mode}
@@ -472,12 +472,24 @@ Init Ixia
 Check Port Counter
     [Arguments]    ${port}    ${input_output_packets}    ${packets_stat}=${OUTPUT_PACKETS}    ${packets_stat_regexp}=${OUTPUT_COUNTER_REGEXP}    ${alias}=${s1_alias}    ${tolerance}=${0.01}
     [Documentation]    查看端口收发包数统计
+    Sleep    10
     Enable Mode    ${alias}
     ${output}    Exec Cmd    ${alias}    show interface ${port} | begin Statistics
     ${received_packets}=    Tools.Get Value From String    ${output}    .*?${packets_stat_regexp}\\s+(.*)\\s+${packets_stat}
-    ${ret}=    Evaluate    ${input_output_packets}*(1-${tolerance})<${received_packets}<${input_output_packets}*(1+${tolerance})
-    Log    ${input_output_packets}*(1-${tolerance})<${received_packets}<${input_output_packets}*(1+${tolerance})
+    ${ret}=    Evaluate    ${input_output_packets}*(1-${tolerance})<=${received_packets}<=${input_output_packets}*(1+${tolerance})
+    Log    ${input_output_packets}*(1-${tolerance})<=${received_packets}<=${input_output_packets}*(1+${tolerance})
     Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n ${STEP} check stream \ error!
     ##
     Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p1}
+    Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p2}
     Run Keyword unless    ${ret}    Show switch port counter    ${s1_alias}    ${s1p3}
+
+Check Ping Fail
+    [Arguments]    ${server_ip}
+    Enable Mode    ${s1_alias}
+    ${ret}=    Exec Cmd    ${s1_alias}    ping ${server_ip}
+    Sleep    10
+    ${ret}=    Exec Cmd    ${s1_alias}    ping ${server_ip}
+    Sleep    10
+    ${check_result}=    Tools.Get Value From String    ${ret}    .*?Success rate is\\s(.*?)\\spercent
+    [Return]    ${check_result}
