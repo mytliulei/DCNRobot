@@ -1,0 +1,158 @@
+*** Settings ***
+Documentation     测试套名称：文件系统测试
+...
+...
+...               测试注意事项说明:
+...               - *执行前需要修改VARS_XXX文件*
+...               - *本测试套需要用到tftp升级，请务必在在PC上开启tftp服务器软件
+...               测试拓扑:
+...
+...               \ testerp1 \ testerp2
+...               \ \ \ \ | \ \ \ \ |
+...               +----------+-----------+
+...               | \ \\ s1p2 \s1p3 \ |
+...               | \ \ \ \ \ s1 \ \ \ \ |
+...               | \ \ \ \ s1p1 \ \ \ |
+...               +-----+----------+-----+
+...               |
+...               +-----+----------+----+
+...               | \ \ \ \s2p1 \ \\ \ |
+...               | \ \ \ \ s2 \ \ \ \ \ |
+...               | \ \ \ \ s2p2 \ \ \ |
+...               +----------+-----------+
+...               |
+...               PC
+...
+...               ... \ \ \ s1的s1p1连接s2的s2p1，s2p2连接pc，s1p2接TP1，s1p3接TP2
+...               ... \ \ \ ixia打入背景流量，TP1和TP2对发已知单播报文
+...
+...
+...               本用例执行前请满足如下条件:
+...
+...               - 确保服务器上有对应的nos.img（备份img，最好是被测版本上一个版本）和配置文件（over_size_config_name.cfg、over_size_img_name.cfg、big_size_config_name.cfg）
+...               - over_size_config_name.cfg大小应该超过tfp/tftp copy config最大限制
+...               - over_size_img_name.cfg大小应该超过tfp/tftp copy img最大限制
+...               - big_size_config_name.cfg应该略小于tfp/tftp copy config最大限制，可以write进flash
+Suite Setup       Init File System Suite
+Suite Teardown    Uninit File System Suite
+Force Tags        File_System
+Resource          proc.txt
+Resource          ../../../resource/Switch.txt
+Resource          vars_topo.txt
+Resource          vars_ixia.txt
+Resource          resource_File_System.txt
+
+*** Variables ***
+
+*** Keywords ***
+Init File System Suite
+    [Documentation]    初始化文件系统测试套，恢复出厂配置，检查top
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Open Console    ${s2_ccm_ip}    ${s2_ccm_port}    ${s2_alias}
+    Delete Files    ${BOOT_CONFIG_DEFAULT_NAME}    ${s1_alias}
+    Delete Files    ${BOOT_BACKUP_IMG_NAME}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Set Default    ${s1_alias}
+    Reload Switch    ${s1_alias}
+    Set Default    ${s2_alias}
+    Reload Switch    ${s2_alias}
+    Enable Mode    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    watchdog disable    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Sleep    5
+    Init Ixia
+    Check Topo
+    Enable Mode    ${s1_alias}
+    Show Switch Information    ${s1_alias}
+    Enable Mode    ${s2_alias}
+    Show Switch Information    ${s2_alias}
+    Set stream    @{testerp1}    dlf    ${stream_rate}    ${mac_number}    ${stream_type}    00-00-02-00-00-01
+    ...    00-00-01-00-00-01
+    Set stream    @{testerp2}    dlf    ${stream_rate}    ${mac_number}    ${stream_type}    00-00-01-00-00-01
+    ...    00-00-02-00-00-01
+    Send And Stop Stream    @{testerp1}
+    Send And Stop Stream    @{testerp2}
+    Check Stream    @{testerp1}    @{testerp2}    bps
+    Check Stream    @{testerp2}    @{testerp1}    bps
+    Close Console    ${s1_alias}
+    Close Console    ${s2_alias}
+
+Uninit File System Suite
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Open Console    ${s2_ccm_ip}    ${s2_ccm_port}    ${s2_alias}
+    Enable Mode    ${s1_alias}
+    Show Switch Information    ${s1_alias}
+    Enable Mode    ${s2_alias}
+    Show Switch Information    ${s2_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no shutdown    exit    interface ${s1p2}    no shutdown
+    ...    exit    interface ${s1p2}    no shutdown
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    no shutdown
+    Check Stream    @{testerp1}    @{testerp2}    bps
+    Check Stream    @{testerp2}    @{testerp1}    bps
+    Send And Stop Stream    @{testerp1}    ${False}    ${True}
+    Send And Stop Stream    @{testerp2}    ${False}    ${True}
+    Close Console    ${s1_alias}
+    Close Console    ${s2_alias}
+
+Check Topo
+    [Documentation]    检查topo网络
+    ##
+    Tools.Comment    先检查端口是否全部up
+    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p1}
+    Should Be True    ${s1p1_status}    !!interface ${s1p1} isn't up!!
+    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p1_status}    !!interface ${s1p2} isn't up!!
+    ${s1p1_status}=    CheckPortStatus    ${s1_alias}    ${s1p3}
+    Should Be True    ${s1p1_status}    !!interface ${s1p3} isn't up!!
+    ${s2p1_status}=    CheckPortStatus    ${s2_alias}    ${s2p1}
+    Should Be True    ${s2p1_status}    !!interface ${s2p1} isn't up!!
+    ${s2p2_status}=    CheckPortStatus    ${s2_alias}    ${s2p2}
+    Should Be True    ${s2p2_status}    !!interface ${s2p2} isn't up!!
+    ##
+    Tools.Comment    检查${s1p1}是否连接${s2p1}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    shutdown
+    Sleep    5
+    ${s2p1_status}=    CheckPortStatus    ${s2_alias}    ${s2p1}
+    Should Not Be True    ${s2p1_status}    !!interface ${s2p1} doesn't connect to ${s1p1}!!
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no shutdown
+    Sleep    30
+    ${s2p1_status}=    CheckPortStatus    ${s2_alias}    ${s2p1}
+    Should Be True    ${s2p1_status}    !!interface ${s2p1} doesn't connect to ${s1p1}!!
+    ##
+    Tools.Comment    检查${s2p2}是否连接PC
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    shutdown
+    Sleep    5
+    ${ping_result}    Check Ping Fail    ${SERVER_IP}
+    Run Keyword If    ${ping_result}>0    !!interface ${s2p2} doesn't connect to PC!!
+    Exec Cmd List In ConfigMode    ${s2_alias}    interface ${s2p2}    no shutdown
+    Sleep    1 minutes
+    Check Ping    ${SERVER_IP}
+    ##
+    Tools.Comment    检查TP1是否连接${s1p2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    shutdown
+    Sleep    10
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Not Be True    ${s1p2_status}    !!interface ${s1p2} is up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Should Not Be True    ${tp1_status}    !!interface ${s1p2} doesn't connect to TP1!!
+    Exec Cmd    ${s1_alias}    no shutdown
+    Sleep    30
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p2} isn't up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Should Be True    ${tp1_status}    !!interface ${s1p2} doesn't connect to TP1!!
+    ##
+    Tools.Comment    检查TP2是否连接${s1p3}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    shutdown
+    Sleep    10
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p3}
+    Should Not Be True    ${s1p2_status}    !!interface ${s1p3} is up!!
+    ${tp1_status}=    Get Statics    @{testerp2}    updown
+    Should Not Be True    ${tp1_status}    !!interface ${s1p3} doesn't connect to TP2!!
+    Exec Cmd    ${s1_alias}    no shutdown
+    Sleep    30
+    ${s1p2_status}=    CheckPortStatus    ${s1_alias}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p3} isn't up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Log    ${tp1_status}
+    Should Be True    ${tp1_status}    !!interface ${s1p3} doesn't connect to TP2!!
