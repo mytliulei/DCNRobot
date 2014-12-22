@@ -1,0 +1,119 @@
+*** Settings ***
+Documentation     BOOTROM下的文件系统测试例
+Suite Setup       Init File System In Bootrom Suite
+Suite Teardown    Unint File System In Bootrom Suite
+Test Timeout
+Resource          ../resource_File_System.txt
+
+*** Variables ***
+${format_flash_in_boot_regexp}    This command is not supported!    # 不支持格式化
+${dir_not_existed_device_regexp}    Invalid path parameter    # dir不存在的设备，提示错误信息
+${dir_not_existed_file_regexp}    ${NOT_EXISTED_SOURCE_IMG_FILE_NAME}    # dir不存在的文件，提示错误信息
+${cd_not_existed_device_regexp}    Invalid drive!    # cd切换到不存在的路径，提示错误信息
+
+*** Test Cases ***
+File System.5.2.1.18
+    [Documentation]    可以通过pwd显示本卡当前工作路径，默认的工作路径为flash:/
+    [Tags]    pwd
+    [Setup]    Init STEP
+    Tools.Comment    Step1    通过pwd显示当前工作路径
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    pwd
+    Should Contain    ${set_result}    Current directory is : ${DEFAULT_DIRECTORY}
+    Log Step End    ${s1_alias}
+
+File System.5.2.1.19
+    [Documentation]    可以通过dir显示本卡存储设备中的指定文件或目录信息（bootrom下不支持dir相对路径）
+    [Tags]    dir
+    [Setup]    Init STEP
+    Tools.Comment    Step1    dir相对路径查看当前目录信息
+    Log Step Start    ${s1_alias}
+    ${dir_information_line_regexp}    Create List    ${FILE_SIZE_IMG_BYTES}    ${BOOT_IMG_DEFAULT_NAME}    ${SIZE_OF_BIG_SIZE_CONFIG_FILE_BYTES}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Dir In Bootrom    dir    2    ${dir_information_line_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir img文件相对路径查看img信息
+    Log Step Start    ${s1_alias}
+    ${dir_information_line_regexp}    Create List    ${FILE_SIZE_IMG_BYTES}    ${BOOT_IMG_DEFAULT_NAME}
+    Dir In Bootrom    dir ${BOOT_IMG_DEFAULT_NAME}    1    ${dir_information_line_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    dir绝对路径查看当前目录信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${dir_information_line_regexp}    Create List    ${FILE_SIZE_IMG_BYTES}    ${BOOT_IMG_DEFAULT_NAME}    ${SIZE_OF_BIG_SIZE_CONFIG_FILE_BYTES}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Dir In Bootrom    dir ${DEFAULT_DIRECTORY}    2    ${dir_information_line_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir img文件绝对路径查看img信息
+    Log Step Start    ${s1_alias}
+    ${dir_information_line_regexp}    Create List    ${FILE_SIZE_IMG_BYTES}    ${BOOT_IMG_DEFAULT_NAME}
+    Dir In Bootrom    dir ${DEFAULT_DIRECTORY}${BOOT_IMG_DEFAULT_NAME}    1    ${dir_information_line_regexp}
+    Log Step End    ${s1_alias}
+
+File System.5.2.1.20
+    [Documentation]    如果dir要显示的目录或文件不存在，则提示错误信息
+    [Tags]    dir
+    [Setup]    Init STEP
+    Tools.Comment    Step1    dir不存在的设备，提示错误信息
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir ${NOT_EXISTED_DEVICE}/
+    Should Contain    ${set_result}    ${dir_not_existed_device_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir不存在的文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir ${NOT_EXISTED_SOURCE_IMG_FILE_NAME}
+    Should Contain    ${set_result}    ${dir_not_existed_file_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    dir绝对路径下不存在的文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir ${DEFAULT_DIRECTORY}${NOT_EXISTED_SOURCE_IMG_FILE_NAME}
+    Should Contain    ${set_result}    ${dir_not_existed_file_regexp}
+    Log Step End    ${s1_alias}
+
+File System.5.2.1.21
+    [Documentation]    Vendor文件被隐藏，不能通过dir看到
+    [Tags]    dir
+    [Setup]    Init STEP
+    Tools.Comment    Step1    dir相对路径查看当前目录信息，不存在vendor.cfg文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    vendor.cfg
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir绝对路径查看当前目录信息，不存在vendor.cfg文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir ${DEFAULT_DIRECTORY}
+    Should Not Contain    ${set_result}    vendor.cfg
+    Log Step End    ${s1_alias}
+
+File System.5.2.1.23
+    [Documentation]    如果通过cd修改的工作路径不存在，则提示错误信息，保持当前的工作路径
+    [Tags]    cd
+    [Setup]    Init STEP
+    Tools.Comment    Step1    cd切换到不存在的路径，提示错误信息
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    cd ${NOT_EXISTED_DEVICE}/
+    Should Contain    ${set_result}    ${cd_not_existed_device_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    pwd查看当前路径，仍然为flash:/
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    pwd
+    Should Contain    ${set_result}    ${DEFAULT_DIRECTORY}
+    Log Step End    ${s1_alias}
+
+*** Keywords ***
+Init File System In Bootrom Suite
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Check Ping    ${SERVER_IP}
+    Updata In Img By Tftp    ${SERVER_IP}    ${BIG_SIZE_CONFIG_NAME}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Enter BootRom From Img    ${s1_alias}
+
+Unint File System In Bootrom Suite
+    Reboot From Bootrom    ${s1_alias}
+    Delete Files    ${BOOT_CONFIG_DEFAULT_NAME}
+    Close Console    ${s1_alias}

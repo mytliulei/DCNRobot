@@ -1,0 +1,740 @@
+*** Settings ***
+Suite Setup       Init File System In Img Suite
+Suite Teardown    Uninit File System Suite
+Resource          ../resource_File_System.txt
+
+*** Variables ***
+${source_img_file_not_existed_regexp}    Can't find file "${NOT_EXISTED_SOURCE_IMG_FILE_NAME}"    # copy一个不存在的img源文件，提示错误信息
+${file_name_error}    File name error!    # copy目标文件名过长
+${format_flash_in_img_regexp}    Device "flash:" do not support this function    # 格式化flash，提示错误信息
+${format_not_existed_device_regexp}    FileSystem: Can't find device "${NOT_EXISTED_DEVICE}"    # 格式化不存在的设备，提示错误信息
+${format_invalid_device_regexp}    Device name error    # 格式化设备名称非法，提示错误信息
+${dir_not_existed_file_regexp}    The directory "${DEFAULT_DIRECTORY}${NOT_EXISTED_SOURCE_IMG_FILE_NAME}" is not exist!    # dir一个不存在的文件，提示错误信息
+${copy_file_to_different_postfix_regexp}    Source and destination file should have same extension!    # copy源文件到目的文件，目的文件后缀和源文件不同，提示错误信息
+${rename_img_to_different_postfix_regexp}    Rename "${DEFAULT_DIRECTORY}${BOOT_IMG_DEFAULT_NAME}" error(Error:Unsupported.)!    # rename文件到目的文件，目的文件后缀和源文件不同，提示错误信息
+${source_config_file_not_existed_regexp}    Can't find file "${NOT_EXISTED_SOURCE_CONFIG_FILE_NAME}"    # copy一个不存在的config源文件，提示错误信息
+${rename_config_to_different_postfix_regexp}    Rename "${DEFAULT_DIRECTORY}${BOOT_CONFIG_DEFAULT_NAME}" error(Error:Unsupported.)!
+
+*** Test Cases ***
+File System.5.2.2.9
+    [Documentation]    不支持用format命令对flash文件的格式化
+    [Tags]    format
+    [Setup]    Init STEP
+    Tools.Comment    Step1    format flash,提示错误信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    format flash:
+    Should Contain    ${set_result}    ${format_flash_in_img_regexp}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.12
+    [Documentation]    format设备不存在时，提示相应的错误信息
+    [Tags]    format
+    [Setup]    Init STEP
+    Tools.Comment    Step1    format不存在的设备，提示错误信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    format ${NOT_EXISTED_DEVICE}
+    Should Contain    ${set_result}    ${format_not_existed_device_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    format设备名称非法，即不带":"，提示错误信息
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    format ${INVALID_DEVICE}
+    Should Contain    ${set_result}    ${format_invalid_device_regexp}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.23
+    [Documentation]    可以通过pwd显示本卡当前工作路径，默认的工作路径为flash:/
+    [Tags]    format
+    [Setup]    Init STEP
+    Tools.Comment    Step1    pwd查看当前工作路径
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    pwd
+    Should Contain    ${set_result}    ${DEFAULT_DIRECTORY}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.24
+    [Documentation]    可以通过dir显示本卡存储设备中的指定文件或目录信息，支持绝对路径和相对路径
+    [Tags]    dir
+    [Setup]    Init STEP
+    Tools.Comment    Step1    dir相对路径查看当前目录信息
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    sleep    10
+    Check Ping    ${SERVER_IP}
+    Updata In Img By Tftp    ${SERVER_IP}    ${BIG_SIZE_CONFIG_NAME}    ${BOOT_CONFIG_DEFAULT_NAME}
+    ${dir_information_line_regexp}    Create List    ${FILE_SIZE_IMG}    ${BOOT_IMG_DEFAULT_NAME}    ${SIZE_OF_BIG_SIZE_CONFIG_FILE}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Dir In Img    dir    2    ${dir_information_line_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir img文件相对路径查看img信息
+    Log Step Start    ${s1_alias}
+    ${dir_information_line_regexp}    Create List    ${FILE_SIZE_IMG}    ${BOOT_IMG_DEFAULT_NAME}
+    Dir In Img    dir ${BOOT_IMG_DEFAULT_NAME}    1    ${dir_information_line_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    dir绝对路径查看当前目录信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${dir_information_line_regexp}    Create List    ${FILE_SIZE_IMG}    ${BOOT_IMG_DEFAULT_NAME}    ${SIZE_OF_BIG_SIZE_CONFIG_FILE}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Dir In Img    dir ${DEFAULT_DIRECTORY}    2    ${dir_information_line_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir img文件绝对路径查看img信息
+    Log Step Start    ${s1_alias}
+    ${dir_information_line_regexp}    Create List    ${FILE_SIZE_IMG}    ${BOOT_IMG_DEFAULT_NAME}
+    Dir In Img    dir ${DEFAULT_DIRECTORY}${BOOT_IMG_DEFAULT_NAME}    1    ${dir_information_line_regexp}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.27
+    [Documentation]    如果dir要显示的目录或文件不存在，则提示错误信息
+    [Tags]    dir
+    [Setup]    Init STEP
+    Tools.Comment    Step1    dir不存在的路径，提示错误信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir ${NOT_EXISTED_DEVICE}/
+    Should Contain    ${set_result}    ${file_name_error}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir不存在的文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir ${NOT_EXISTED_SOURCE_IMG_FILE_NAME}
+    Should Contain    ${set_result}    ${dir_not_existed_file_regexp}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    dir绝对路径下不存在的文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir ${DEFAULT_DIRECTORY}${NOT_EXISTED_SOURCE_IMG_FILE_NAME}
+    Should Contain    ${set_result}    ${dir_not_existed_file_regexp}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.28
+    [Documentation]    Vendor文件被隐藏，不能通过dir看到
+    [Tags]    dir
+    [Setup]    Init STEP
+    Tools.Comment    Step1    dir相对路径查看当前目录信息，不存在vendor.cfg文件
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    vendor.cfg
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir绝对路径查看当前目录信息，不存在vendor.cfg文件
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir ${DEFAULT_DIRECTORY}
+    Should Not Contain    ${set_result}    vendor.cfg
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.30
+    [Documentation]    如果通过cd修改的工作路径不存在，则提示错误信息，保持当前的工作路径
+    [Tags]    cd
+    [Setup]    Init STEP
+    Tools.Comment    Step1    cd切换到不存在的路径，提示错误信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    cd ${NOT_EXISTED_DEVICE}/
+    Should Contain    ${set_result}    ${file_name_error}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    pwd查看当前路径，仍然为flash:/
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    pwd
+    Should Contain    ${set_result}    ${DEFAULT_DIRECTORY}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.31
+    [Documentation]    可以通过delete删除本卡存储设备上的指定文件
+    [Tags]    delete
+    [Setup]    Init STEP
+    Tools.Comment    Step1    生成${BOOT_CONFIG_DEFAULT_NAME}文件
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    相对路径下删除${BOOT_CONFIG_DEFAULT_NAME}文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Delete Files    ${BOOT_CONFIG_DEFAULT_NAME}
+    Should Not Contain    ${set_result}    Can't find file "${DEFAULT_DIRECTORY}${BOOT_CONFIG_DEFAULT_NAME}
+    ${output}    Telnet.Read
+    Should Contain    ${output}    Delete file ok
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    dir不存在${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    生成${BOOT_CONFIG_DEFAULT_NAME}文件
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    绝对路径下删除${BOOT_CONFIG_DEFAULT_NAME}文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Delete Files    ${DEFAULT_DIRECTORY}${BOOT_CONFIG_DEFAULT_NAME}
+    Should Not Contain    ${set_result}    Can't find file "${DEFAULT_DIRECTORY}${BOOT_CONFIG_DEFAULT_NAME}
+    ${output}    Telnet.Read
+    Should Contain    ${output}    Delete file ok
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step6    dir不存在${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.33
+    [Documentation]    如果delete的目的文件不存在，则提示错误信息
+    [Tags]    delete
+    [Setup]    Init STEP
+    Tools.Comment    Step1    相对路径下删除不存在的文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Delete Files    ${NOT_EXISTED_SOURCE_IMG_FILE_NAME}
+    Should Contain    ${set_result}    Can't find file "${DEFAULT_DIRECTORY}${NOT_EXISTED_SOURCE_IMG_FILE_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    绝对路径下删除不存在的文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Delete Files    ${DEFAULT_DIRECTORY}${NOT_EXISTED_SOURCE_CONFIG_FILE_NAME}
+    Should Contain    ${set_result}    Can't find file "${DEFAULT_DIRECTORY}${NOT_EXISTED_SOURCE_CONFIG_FILE_NAME}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.34
+    [Documentation]    可以通过rename把本卡上的某个指定的文件重命名为新的文件名
+    [Tags]    rename
+    [Setup]    Init STEP
+    Tools.Comment    Step1    将指定的img文件重命名
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${BOOT_IMG_DEFAULT_NAME} ${BOOT_BACKUP_IMG_NAME}
+    Should Contain    ${set_result}    Rename ${BOOT_IMG_DEFAULT_NAME} to ${BOOT_BACKUP_IMG_NAME} ok!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir存在重新命名的新文件，不存在原文件名
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Should Not Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    将指定的config文件重命名
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${BOOT_CONFIG_DEFAULT_NAME} ${BOOT_STARTUP1_CFG}
+    Should Contain    ${set_result}    Rename ${BOOT_CONFIG_DEFAULT_NAME} to ${BOOT_STARTUP1_CFG} ok!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir存在重新命名的新文件，不存在原文件名
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Should Not Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    可以将绝对路径下img源文件重命名为相对路径的新文件名
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${DEFAULT_DIRECTORY}${BOOT_BACKUP_IMG_NAME} ${BOOT_IMG_DEFAULT_NAME}
+    Should Contain    ${set_result}    Rename ${DEFAULT_DIRECTORY}${BOOT_BACKUP_IMG_NAME} to ${BOOT_IMG_DEFAULT_NAME} ok!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step6    dir存在重新命名的新文件，不存在原文件名
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
+    Should Not Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step7    可以将绝对路径下config源文件重命名为相对路径的新文件名
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${DEFAULT_DIRECTORY}${BOOT_STARTUP1_CFG} ${BOOT_CONFIG_DEFAULT_NAME}
+    Should Contain    ${set_result}    Rename ${DEFAULT_DIRECTORY}${BOOT_STARTUP1_CFG} to ${BOOT_CONFIG_DEFAULT_NAME} ok!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step8    dir存在重新命名的新文件，不存在原文件名
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Should Not Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.36
+    [Documentation]    如果rename的源文件不存在时提示错误信息
+    [Tags]    rename
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重命名不存在的img文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${NOT_EXISTED_SOURCE_IMG_FILE_NAME} ${BOOT_BACKUP_IMG_NAME}
+    Should Contain    ${set_result}    Rename "${DEFAULT_DIRECTORY}${NOT_EXISTED_SOURCE_IMG_FILE_NAME}" error(Error:source file not exist.)!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir不存在重新命名的新文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    重命名不存在的config文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${NOT_EXISTED_SOURCE_CONFIG_FILE_NAME} ${BOOT_STARTUP1_CFG}
+    Should Contain    ${set_result}    Rename "${DEFAULT_DIRECTORY}${NOT_EXISTED_SOURCE_CONFIG_FILE_NAME}" error(Error:source file not exist.)!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir不存在重新命名的新文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.37
+    [Documentation]    如果rename的目标文件名已存在，提示错误信息，重命名操作失败
+    [Tags]    rename
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重命名已存在的img文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    Copy Img Files    ${s1_alias}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_BACKUP_IMG_NAME}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${BOOT_IMG_DEFAULT_NAME} ${BOOT_BACKUP_IMG_NAME}
+    Should Contain    ${set_result}    The file "${DEFAULT_DIRECTORY}${BOOT_BACKUP_IMG_NAME}" exists!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir仍然存在重新命名的新文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    重命名已存在的config文件，提示错误信息
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${BOOT_CONFIG_DEFAULT_NAME} ${BOOT_STARTUP1_CFG}
+    Should Contain    ${set_result}    The file "${DEFAULT_DIRECTORY}${BOOT_STARTUP1_CFG}" exists!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir仍然存在重新命名的新文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.38
+    [Documentation]    rename操作的目的文件名不能为绝对路径，只能为相对路径
+    [Tags]    rename
+    [Setup]    Init STEP
+    Tools.Comment    Step1    将img源文件重命名为绝对路径下的新文件名，提示错误信息
+    Log Step Start    ${s1_alias}
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${BOOT_IMG_DEFAULT_NAME} ${DEFAULT_DIRECTORY}${BOOT_BACKUP_IMG_NAME}
+    Should Contain    ${set_result}    Illegal file name or directory name "${DEFAULT_DIRECTORY}${BOOT_BACKUP_IMG_NAME}"!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    dir不存在重新命名的新文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    将config源文件重命名为绝对路径下的新文件名，提示错误信息
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${BOOT_CONFIG_DEFAULT_NAME} ${DEFAULT_DIRECTORY}${BOOT_STARTUP1_CFG}
+    Should Contain    ${set_result}    Illegal file name or directory name "${DEFAULT_DIRECTORY}${BOOT_STARTUP1_CFG}"!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    dir不存在重新命名的新文件
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.42
+    [Documentation]    如果copy命令的源文件不存在，提示错误信息
+    [Tags]    copy
+    [Setup]    Init STEP
+    Tools.Comment    Step1    copy一个不存在的nos.img源文件，提示错误信息，dir不存在目标文件
+    Log Step Start    ${s1_alias}
+    Copy Files Fail    ${NOT_EXISTED_SOURCE_IMG_FILE_NAME}    222.img    ${source_img_file_not_existed_regexp}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    222.img    There is the error img file!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    copy一个不存在的cfg源文件，提示错误信息，dir不存在目标文件
+    Log Step Start    ${s1_alias}
+    Copy Files Fail    ${NOT_EXISTED_SOURCE_CONFIG_FILE_NAME}    222.cfg    ${source_config_file_not_existed_regexp}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    222.cfg    There is the error config file!
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.44
+    [Documentation]    若目标文件名与已经存在的文件名重名，系统将要求用户通过选择y/n方式来决定是否覆盖目标文件，用户选择生效
+    [Tags]    copy
+    [Setup]    Init STEP
+    Tools.Comment    Step1    copy nos.img到backup img，提示Y/N，输入N
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    sleep    10
+    Check Ping    ${SERVER_IP}
+    Updata In Img By Tftp    ${SERVER_IP}    ${BACKUP_SOURCE_IMG_NAME}    ${BOOT_BACKUP_IMG_NAME}
+    Copy Files To Existed Files    ${s1_alias}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_BACKUP_IMG_NAME}    N    1
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    设置backup img为primary img启动，版本和default img不相同，copy不生效
+    Log Step Start    ${s1_alias}
+    Boot Img    ${BOOT_BACKUP_IMG_NAME}    primary
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
+    Reload Switch Without Write    ${s1_alias}
+    ${boot_file_regexp}=    Create List    ${BOOT_BACKUP_IMG_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_BACKUP_IMG_NAME}
+    Check Boot-files Img    ${boot_file_regexp}    3
+    Check Version    ${BACKUP_IMG_VERSION}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    copy nos.img到backup img，提示Y/N，输入Y，copy生效
+    Log Step Start    ${s1_alias}
+    Boot Img    ${BOOT_BACKUP_IMG_NAME}    backup
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Reload Switch Without Write    ${s1_alias}
+    Check Version    ${DEFAULT_IMG_VERSION}
+    Copy Files To Existed Files    ${s1_alias}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_BACKUP_IMG_NAME}    Y    1
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    设置backup img为primary img启动，版本和default img相同，copy生效
+    Boot Img    ${BOOT_BACKUP_IMG_NAME}    primary
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
+    Reload Switch Without Write    ${s1_alias}
+    ${boot_file_regexp}=    Create List    ${BOOT_BACKUP_IMG_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_BACKUP_IMG_NAME}
+    Check Boot-files Img    ${boot_file_regexp}    3
+    Check Version    ${DEFAULT_IMG_VERSION}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    修改配置，并保存到startup.cfg
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step6    修改配置，保存到新的配置文件，存在${BOOT_BACKUP_IMG_NAME}
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    spanning-tree
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step7    copy默认配置文件到${BOOT_STARTUP1_CFG}，提示Y/N，输入N，配置没被覆盖
+    Log Step Start    ${s1_alias}
+    Copy Files To Existed Files    ${s1_alias}    ${BOOT_CONFIG_DEFAULT_NAME}    ${BOOT_STARTUP1_CFG}    N    1
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step8    copy默认配置文件到${BOOT_STARTUP1_CFG}，提示Y/N，输入Y，覆盖配置，并生效
+    Log Step Start    ${s1_alias}
+    Copy Files To Existed Files    ${s1_alias}    ${BOOT_CONFIG_DEFAULT_NAME}    ${BOOT_STARTUP1_CFG}    Y    1
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    ${config_command}    Create List    spanning-tree
+    Check Running-config Fail    ${config_command}    1    show startup-config ${BOOT_STARTUP1_CFG}
+    ${config_command}    Create List    switchport access vlan 101
+    Check Running-config    ${config_command}    1    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System For Reload
+
+File System.5.2.2.45
+    [Documentation]    若目标文件名与已经存在的文件名重名，系统将要求用户通过选择y/n方式来决定是否覆盖目标文件，用户无输入时，默认相当于选择N
+    [Setup]    Init STEP
+    Tools.Comment    Step1    copy nos.img到backup img，提示Y/N，无输入
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    sleep    10
+    Check Ping    ${SERVER_IP}
+    Updata In Img By Tftp    ${SERVER_IP}    ${BACKUP_SOURCE_IMG_NAME}    ${BOOT_BACKUP_IMG_NAME}
+    Copy Files To Existed Files    ${s1_alias}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_BACKUP_IMG_NAME}    ${EMPTY}    3
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}    There is no ${BOOT_BACKUP_IMG_NAME} file!
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    设置backup img为primary img启动，版本和default img相同，copy不生效
+    Boot Img    ${BOOT_BACKUP_IMG_NAME}    primary
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
+    Reload Switch Without Write    ${s1_alias}
+    ${boot_file_regexp}=    Create List    ${BOOT_BACKUP_IMG_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_BACKUP_IMG_NAME}
+    Check Boot-files Img    ${boot_file_regexp}    3
+    Check Version    ${BACKUP_IMG_VERSION}
+    Log Step End    ${s1_alias}
+    Boot Img    ${BOOT_BACKUP_IMG_NAME}    backup
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Reload Switch Without Write    ${s1_alias}
+    Check Version    ${DEFAULT_IMG_VERSION}
+    ##
+    Tools.Comment    Step3    修改配置，并保存到startup.cfg
+    Log Step Start    ${s1_alias}
+    Exec Cmd List    ${s1_alias}    config    vlan 101    switchport interface ${s1p1}
+    Exec Cmd    ${s1_alias}    interface ${s1p1}
+    ${set_result}    Exec Cmd    ${s1_alias}    show running-config current-mode
+    Should Contain    ${set_result}    switchport access vlan 101
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    修改配置，保存到新的配置文件，存在${BOOT_BACKUP_IMG_NAME}
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    spanning-tree
+    Write Running-Config    ${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}    There is no ${BOOT_BACKUP_IMG_NAME} file!
+    ${config_command}    Create List    spanning-tree    switchport access vlan 101
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    copy默认配置文件到${BOOT_BACKUP_IMG_NAME}，提示Y/N，无输入，配置没被覆盖
+    Log Step Start    ${s1_alias}
+    Copy Files To Existed Files    ${s1_alias}    ${BOOT_CONFIG_DEFAULT_NAME}    ${BOOT_STARTUP1_CFG}    ${EMPTY}    3
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
+    [Teardown]    Uninit File System For Reload
+
+File System.5.2.2.47
+    [Documentation]    在ftp/tftp方式下限制.img文件最大为25MB，其它文件最大为5MB（不同机型限制大小可能不一样，需要参照相应的需求）
+    [Tags]    copy
+    [Setup]    Init STEP
+    Tools.Comment    Step1    tftp方式copy一个大img文件，超过限制大小，提示错误信息
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Sleep    10
+    Check Ping    ${SERVER_IP}
+    Updata In Img By Tftp Fail    ${SERVER_IP}    ${OVER_SIZE_IMG_NAME}    ${BOOT_BACKUP_IMG_NAME}    ${TFTP_COPY_OVER_SIZE_IMG_REGEXP}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    tftp方式copy一个大config文件，超过限制大小，提示错误信息
+    Log Step Start    ${s1_alias}
+    Updata In Img By Tftp Fail    ${SERVER_IP}    ${OVER_SIZE_CONFIG_NAME}    ${BOOT_CONFIG_DEFAULT_NAME}    ${TFTP_COPY_OVER_SIZE_CONFIG_REGEXP}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    ftp方式copy一个大img文件，超过限制大小，提示错误信息
+    Log Step Start    ${s1_alias}
+    Updata In Img By Ftp Fail    ${SERVER_IP}    ${OVER_SIZE_IMG_NAME}    ${BOOT_BACKUP_IMG_NAME}    ${FTP_COPY_OVER_SIZE_IMG_REGEXP}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_BACKUP_IMG_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    tftp方式copy一个大config文件，超过限制大小，提示错误信息
+    Log Step Start    ${s1_alias}
+    Updata In Img By Ftp Fail    ${SERVER_IP}    ${OVER_SIZE_CONFIG_NAME}    ${BOOT_CONFIG_DEFAULT_NAME}    ${FTP_COPY_OVER_SIZE_CONFIG_REGEXP}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.49
+    [Documentation]    单个文件或单个子目录名称不能超过80个字符
+    [Tags]    copy
+    [Setup]    Init STEP
+    Tools.Comment    Step1    copy img 目的文件名长度超过80个字符串
+    Log Step Start    ${s1_alias}
+    Copy Files Fail    ${BOOT_IMG_DEFAULT_NAME}    ${LONGER_FILE_NAME}.img    ${file_name_error}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${LONGER_FILE_NAME}.img
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    copy img目的文件名长度为80个字符串
+    Log Step Start    ${s1_alias}
+    Copy Img Files    ${s1_alias}    ${BOOT_IMG_DEFAULT_NAME}    ${FILE_NAME_OF_EIGHTY}.img
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${FILE_NAME_OF_EIGHTY}.img
+    Delete Files    ${FILE_NAME_OF_EIGHTY}.img
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    copy config目的文件名长度超过80个字符串
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    Copy Files Fail    ${BOOT_CONFIG_DEFAULT_NAME}    ${LONGER_FILE_NAME}.cfg    ${file_name_error}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${LONGER_FILE_NAME}.cfg
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    copy config目的文件名长度为80个字符串
+    Log Step Start    ${s1_alias}
+    Copy Config Files    ${s1_alias}    ${BOOT_CONFIG_DEFAULT_NAME}    ${FILE_NAME_OF_EIGHTY}.cfg
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${FILE_NAME_OF_EIGHTY}.cfg
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step5    copy img目的子目录长度为80个字符串
+    Log Step Start    ${s1_alias}
+    Copy Img Files    ${s1_alias}    ${BOOT_IMG_DEFAULT_NAME}    ${FILE_DIRECTORY_OF_EIGHTY}.img
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${FILE_NAME_AND_DIRECTORY_OF_EIGHTY}.img
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step6    copy config目的子目录长度为80个字符串
+    Log Step Start    ${s1_alias}
+    Copy Config Files    ${s1_alias}    ${BOOT_CONFIG_DEFAULT_NAME}    ${FILE_DIRECTORY_OF_EIGHTY}.cfg
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${FILE_NAME_AND_DIRECTORY_OF_EIGHTY}.cfg
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.50
+    [Documentation]    对大文件进行copy、rename、delete等文件操作，功能正确
+    [Setup]    Init STEP
+    Tools.Comment    Step1    用tftp方式下载一个大的config文件
+    Log Step Start    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    sleep    10
+    Check Ping    ${SERVER_IP}
+    Updata In Img By Tftp    ${SERVER_IP}    ${BIG_SIZE_CONFIG_NAME}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2
+    Log Step Start    ${s1_alias}    对大config文件进行copy操作
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Copy Config Files    ${s1_alias}    ${BOOT_CONFIG_DEFAULT_NAME}    ${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3
+    Log Step Start    ${s1_alias}    对大config文件进行delete操作
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4
+    Log Step Start    ${s1_alias}    对大config文件进行rename操作
+    Enable Mode    ${s1_alias}
+    Exec Cmd    ${s1_alias}    rename ${BOOT_CONFIG_DEFAULT_NAME} ${BOOT_STARTUP1_CFG}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Should Contain    ${set_result}    ${BOOT_STARTUP1_CFG}
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+File System.5.2.2.51
+    [Documentation]    通过copy、rename等手段对flash中文件进行操作时，源文件和目标文件扩展名必须相同
+    [Setup]    Init STEP
+    Tools.Comment    Step1    copy源img文件到目的文件，目的文件后缀不同，提示错误
+    Log Step Start    ${s1_alias}
+    Copy Files Fail    ${BOOT_IMG_DEFAULT_NAME}    nos1.im    ${copy_file_to_different_postfix_regexp}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    nos1.im
+    Should Not Contain    ${set_result}    nos1.img
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step2    copy源config文件到目的文件，目的文件后缀不同，提示错误
+    Log Step Start    ${s1_alias}
+    Write Running-Config    ${BOOT_CONFIG_DEFAULT_NAME}
+    Copy Files Fail    ${BOOT_CONFIG_DEFAULT_NAME}    startup1.cf    ${copy_file_to_different_postfix_regexp}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    startup1.cf
+    Should Not Contain    ${set_result}    startup1.cfg
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step3    rename源img文件到目的文件，目的文件后缀不同，提示错误
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${BOOT_IMG_DEFAULT_NAME} nos.im
+    Should Contain    ${set_result}    ${rename_img_to_different_postfix_regexp}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    nos1.im
+    Should Not Contain    ${set_result}    nos1.img
+    Log Step End    ${s1_alias}
+    ##
+    Tools.Comment    Step4    rename源config文件到目的文件，目的文件后缀不同，提示错误
+    Log Step Start    ${s1_alias}
+    ${set_result}    Exec Cmd    ${s1_alias}    rename ${BOOT_CONFIG_DEFAULT_NAME} startup1.cf
+    Should Contain    ${set_result}    ${rename_config_to_different_postfix_regexp}
+    ${set_result}    Exec Cmd    ${s1_alias}    dir
+    Should Not Contain    ${set_result}    startup1.cf
+    Should Not Contain    ${set_result}    startup1.cfg
+    Log Step End    ${s1_alias}
+    [Teardown]    Uninit File System Test
+
+*** Keywords ***
+Uninit File System For Reload
+    [Documentation]    恢复5.2.2.44初始配置
+    Enable Mode    ${s1_alias}
+    Delete Files    ${BOOT_BACKUP_IMG_NAME}
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    Delete Files    ${BOOT_CONFIG_DEFAULT_NAME}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Reload Switch Without Write    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    watchdog disable
+    Check Version    ${DEFAULT_IMG_VERSION}
+    Send And Stop Stream    @{testerp1}    ${False}    ${True}
+    Send And Stop Stream    @{testerp2}    ${False}    ${True}
+    Send And Stop Stream    @{testerp1}
+    Send And Stop Stream    @{testerp2}
+
+Init File System In Img Suite
+    Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
+    Exec Cmd List In ConfigMode    ${s1_alias}    watchdog disable
+    Connect To Ixia    ${testerp1_ip}
+    Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
+    Send And Stop Stream    @{testerp1}
+    Send And Stop Stream    @{testerp2}
+    Check Stream    @{testerp1}    @{testerp2}    bps
+    Check Stream    @{testerp2}    @{testerp1}    bps
+
+Uninit File System Suite
+    Close Console    ${s1_alias}
+
+Uninit File System Test
+    [Documentation]    恢复测试例配置
+    Enable Mode    ${s1_alias}
+    ${set_result}    Exec Cmd List    ${s1_alias}    rename ${BOOT_BACKUP_IMG_NAME} ${BOOT_IMG_DEFAULT_NAME}    config    no spanning-tree    no vlan 101
+    Delete Files    ${BOOT_BACKUP_IMG_NAME}
+    Delete Files    ${BOOT_STARTUP1_CFG}
+    Delete Files    ${BOOT_CONFIG_DEFAULT_NAME}
+    Delete Files    ${LONGER_FILE_NAME}.img
+    Delete Files    ${LONGER_FILE_NAME}.cfg
+    Delete Files    ${FILE_NAME_OF_EIGHTY}.img
+    Delete Files    ${FILE_NAME_OF_EIGHTY}.cfg
+    Delete Files    ${FILE_NAME_AND_DIRECTORY_OF_EIGHTY}.img
+    Delete Files    ${FILE_NAME_AND_DIRECTORY_OF_EIGHTY}.cfg
