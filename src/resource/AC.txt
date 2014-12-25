@@ -62,13 +62,13 @@ Library           ../lib/MyTelnet.py    WITH NAME    Telnet
 Library           OperatingSystem
 
 *** Variables ***
-${wifi_ac_prompt}    (?m)^[-a-zA-Z0-9_]{1,30}(\\(.*\\))?#|^\\[Boot\\]:|^BCM\.[0-9]>|^->|^--More--|Exit from bcm shell mode|^Host IP Address:|^Server IP Address:
+${wifi_ac_prompt}    (?m)^[-a-zA-Z0-9_]{1,30}(\\(.*\\))*([#>])|^\\[Boot\\]:|^BCM\.[0-9]>|^->|^--More--|Exit from bcm shell mode|^Host IP Address:|^Server IP Address:
 ${wifi_ac_prompt_is_regexp}    ${True}
 ${wifi_ac_default_log_level}    ${None}
 ${wifi_ac_terminal_type}    vt100
 ${wifi_ac_terminal_emulation}    ${True}
 ${wifi_ac_timeout}    1 minute
-${wifi_ac_regexp_reload}    User Access Verification
+${wifi_ac_regexp_reload}    Mac\\sAddr\\s
 ${wifi_ac_monitor}    ${True}
 ${wifi_ac_monitor_loglevel}    INFO
 ${wifi_ac_login_regexp}    (?m)^Username:
@@ -114,6 +114,7 @@ Enable Mode
     ${loginFlag}=    Tools.Is Match From String    ${output}    ${wifi_ac_login_regexp}
     Run Keyword If    ${loginFlag}    AC.Login    ${alias}
     Telnet.Read
+    Telnet.Execute Command    enable
     Telnet.Execute Command    terminal length 0
 
 Exec Cmd
@@ -223,7 +224,7 @@ Exec Cmd List In ConfigMode
     Log List    ${output_list}
 
 Reload AC
-    [Arguments]    ${alias}    ${write}=${True}    ${wait}=10    ${regexp_reload}=${wifi_ac_regexp_reload}    ${timeout}=20 minutes
+    [Arguments]    ${alias}    ${write}=${True}    ${wait}=60    ${regexp_reload}=${wifi_ac_regexp_reload}    ${timeout}=20 minutes
     [Documentation]    重启AC设备
     ...
     ...    args：
@@ -253,7 +254,7 @@ Write Config
     ...    - ${alias}：Open Console时设置的别名
     AC.Enable Mode    ${alias}
     Telnet.Write    write
-    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]:    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]:    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))*#
     ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]:
     Run Keyword If    ${writeFlag}    Telnet.Write    Y
     Run Keyword If    ${writeFlag}    Telnet.Read Until Prompt
@@ -270,7 +271,7 @@ Set Default
     ...    | Set Default | ${s1_alias} |
     AC.Enable Mode    ${alias}
     Telnet.Write    set default
-    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#
+    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))*#
     Telnet.Write    Y
     Telnet.Read Until Prompt
 
@@ -441,14 +442,14 @@ Apply AP Profile
     ...    注意：超过timeout后，不会报错，关键字会返回，进行下一个关键字的执行
     AC.Enable Mode    ${alias}
     Telnet.Write    wireless ap profile apply ${profileId}
-    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}#
+    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))*#
     : FOR    ${index}    IN RANGE    0    ${timeout}    10
     \    ${writeFlag}=    Tools.Is Match From String    ${output}    \\[Y/N\\]
-    \    ${exitFlag}=    Tools.Is Match From String    ${output}    (?m)^[-a-zA-Z0-9_. ]{1,30}#
+    \    ${exitFlag}=    Tools.Is Match From String    ${output}    (?m)^[-a-zA-Z0-9_. ]{1,30}(\\(.*\\))*#
     \    Run Keyword If    ${exitFlag}    Exit For Loop
     \    Run Keyword If    ${index} != 0    Sleep    10
     \    Run Keyword If    ${writeFlag}    Telnet.Write    Y
-    \    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}#
+    \    ${output}=    Telnet.Read Until Regexp    \\[Y/N\\]    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))*#
     Telnet.Read
     AC.Enable Mode    ${alias}
 
