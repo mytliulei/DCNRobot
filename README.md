@@ -9,5 +9,5 @@
 
 ## 4. [Author](./AUTHORS.txt)
 
-## 5. 安装
+## 5. [安装](https://github.com/mytliulei/DCNRobotInstallPackages/blob/master/README.md)
 
