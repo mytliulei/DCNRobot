@@ -1,6 +1,6 @@
-DCNRobot
-========
+# DCNRobot
 
-autotest framework including tools, lib,and case, based on robotframework,test telcom device, switch,ap,ac and others.
+## 1. 简介
+采用Robot测试框架，实现了对通信设备（如交换机，AC，AP等）的测试，其中的测试例及大部分关键字针对DCN设备，测试仪采用ixia及基于scapy的发包程序
 
-any question,please send email to mytliulei@gmail.com
+## 2. [License](./LICENSE.txt)
