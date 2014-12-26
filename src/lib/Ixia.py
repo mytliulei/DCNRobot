@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: UTF-8 -*-
-'''ixia stream genertor Tools,for RF testing 
+'''ixia stream genertor Tools,for RF testing
 '''
 import os,os.path
 import inspect
@@ -30,88 +30,88 @@ class Ixia(object):
     ROBOT_LIBRARY_VERSION = get_version()
     def __init__(self):
         ''''''
-        #self._ixia_tcl_path = os.path.join(os.path.dirname(os.getcwd()),'src','tools','ixia','tcl')
-        self._ixia_tcl_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','tools','ixia','tcl')
+        #self._ixia_tcl_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','tools','ixia','tcl')
         self._ixia_pcapfile_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','tools','ixia','pcapfile')
-        #self._proxy_server_path = os.path.join(os.path.dirname(os.getcwd()),'src','tools','IxiaProxyServer.tcl')
-        self._proxy_server_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','tools','IxiaProxyServer.tcl')
+        #self._proxy_server_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','tools','IxiaProxyServer.tcl')
         self._ixia_version = {
             '172.16.1.252':'5.60',
             '172.16.11.253':'4.10',
             '172.16.1.247':'5.50',
             'default':'4.10',
         }
-        self._tcl_path = {
-            '4.10':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
-            '5.50':os.path.join(self._ixia_tcl_path,'ixia550','bin'),
-            '5.60':os.path.join(self._ixia_tcl_path,'ixia560','bin'),
-            'default':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
-        }
-        # self._proxy_bind_port = {
-        #     '4.10':11917,
-        #     '5.50':11916,
-        #     '5.60':11915,
-        #     'default':11917,
+        # self._tcl_path = {
+        #     '4.10':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
+        #     '5.50':os.path.join(self._ixia_tcl_path,'ixia550','bin'),
+        #     '5.60':os.path.join(self._ixia_tcl_path,'ixia560','bin'),
+        #     'default':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
         # }
         self._proxy_bind_port = {
-            '4.10':0,
-            '5.50':0,
-            '5.60':0,
-            'default':0,
+            '4.10':11917,
+            '5.50':11918,
+            '5.60':11919,
+            'default':11917,
         }
-        self._initFlag = {
-            '4.10':False,
-            '5.50':False,
-            '5.60':False,
-            'default':False
-        }
-        self._proxy_server_auto_bind_port = None
         self._proxy_server_host = '127.0.0.1'
         self._pkt_streamlist_hexstring = []
         self._pkt_kws = self._lib_kws = None
         self._pkt_class = rfbase.PacketBase()
         self._pkt_class._set_ixia_flag(True)
         self._proxy_server_process = None
-        self._proxy_server_retcode = None
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
         self.expect_err_Re = re.compile(r'ixia proxy error buffer end..',re.DOTALL)
         self.expect_ret_Re = re.compile(r'\n')
+        self._ixia_client_handle_dict = {}
+        self._ixia_chassis_id = '1'
 
-
-    def init_ixia(self,ixia_ip,debug=False):
+    def init_ixia(self,*ixia_ip_list,**kwargs):
         '''
         start ixia proxy server and connect to ixia;
 
         Note: in the beginning of every test suit,please use this keyword,in the end of every test suit,the ixia proxy server will be shutdown
 
         args:
-        - ixia_ip: the ip address of ixia
+        - ixia_ip_list: the ip address list of ixia, should not be empty
 
         return:
         - True or False
         '''
+        if not ixia_ip_list:
+            raise AssertionError('ixia_ip_list should not be empty')
+            return False
+        for ip in ixia_ip_list:
+            ret = self._init_ixia(ip,kwargs)
+            if not ret:
+                raise AssertionError('init_ixia %s error,please check' % ip)
+                return False
+        return True
+
+    def _init_ixia(self,ixia_ip,**kwargs):
+        '''
+        '''
+        if ixia_ip in self._ixia_client_handle_dict.keys():
+            return True
         if ixia_ip in self._ixia_version.keys():
             version = self._ixia_version[ixia_ip]
         else:
-            version = self._ixia_version['default']
-        if self._initFlag[version]:
-            return True,True
-        proxy_server_port = self._proxy_bind_port[version]
-        sRet = self._start_proxy_server(ixia_ip,proxy_server_port,debug)
-        if not sRet:
+            version = '4.10'
+        if version in self._proxy_bind_port.keys():
+            proxy_server_port = self._proxy_bind_port[version]
+        else:
+            proxy_server_port = 11917
+        cRet = self._start_ixia_client(self._proxy_server_host, proxy_server_port,ixia_ip,self._ixia_chassis_id)
+        if not cRet:
+            raise AssertionError('connect to proxy server %s %s error' % (self._proxy_server_host,proxy_server_port))
             return False
-        #cRet = self._start_ixia_client(proxy_server_port)
-        cRet = self._start_ixia_client(self._proxy_server_auto_bind_port)
         nRet = self._connect_ixia(ixia_ip)
-        ret = sRet and cRet and nRet == '0'
-        if ret:
-            self._initFlag[version] = True
-        return ret
+        if nRet != '0':
+            raise AssertionError('proxy server connect to ixia %s error,return code %s' % (ixia_ip,nRet))
+            return False
+        return True
 
     def __del__(self):
         ''''''
-        self.shutdown_proxy_server()
+        self._close_ixia_client()
 
     def get_keyword_names(self):
         return self._get_library_keywords() + self._get_pkt_keywords()
@@ -153,53 +153,18 @@ class Ixia(object):
         with open(filename,'rb') as handle:
             return handle.read()
 
-    def _start_proxy_server(self,_ixia_ip,_proxy_server_port,debug=False):
+    def _switch_ixia_client(self,ip_chassis):
         '''
         '''
-        #debug ixia 
-        #return True
-        if _ixia_ip in self._ixia_version.keys():
-            version = self._ixia_version[_ixia_ip]
+        if ip_chassis in self._ixia_client_handle_dict.keys():
+            self._ixia_client_handle = self._ixia_client_handle_dict[ip_chassis]
         else:
-            version = self._ixia_version['default']
-        cmdpath = os.path.join(self._tcl_path[version],'tclsh.exe')
-        if not os.path.exists(cmdpath):
-            raise AssertionError('tcl path: %s is not exists' % cmdpath)
-        if not os.path.exists(self._proxy_server_path):
-            raise AssertionError('prox server file: %s is not exists' % self._proxy_server_path)
-        #process \s in path
-        proxy_file_sub = re.compile(r'\\([^\\]*\s+[^\\]*)\\')
-        proxy_file = proxy_file_sub.sub(r'\\"\1"\\',self._proxy_server_path)
-        cmd = '%s %s ixiaip %s bindport %s ixiaversion %s' % (cmdpath,proxy_file,_ixia_ip,_proxy_server_port,version)
-        if debug:
-            cmd += ' logflag 1'
-        p=subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
-        #p=subprocess.Popen(cmd,shell=True)
-        self._proxy_server_process = p
-        searchre = re.compile(r'proxy server listen port:(\d+)')
-        #self._proxy_server_auto_bind_port
-        timeout = 0
-        while p.poll() is None and timeout < 60:
-            time.sleep(1)
-            timeout += 1
-            rdstr = p.stdout.readline()
-            ret_port = searchre.search(rdstr)
-            if ret_port:
-                self._proxy_server_auto_bind_port = int(ret_port.groups()[0])
-                self._proxy_server_retcode = p.returncode
-                return True
-        self._proxy_server_retcode = p.returncode
-        return False
-        #time.sleep(3)
-        #if p.poll() is None:
-        #    self._proxy_server_retcode = p.returncode
-        #    return True
-        #self._proxy_server_retcode = p.returncode
-        #return False
+            self._ixia_client_handle = None
 
     def _connect_ixia(self,ixia_ip):
         '''
         '''
+        self._switch_ixia_client(ixia_ip)
         if self._ixia_client_handle:
             cmd = 'connect_ixia %s\n' % ixia_ip
             try:
@@ -213,45 +178,13 @@ class Ixia(object):
             ret = readret[1]
             return ret.strip()
 
-    def _close_proxy_server(self):
-        '''
-        '''
-        shut = False
-        if self._proxy_server_process:
-            try:
-                cmd = 'shutdown_proxy_server\n'
-                self._ixia_client_handle.sendall(cmd)
-                readret = self._read_ret_select()
-                if not readret[0]:
-                    raise AssertionError('ixia proxy server error: %s' % readret[1])
-                ret = readret[1]
-                if ret.strip() == '-10000':
-                    shut = True
-            except Exception:
-                pass
-            self._proxy_server_process = None
-            return shut
-
-    def _is_proxyserver_live(self):
-        '''
-        '''
-        #debug ixia
-        #return True
-        if self._proxy_server_process:
-            try:
-                return True if self._proxy_server_process.poll() is None else False
-            except Exception:
-                return False
-        else:
-            return False
-
-    def _is_proxyserver_alive(self,_proxy_server_port,timeout=5):
+    def _is_proxyserver_alive(self,ip,port,timeout=5):
         '''
         '''
         #debug ixia
         #return True
         try:
-            sock = socket.create_connection((self._proxy_server_host, _proxy_server_port))
+            sock = socket.create_connection((ip, port))
         except Exception:
             return False
         #test alive
@@ -281,6 +214,7 @@ class Ixia(object):
         buff = expectRe.sub('',buff)
         try:
             ret_code = int(buff)
+            sock.close()
         except Exception:
             return False
         else:
@@ -289,47 +223,46 @@ class Ixia(object):
             else:
                 return False
 
-    def _start_ixia_client(self,_proxy_server_port):
+    def _start_ixia_client(self,ip,port,ixia_ip,chassisID):
         '''
         '''
-        if not self._is_proxyserver_live():
-            raise AssertionError('proxy server is not started')
-        if self._ixia_client_handle:
-            try:
-                self._ixia_client_handle.close()
-            except Exception:
-                self._ixia_client_handle = None
+        if not self._is_proxyserver_alive(ip,port):
+            raise AssertionError('proxy server not connected or not started')
         try:
-            self._ixia_client_handle = socket.create_connection((self._proxy_server_host, _proxy_server_port))
+            ixia_client_handle = socket.create_connection((ip, port))
         except Exception:
-            self._ixia_client_handle = None
             return False
+        self._ixia_client_handle_dict[ixia_ip] = ixia_client_handle
+        self._ixia_client_handle_dict[chassisID] = ixia_client_handle
+        self._ixia_chassis_id = str(int(chassisID) + 1)
         return True
 
     def _close_ixia_client(self):
         '''
         '''
-        if self._ixia_client_handle:
+        for ckey in self._ixia_client_handle_dict.keys():
             try:
-                self._ixia_client_handle.close()
+                self._ixia_client_handle_dict[ckey].close()
             except Exception:
                 pass
+        self._ixia_client_handle_dict = {}
         self._ixia_client_handle = None
 
     def _flush_proxy_server(self):
         '''
         '''
-        if self._proxy_server_process and self._proxy_server_process.poll() is None:
-            c= self._proxy_server_process.stdout.readline()
-            return c
-        return False
+        return True
+        # if self._proxy_server_process and self._proxy_server_process.poll() is None:
+        #     c= self._proxy_server_process.stdout.readline()
+        #     return c
+        # return False
 
     def start_transmit(self,chasId,card,port):
         '''
         start to transmit stream
 
         args:
-        - chasId: normally should be 1
+        - chasId: chassis id
         - card:   ixia card
         - port:   ixia port
 
@@ -338,6 +271,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'start_transmit %s %s %s\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -364,6 +298,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'stop_transmit %s %s %s\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -392,6 +327,7 @@ class Ixia(object):
         capture_index = '%s %s %s' % (chasId,card,port)
         self._capture_packet_buffer[capture_index] = []
         cmd = 'start_capture %s %s %s\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -418,6 +354,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'stop_capture %s %s %s\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -444,6 +381,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'clear_statics %s %s %s\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -471,6 +409,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'get_statistics %s %s %s txstate\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         ret = '1'
         time_start = time.time()
         elapsed = time.time() - time_start
@@ -505,6 +444,7 @@ class Ixia(object):
         - negative number: error code
         '''
         cmd = 'get_capture_packet_num %s %s %s\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -531,6 +471,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'set_port_mode_default %s %s %s\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -543,25 +484,26 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
-    def shutdown_proxy_server(self):
-        '''
-        shutdown proxy sever
+    # def shutdown_proxy_server(self):
+    #     '''
+    #     shutdown proxy sever
 
-        Note: Do not use this keyword unless you know what you are doing
+    #     Note: Do not use this keyword unless you know what you are doing
 
-        args:
+    #     args:
 
-        return:
-        - True or False
-        '''
-        shut = self._close_proxy_server()
-        self._close_ixia_client()
-        return shut
+    #     return:
+    #     - True or False
+    #     '''
+    #     shut = self._close_proxy_server()
+    #     self._close_ixia_client()
+    #     return shut
 
     def _get_capture_packet(self,chasId,card,port,packet_from,packet_to):
         '''
         '''
         cmd = 'get_capture_packet %s %s %s %s %s\n' % (chasId,card,port,packet_from,packet_to)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -746,6 +688,7 @@ class Ixia(object):
             raise AssertionError('packet format is error: %s' % ex)
         streamStr = '#'.join(pStr.split())
         cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -790,38 +733,6 @@ class Ixia(object):
             raise AssertionError('write pcap file %s error: %s' % (pcapfname,ex))
         return pcapfname
 
-    def _read_ret(self):
-        '''
-        '''
-        buff = ''
-        try:
-            while True:
-                c = self._ixia_client_handle.recv(1)
-                if c == '\n':
-                    break
-                buff += c
-            return buff
-        except Exception:
-            self._close_ixia_client()
-            raise AssertionError('read return from proxy server error')
-
-    # def build_stream(self,chasId,card,port,streamId,streamRate,streamRateMode,streamMode,numFrames=100,ReturnId=1):
-    #     '''
-    #     '''
-    #     streamStr = self._pkt_class.get_packet_list(ixiaFlag=True)
-    #     self._pkt_class.empty_packet_list()
-    #     cmd = 'set_stream_from_hexstr %s %s %s %s %s %s %s %s %s %s\n' % (chasId,card,port,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId,streamStr)
-    #     try:
-    #         self._ixia_client_handle.sendall(cmd)
-    #     except Exception:
-    #         self._close_ixia_client()
-    #         raise AssertionError('write cmd to proxy server error')
-    #     readret = self._read_ret_select()
-    #     if not readret[0]:
-    #         raise AssertionError('ixia proxy server error: %s' % readret[1])
-    #     ret = readret[1]
-    #     return ret.strip()
-
     def set_stream_packet_by_datapattern(self,chasId,card,port,streamId):
         '''
         set a packet on stream of ixia port
@@ -841,6 +752,7 @@ class Ixia(object):
         streamStr = self._pkt_class.get_packet_list(ixiaFlag=True)
         self._pkt_class.empty_packet_list()
         cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -877,6 +789,7 @@ class Ixia(object):
         streamStr = self._pkt_class.get_packet_list_ixiaapi()
         self._pkt_class.empty_packet_list()
         cmd = 'set_stream_from_ixiaapi %s %s %s %s %s %s\n' % (chasId,card,port,streamId,fcs,streamStr)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -915,6 +828,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'set_stream_control %s %s %s %s %s %s %s %s %s\n' % (chasId,card,port,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -934,6 +848,7 @@ class Ixia(object):
         0: disable
         '''
         cmd = 'set_stream_enable %s %s %s %s %s\n' % (chasId,card,port,streamId,flag)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -966,6 +881,7 @@ class Ixia(object):
         - negative number: error code
         '''
         cmd = 'get_statistics %s %s %s %s' % (chasId,card,port,statisType)
+        self._switch_ixia_client(chasId)
         if args:
             for iarg in args:
                 cmd += ' %s' % iarg
@@ -1019,6 +935,7 @@ class Ixia(object):
         if not mulchoice:
             mulchoice = '0'
         cmd = 'set_port_speed_duplex %s %s %s %s %s\n' % (chasId,card,port,mode,mulchoice)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -1048,6 +965,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'set_port_flowcontrol %s %s %s %s\n' % (chasId,card,port,flag)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -1079,6 +997,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'set_port_ignorelink %s %s %s %s\n' % (chasId,card,port,flag)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
@@ -1107,6 +1026,7 @@ class Ixia(object):
         - non zero: error code
         '''
         cmd = 'set_port_config_default %s %s %s\n' % (chasId,card,port)
+        self._switch_ixia_client(chasId)
         try:
             self._ixia_client_handle.sendall(cmd)
         except Exception:
