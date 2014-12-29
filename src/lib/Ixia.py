@@ -45,13 +45,14 @@ class Ixia(object):
         #     '5.60':os.path.join(self._ixia_tcl_path,'ixia560','bin'),
         #     'default':os.path.join(self._ixia_tcl_path,'ixia410','bin'),
         # }
-        self._proxy_bind_port = {
+        self._dispatchServer_bind_port = {
             '4.10':11917,
             '5.50':11918,
             '5.60':11919,
             'default':11917,
         }
         self._proxy_server_host = '127.0.0.1'
+        self._dispatchServer_host = '192.168.30.22'
         self._pkt_streamlist_hexstring = []
         self._pkt_kws = self._lib_kws = None
         self._pkt_class = rfbase.PacketBase()
@@ -63,6 +64,8 @@ class Ixia(object):
         self.expect_ret_Re = re.compile(r'\n')
         self._ixia_client_handle_dict = {}
         self._ixia_chassis_id = '1'
+        self._ixia_client_key_dict = {}
+        self._ixia_ip_list = []
 
     def init_ixia(self,*ixia_ip_list,**kwargs):
         '''
@@ -79,6 +82,7 @@ class Ixia(object):
         if not ixia_ip_list:
             raise AssertionError('ixia_ip_list should not be empty')
             return False
+        self._ixia_ip_list = ixia_ip_list
         for ip in ixia_ip_list:
             ret = self._init_ixia(ip,kwargs)
             if not ret:
@@ -95,19 +99,37 @@ class Ixia(object):
             version = self._ixia_version[ixia_ip]
         else:
             version = '4.10'
-        if version in self._proxy_bind_port.keys():
-            proxy_server_port = self._proxy_bind_port[version]
-        else:
-            proxy_server_port = 11917
-        cRet = self._start_ixia_client(self._proxy_server_host, proxy_server_port,ixia_ip,self._ixia_chassis_id)
+        init_data = self._connect_dispatch_server(version).split()
+        proxy_server_host = init_data[0]
+        proxy_server_port = init_data[1]
+        proxy_server_key = init_data[2]
+        cRet = self._start_ixia_client(proxy_server_host, proxy_server_port,ixia_ip,self._ixia_chassis_id,proxy_server_key)
         if not cRet:
-            raise AssertionError('connect to proxy server %s %s error' % (self._proxy_server_host,proxy_server_port))
+            raise AssertionError('connect to proxy server %s %s error' % (proxy_server_host,proxy_server_port))
             return False
         nRet = self._connect_ixia(ixia_ip)
         if nRet != '0':
             raise AssertionError('proxy server connect to ixia %s error,return code %s' % (ixia_ip,nRet))
             return False
         return True
+
+    def _connect_dispatch_server(self,version):
+        '''
+        '''
+        if version in self._dispatchServer_bind_port.keys():
+            port = self._dispatchServer_bind_port[version]
+        else:
+            port = 11917
+        try:
+            dispatch_client = socket.create_connection((self._dispatchServer_host, port))
+            dispatch_client.sendall('init ixia')
+            data = dispatch_client.recv(1024)
+        except Exception:
+            raise AssertionError('connect to dispatch server %s %s error' % (self._dispatchServer_host, port))
+        if len(data.split()) != 3:
+            raise AssertionError('get init ixia return data %s error from dispatch server %s %s' % (data,self._dispatchServer_host, port))
+        dispatch_client.close()
+        return data
 
     def __del__(self):
         ''''''
@@ -223,7 +245,7 @@ class Ixia(object):
             else:
                 return False
 
-    def _start_ixia_client(self,ip,port,ixia_ip,chassisID):
+    def _start_ixia_client(self,ip,port,ixia_ip,chassisID,key):
         '''
         '''
         if not self._is_proxyserver_alive(ip,port):
@@ -235,12 +257,34 @@ class Ixia(object):
         self._ixia_client_handle_dict[ixia_ip] = ixia_client_handle
         self._ixia_client_handle_dict[chassisID] = ixia_client_handle
         self._ixia_chassis_id = str(int(chassisID) + 1)
+        self._ixia_client_key_dict[ixia_ip] = key
+        #self._ixia_client_key_dict[chassisID] = key
         return True
+
+    def _close_proxy_server(self):
+        '''
+        '''
+        for ip in self._ixia_ip_list:
+            pkey = self._ixia_client_key_dict[ip]
+            if ip in self._ixia_version.keys():
+                version = self._ixia_version[ixia_ip]
+            else:
+                version = '4.10'
+            if version in self._dispatchServer_bind_port.keys():
+                port = self._dispatchServer_bind_port[version]
+            else:
+                port = 11917
+            try:
+                dispatch_client = socket.create_connection((self._dispatchServer_host, port))
+                dispatch_client.sendall('close ixia %s' % pkey)
+                data = dispatch_client.recv(1024)
+            except Exception:
+                raise AssertionError('connect to dispatch server %s %s error' % (self._dispatchServer_host, port))
+            dispatch_client.close()
 
     def _close_ixia_client(self):
         '''
         '''
-        #cmd = 'close_connection_to_ixia_client\n'
         for ckey in self._ixia_client_handle_dict.keys():
             #try:
                 #self._ixia_client_handle_dict[ckey].sendall(cmd)
@@ -250,7 +294,9 @@ class Ixia(object):
                 self._ixia_client_handle_dict[ckey].close()
             except Exception:
                 pass
+        self._close_proxy_server()
         self._ixia_client_handle_dict = {}
+        self._ixia_client_key_dict = {}
         self._ixia_client_handle = None
 
     def _flush_proxy_server(self):
