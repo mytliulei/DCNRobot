@@ -422,6 +422,11 @@ proc GetStatistics {cmdstr} {
                 set statnum [stat cget -duplexMode]
                 lappend ret $statnum
             }
+            "flowControlFrames" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -flowControlFrames]
+                lappend ret $statnum
+            }
         }
     }
     set retstr [join $ret]

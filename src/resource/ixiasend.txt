@@ -245,6 +245,7 @@ Get Statics
     ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ txstate: 0:stop,1:start;
     ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lineSpeed: The speed configured for the port,unit:Mbps;
     ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ duplex: 0:half,1:full;
+    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ flowControlFrames : flow Control Frames Received
     ...
     ...    return:
     ...    - a statics number or a statics number list; statics number will be a non negative number:

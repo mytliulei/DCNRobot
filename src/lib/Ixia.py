@@ -960,6 +960,7 @@ class Ixia(object):
                       txstate: 0:stop,1:start;
                       lineSpeed: The speed configured for the port,unit:Mbps;
                       duplex: 0:half,1:full;
+                      flowControlFrames : flow Control Frames Received
 
         return:
         - non negative number: statics num
