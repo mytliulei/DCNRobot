@@ -32,6 +32,9 @@ proc IxiaCmd {chan} {
         #eval ixia cmd
         if {$line != ""} {
             set cmdret [evalIxiaCmd $line $chan]
+            if {$cmdret == "close_connection_to_ixia_client"} {
+                return 0
+            }
             puts $chan $cmdret
             flush $chan
             if {$cmdret == -10000} {
@@ -157,6 +160,10 @@ proc evalIxiaCmd {cmdstr chan} {
             if {[catch {set ret [SetPortIgnoreLink $cmdstr]} result]} {
                 set ret -979
             }
+        }
+        "close_connection_to_ixia_client" {
+            close $chan
+            return "close_connection_to_ixia_client"
         }
         default {
             set ret -900

@@ -86,7 +86,7 @@ class Ixia(object):
                 return False
         return True
 
-    def _init_ixia(self,ixia_ip,**kwargs):
+    def _init_ixia(self,ixia_ip,kwargs):
         '''
         '''
         if ixia_ip in self._ixia_client_handle_dict.keys():
@@ -240,7 +240,12 @@ class Ixia(object):
     def _close_ixia_client(self):
         '''
         '''
+        #cmd = 'close_connection_to_ixia_client\n'
         for ckey in self._ixia_client_handle_dict.keys():
+            #try:
+                #self._ixia_client_handle_dict[ckey].sendall(cmd)
+            #except Exception:
+                #pass
             try:
                 self._ixia_client_handle_dict[ckey].close()
             except Exception:
