@@ -197,7 +197,7 @@ class IxiaManagement(object):
         pool_num = len(self.proxy_server_process_pool)
         if used_num > 30:
             return False
-        if used_num >= pool_num*2/3:
+        if used_num >= (pool_num + used_num) *2/3:
             start_num = used_num *2 - pool_num
             for i in range(start_num):
                 if not self.start_proxy_server(self.bind_ip,self.version,0):
