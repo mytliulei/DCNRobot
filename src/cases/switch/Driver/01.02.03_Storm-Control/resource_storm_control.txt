@@ -165,11 +165,12 @@ Send Stream And Check
     Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{sport}
     Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{dport}
     Run Keyword If    ${transmit_tag}==True    Ixiasend.Start Transmit    @{sport}
-    sleep    1s
+    #    sleep    1s
+    sleep    5s
     #获取发包速率,用于出错时检查
     Get Statics    @{sport}    tx${received_type}
     ${ret}    CheckIxiaReceiveRate    @{dport}    ${received_type}    ${received_rate}    ${tolerance}
-    Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n ${STEP} check stream error!
+    Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n check stream error!
     #若检查有误, 则debug交换机
     Run Keyword unless    ${ret}    Repeat Keyword    2 times    Exec Cmd List    ${s1_alias}    show interface ${s1p1} | begin Statistics
     Run Keyword unless    ${ret}    Repeat Keyword    2 times    Exec Cmd List    ${s1_alias}    show interface ${s1p2} | begin Statistics

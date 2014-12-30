@@ -12,33 +12,39 @@ Resource          resource_flow_control.txt
 01_半双工模式下配置flow control,产生collision,但不发送pause帧
     [Setup]    01_init
     Log Step Start    Step1    半双工模式下同时收发流量,不发送Pause帧,端口产生collision
+    Ixiasend.Clear Statics    @{testerp1}
     Ixiasend.Start Transmit    @{testerp1}
     Ixiasend.Start Transmit    @{testerp2}
-    ${tp1_tx}=    Get Statics    @{testerp1}    txbps
-    ${tp2_tx}=    Get Statics    @{testerp2}    txbps
     sleep    10s    等待端口计数
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${tp1_FCR}=    Get Statics    @{testerp1}    flowControlFrames
     \    #读取端口s1p1与s1p2发送的pause以及collisions计数
     ${p1_tx}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    tx_pause    tx_collisions
     ${p1_pause}=    Get From Dictionary    ${p1_tx}    tx_pause
     ${p1_collisions}=    Get From Dictionary    ${p1_tx}    tx_collisions
-    should be true    ${p1_pause}==${0}    s1p1不会发送pause帧
-    should be true    ${p1_collisions}>${0}    s1p1产生冲突帧
+    should be true    ${p1_pause}==${tp1_FCR}==${0}    s1p1不会发送pause帧
+    should be true    ${p1_collisions}>${0}    s1p1应该产生冲突帧
     Log Step End    Step1
     #
     #
     Log Step Start    Step2    开启flow-control无影响,依然存在collision,不发送pause
     Set Flow Control    ${s1_alias}    ${s1p1}
     sleep    5s    等待s1p1 UP
+    Ixiasend.Clear Statics    @{testerp1}
     Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
     sleep    10s    等待端口计数
-    ${tp1_tx}=    Get Statics    @{testerp1}    txbps
-    ${tp2_tx}=    Get Statics    @{testerp2}    txbps
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${tp1_FCR}=    Get Statics    @{testerp1}    flowControlFrames
     \    #读取端口s1p1与s1p2发送的pause以及collisions计数
     ${p1_tx}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    tx_pause    tx_collisions
     ${p1_pause}=    Get From Dictionary    ${p1_tx}    tx_pause
     ${p1_collisions}=    Get From Dictionary    ${p1_tx}    tx_collisions
-    should be true    ${p1_pause}==${0}    s1p1不会发送pause帧
-    should be true    ${p1_collisions}>${0}    s1p1产生冲突帧
+    should be true    ${p1_pause}==${tp1_FCR}==${0}    s1p1不会发送pause帧
+    should be true    ${p1_collisions}>${0}    s1p1应该产生冲突帧
     Log Step End    Step2
     #
     #
@@ -67,8 +73,6 @@ Resource          resource_flow_control.txt
 01_uninit
     [Documentation]    停止流量发送,恢复配置.
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置
-    Ixiasend.Stop Transmit    @{testerp1}
-    Ixiasend.Stop Transmit    @{testerp2}
     unSet Flow Control    ${s1_alias}    ${s1p1}
     Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no speed-duplex
     : FOR    ${cfg}    IN    @{s1p1_config}

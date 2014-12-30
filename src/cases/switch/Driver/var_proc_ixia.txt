@@ -183,7 +183,7 @@ Set ixia stream ip
     ...    \- ${type_id}=${1} #eth_type,报文以太网类型,当设置ip字段后,此字段会自动设置为0x0800,即IP
     ...    \- ${dst_ip}=${1} #destination ip,报文目的ip地址
     ...    \- ${src_ip}=${1} #source ip,报文源ip地址
-    ...    \- ${pkt_length}=${1} #报文整体长度
+    ...    \- ${pkt_length}=${64} #报文整体长度
     ...    \- ${reset}=False #resetixia端口,True表示reset,False表示不reset
     ...
     ...    Example:

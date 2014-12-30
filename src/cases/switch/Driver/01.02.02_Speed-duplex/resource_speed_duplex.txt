@@ -45,7 +45,7 @@ check negotiation
     ${len}=    Get Length    ${neglist}
     Run Keyword If    ${len}==${0}    Ixiasend.Set Port Speed Duplex    @{testerp1}    ${mode}    ELSE    Ixiasend.Set Port Speed Duplex
     ...    @{testerp1}    ${mode}    @{neglist}
-    sleep    5s    wait for port up
+    sleep    8s    wait for port up
     ${s1p1_up}    ${s1p1_speed}    ${s1p1_duplex}=    Get Port Status    ${s1_alias}    ${s1p1}    updown
     ...    speed    duplex
     ${tp1_up}    ${tp1_spd}    ${tp1_duplex}=    Get Statics    @{testerp1}    updown    lineSpeed

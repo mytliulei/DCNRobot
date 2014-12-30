@@ -17,22 +17,22 @@ Resource          resource_forwarding.txt
     Log Step End    step1
     #
     #
-    Log Step Start    step2    动态学习neibor,主机表项创建正常,流量转发正常
+    #    Log Step Start    step2    动态学习neibor,主机表项创建正常,流量转发正常
     #    让设备学习动态nd
-    Builtin.Comment    Ixia.Set Port Mode Default    @{testerp1}
-    Builtin.Comment    01_set tp1 nd stream
-    Builtin.Comment    Ixiasend.Start Transmit    @{testerp1}
-    Builtin.Comment    sleep    5s    等待流量发送完成
-    Builtin.Comment    Ixiasend.Stop Transmit    @{testerp1}
-    Builtin.Comment    ${res1}=    Check nd    ${s1_alias}    port=${s1p1}    if=10    ipv6=2010::100
-    ...    ipv6_incr=20    mac=00-00-10-01-01-64    mac_incr=20
-    Builtin.Comment    should be true    ${res1}    ${TEST_NAME}\n Step2 交换机学习到20个neibor
-    Builtin.Comment    Ixiasend.Start Transmit    @{testerp2}
-    Builtin.Comment    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
-    ...    tolerance=0.05
-    Builtin.Comment    should be true    ${res2}    ${TEST_NAME}\n Step2 tp1能收到tp2发送的ip流量
-    Builtin.Comment    Ixiasend.Stop Transmit    @{testerp2}
-    Log Step End    step2
+    #    Ixia.Set Port Mode Default    @{testerp1}
+    #    01_set tp1 nd stream
+    #    Ixiasend.Start Transmit    @{testerp1}
+    #    sleep    5s    等待流量发送完成
+    #    Ixiasend.Stop Transmit    @{testerp1}
+    #    ${res1}=    Check nd    ${s1_alias}    port=${s1p1}    if=10    ipv6=2010::100
+    ...    #ipv6_incr=20    mac=00-00-10-01-01-64    mac_incr=20
+    #    should be true    ${res1}    ${TEST_NAME}\n Step2 交换机学习到20个neibor
+    #    Ixiasend.Start Transmit    @{testerp2}
+    #    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    ...    #tolerance=0.05
+    #    should be true    ${res2}    ${TEST_NAME}\n Step2 tp1能收到tp2发送的ip流量
+    #    Ixiasend.Stop Transmit    @{testerp2}
+    #    Log Step End    step2
     #
     #
     Log Step Start    step3    配置静态neibor,主机表项创建正常,流量转发正常
@@ -45,12 +45,12 @@ Resource          resource_forwarding.txt
     \    ${mac}=    tools.incr mac    ${mac}
     ${res1}=    Check nd    ${s1_alias}    port=${s1p1}    if=10    ipv6=2010::200    ipv6_incr=20
     ...    mac=00-00-10-01-01-c8    mac_incr=20    nd_type=permanent
-    should be true    ${res1}    ${TEST_NAME}\n Step3 s1p1有20个静态neibor
+    should be true    ${res1}    ${TEST_NAME}\n Step3 s1p1应该有20个静态neibor
     Ixia.Set Port Mode Default    @{testerp2}
     01_set tp2 ipv6 stream for static
     Ixiasend.Start Transmit    @{testerp2}
     ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=0.05
-    should be true    ${res2}    ${TEST_NAME}\n Step3 tp1能收到tp2发送的ip流量
+    should be true    ${res2}    ${TEST_NAME}\n Step3 tp1应该能收到tp2发送的ip流量
     Ixiasend.Stop Transmit    @{testerp2}
     Log Step End    step3
     #
@@ -82,7 +82,7 @@ Resource          resource_forwarding.txt
     01_set tp2 ipv6 stream for static
     Ixiasend.Start Transmit    @{testerp2}
     ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=30
-    should be true    ${res2}    ${TEST_NAME}\n Step5 tp1能收到tp2发送的ip流量
+    should be true    ${res2}    ${TEST_NAME}\n Step5 tp1不应该收到tp2发送的ip流量
     Ixiasend.Stop Transmit    @{testerp2}
     Log Step End    step5
     [Teardown]    01_uninit
@@ -130,7 +130,7 @@ Resource          resource_forwarding.txt
     Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ipv6 pim sparse-mode
     Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 20    ipv6 pim sparse-mode
     Switch.Enable Mode    ${s1_alias}
-    :FOR    ${i}    IN RANGE    1    4
+    : FOR    ${i}    IN RANGE    1    4
     \    ${ret}=    exec cmd    ${s1_alias}    show ipv6 pim bsr-router
     \    ${res}=    Tools.Is Match From String    ${ret}    BSR address: 2010::1
     \    Exit For Loop If    ${res}==${True}
@@ -157,28 +157,28 @@ Resource          resource_forwarding.txt
     03_set tp1 ipv6 mld report
     Ixiasend.Start Transmit    @{testerp1}
     Switch.Enable Mode    ${s1_alias}
-    :FOR    ${i}    IN RANGE    1    4
+    : FOR    ${i}    IN RANGE    1    4
     \    sleep    20
     \    ${ret}=    Exec cmd    ${s1_alias}    show ipv6 mroute
     \    ${res1}=    Tools.Is Match From String    ${ret}    ff1f::1:203.*?${vlanoutIndex}:1\\s
     \    Exit For Loop If    ${res1}==${True}
-    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=5
-    Should Be True    ${res1}    组播转发表项的出接口应该为空
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=0.05
+    Should Be True    ${res1}    组播转发表项的出接口不应该为空
     Should Be True    ${res2}    tp1应该收到流量
     Log Step End    step3
     ##
-    Log Step Start    step4    tp2发送组播源流量,tp1点播,组播转发表项建立
+    Log Step Start    step4    tp2发送组播源流量,tp1发送mld done,组播转发表项删除
     Ixiasend.Stop Transmit    @{testerp1}
     03_set tp1 ipv6 mld done
     Ixiasend.Start Transmit    @{testerp1}
     sleep    5
     Switch.Enable Mode    ${s1_alias}
-    :FOR    ${i}    IN RANGE    1    4
+    : FOR    ${i}    IN RANGE    1    4
     \    sleep    20
     \    ${ret}=    Exec cmd    ${s1_alias}    show ipv6 mroute
     \    ${res1}=    Tools.Is Match From String    ${ret}    ff1f::1:203.*?0:0
     \    Exit For Loop If    ${res1}==${True}
-    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=5
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=5
     Should Be True    ${res1}    组播转发表项的出接口应该为空
     Should Be True    ${res2}    tp1不应该收到流量
     Log Step End    step4
@@ -223,6 +223,7 @@ Resource          resource_forwarding.txt
     [Teardown]    04_uninit
 
 1.2.12.3.5 ttl=1的转发IPv6报文处理
+    [Setup]    05_init
     Log Step Start    step1    ttl=1的转发IP报文处理
     05_set tp1 ipv6 icmp request    ttl=${1}
     Ixiasend.Start Capture    @{testerp1}
@@ -236,8 +237,8 @@ Resource          resource_forwarding.txt
     Ixiasend.Get Capture Packet    @{testerp2}
     ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    ip6 dst host 2010::100 and ip6[40]==3
     ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    ip6 dst host 2020::100 and ip6[40]==128
-    Builtin.Comment    should be true    ${tp1_Rx}==${5}    ${TEST_NAME}\n Step1 tp1发送ttl=1的icmp报文后,没有收到icmp超时回复
-    Builtin.Comment    should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step1 tp1发送ttl=1的icmp报文后,tp2不应该收到icmp报文
+    tools.comment    should be true    ${tp1_Rx}==${5}    ${TEST_NAME}\n Step1 tp1发送ttl=1的icmp报文后,没有收到icmp超时回复
+    tools.comment    should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step1 tp1发送ttl=1的icmp报文后,tp2不应该收到icmp报文
     Log Step End    step1
     #
     #
@@ -258,6 +259,7 @@ Resource          resource_forwarding.txt
     should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step2 tp1发送ttl=0的icmp报文后,tp2收到了icmp报文
     Log Step End    step2
     #
+    [Teardown]    05_uninit
 
 *** Keywords ***
 01_init

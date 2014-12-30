@@ -27,21 +27,23 @@ Resource          resource_flow_control.txt
     #
     log Step Start    Step 2    验证port-channel模式下,flow control功能生效
     exec cmd list    ${s1_alias}    clear counters
+    Ixiasend.Clear Statics    @{testerp1}
+    Ixiasend.Clear Statics    @{testerp2}
     Ixiasend.Start Transmit    @{testerp1}
     Ixiasend.Start Transmit    @{testerp2}
-    sleep    5s
-    ${tp1_tx}=    Get Statics    @{testerp1}    txbps
-    ${tp2_tx}=    Get Statics    @{testerp2}    txbps
-    ${tp1_rx}=    Get Statics    @{testerp1}    rxbps
-    ${tp2_rx}=    Get Statics    @{testerp2}    rxbps
-    sleep    5s    等待端口计数
-    \    #读取端口s1p1与s1p2发送的pause
+    sleep    10s
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${tp1_tx}    ${tp1_rx}    ${tp1_FCR}=    Get Statics    @{testerp1}    txpackets    rxpackets
+    ...    flowControlFrames
+    ${tp2_tx}    ${tp2_rx}    ${tp2_FCR}=    Get Statics    @{testerp2}    txpackets    rxpackets
+    ...    flowControlFrames
     ${p1_tx}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    tx_pause
     ${p2_tx}=    Get Show Interface Port    ${s1_alias}    ${s1p2}    tx_pause
     ${p1_pause}=    Get From Dictionary    ${p1_tx}    tx_pause
     ${p2_pause}=    Get From Dictionary    ${p2_tx}    tx_pause
-    should be true    (${p1_pause}>${0}) and (${p2_pause}>${0})    s1p1与s1p2发送pause帧
-    ${res}=    check more or less    ${${tp1_tx}+${tp2_tx}}    ${${tp1_rx}+${tp2_rx}}    0.1
+    should be true    (${p1_pause}>${0}) and (${p2_pause}>${0}) and ${tp1_FCR}>${0} and ${tp2_FCR}>${0}    s1p1与s1p2发送pause帧
+    ${res}=    check more or less    ${${tp1_rx}+${tp2_rx}}    ${${tp1_tx}+${tp2_tx}+${tp1_FCR}+${tp2_FCR}}    0.05
     should be true    ${res}    tp1与tp2发送速率受流控影响,总速率下降到与tp1+tp2收包速率一致.
     log Step End    Step 2
     #
@@ -70,8 +72,6 @@ Resource          resource_flow_control.txt
     unset Flow Control    ${s1_alias}    ${s1p2}
     Ixiasend.Set Port Config Default    @{testerp1}
     Ixiasend.Set Port Config Default    @{testerp2}
-    Ixiasend.Stop Transmit    @{testerp1}
-    Ixiasend.Stop Transmit    @{testerp2}
     sleep    5s    等待端口up
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置完成<<<<<
 
@@ -84,4 +84,5 @@ Resource          resource_flow_control.txt
     Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 100
     unset Flow Control    ${s1_alias}    ${s1p1}
     unset Flow Control    ${s1_alias}    ${s1p2}
+    sleep    5s    wait for port up
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置完成<<<<<

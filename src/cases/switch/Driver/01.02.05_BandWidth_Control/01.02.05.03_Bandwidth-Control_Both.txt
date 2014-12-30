@@ -68,11 +68,13 @@ set and check
     tools.Comment    检查入方向带宽控制功能
     ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${in_cfg_value}    direction=receive
     Ixiasend.Start Transmit    @{testerp1}
+    sleep    2s    等待桶令牌耗尽
     ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}    ${tolerance}
     Ixiasend.Stop Transmit    @{testerp1}
     tools.Comment    检查出方向带宽控制功能
     ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${out_cfg_value}    direction=transmit
     Ixiasend.Start Transmit    @{testerp2}
+    sleep    2s    等待桶令牌耗尽
     ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}    ${tolerance}
     Ixiasend.Stop Transmit    @{testerp2}
     Run Keyword And Continue On Failure    Should Be True    ${res1}&${res2}    For Loop ${LOOP}: bandwidth control input ${in_cfg_value}kbps, ouput ${out_cfg_value} kbps ,Check Error!!
