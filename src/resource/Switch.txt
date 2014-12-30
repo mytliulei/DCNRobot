@@ -165,9 +165,9 @@ Exec Cmd Until Regexp
     Telnet.Switch Connection    ${alias}
     Telnet.Read
     Telnet.Write    ${cmd}
-    Run Keyword If    ${timeout} is not None    Telnet.Set Timeout    ${timeout}
+    Run Keyword If    '${timeout}' != '${None}'    Telnet.Set Timeout    ${timeout}
     ${output}=    Telnet.Read Until Regexp    ${regexp}
-    Run Keyword If    ${timeout} is not None    Telnet.Set Timeout    ${sw_timeout}
+    Run Keyword If    '${timeout}' != '${None}'    Telnet.Set Timeout    ${sw_timeout}
     [Return]    ${output}
 
 Exec Cmd List
@@ -450,7 +450,7 @@ Exec Cmd Until Timeout
     Telnet.Switch Connection    ${alias}
     Telnet.Read
     Telnet.Write    ${cmd}
-    Run Keyword If    ${timeout} is not None    Sleep    ${timeout}
+    Run Keyword If    '${timeout}' != '${None}'    Sleep    ${timeout}
     ${output}=    Telnet.Read
     [Return]    ${output}
 
