@@ -1,0 +1,45 @@
+*** Variables ***
+${BOOT_PRIMARY_IMG}    primary img    # 第一启动
+${BOOT_BACKUP_IMG}    backup img    # 第二启动
+${BOOT_CURRENT_IMG}    Current booted img    # 当前启动img
+${BOOT_CURRENT_STARTUP_CONFIG}    Current booted startup-config    # 当前启动配置文件
+${BOOT_STARTUP_CONFIG}    startup-config
+${SET_IMG_BOOT_WITHOUT_POSTFIX_IN_BOOT}    Set img file flash:/${BOOT_IMG_NAME_WITHOUT_POSTFIX} failed!    # bootrom下设置启动img文件名不带后缀.img，提示信息
+${BOOT_IMG_NAME_WITHOUT_POSTFIX}    nos1    # img文件名不带后缀
+${SET_IMG_BOOT_WITHOUT_POSTFIX_IN_IMG}    The postfix of file name should be .img    # img下设置启动img文件名不带后缀.img，提示信息
+${BOOT_NULL_REGEXP}    default factory-config will be used    # 以空配置文件启动
+${SET_STARTUP_CONFIG_WITHOUT_POSTFIX_IN_IMG}    The postfix of startup-config file name must be .cfg    # img模式下设置启动配置文件，但是配置文件不带后缀.cfg，错误提示
+${SET_STARTUP_CONFIG_WITHOUT_POSTFIX_IN_BOOT}    File name should be 'startup-config' or end with '.cfg'    # boot模式下设置启动配置文件，但是配置文件不带后缀.cfg，错误提示
+${WRITE_RUNNING_CONFIG_WITHOUT_POSTFIX_IN_IMG}    The postfix of startup configuration file name should be .cfg    # 保存当前配置到配置到文件，但是配置文件不带后缀.cfg
+${BEGIN_TO_RECEIVE}    Begin to receive file, please wait
+${FILE_WITHOUT_POSTFIX}    Source and destination file should have same extension!    # 源或目标文件名不带后缀，错误提示
+${UPDATA_SUCCESS_REGEXP}    Write ok    #copy成功
+${BOOT_IMG_DEFAULT_NAME}    nos.img    # 默认img名称
+${BACKUP_SOURCE_IMG_NAME}    7.0.3.5\(R0102.0094\)_nos.img    # 备份img版本文件
+${BOOT_STARTUP1_CFG}    startup1.cfg
+${DEFAULT_IMG_VERSION}    7.0.3.5\\(R0102.0100\\)    # primary img版本号
+${BACKUP_IMG_VERSION}    7.0.3.5\\(R0102.0094\\)    # backup img版本号
+${BOOT_BACKUP_IMG_NAME}    nos1.img    # flash中备份img名称
+${LONGER_FILE_NAME}    12345678901234567890123456789012345678901234567890123456789012345678901234567    # 超长文件名
+${FILE_NAME_OF_EIGHTY}    1234567890123456789012345678901234567890123456789012345678901234567890123456    # 包括后缀总共80个字符串文件名
+${BOOT_CONFIG_DEFAULT_NAME}    startup.cfg
+${FILE_SIZE_IMG}    11.3M    # 默认img文件大小
+${DEFAULT_DIRECTORY}    flash:/    # 默认工作路径为flash:/
+${FILE_DIRECTORY_OF_EIGHTY}    ${DEFAULT_DIRECTORY}${FILE_NAME_AND_DIRECTORY_OF_EIGHTY}    # 包括绝对路径，子目录为80个字符
+${OVER_SIZE_IMG_NAME}    over_size_img_name.img    # 大img文件，超过ftp/tftp copy img文件大小限制
+${TFTP_COPY_OVER_SIZE_IMG_REGEXP}    sorry the tftp file is over 12582912 bytes in tftp_recvFile    # tftp方式copy大img文件提示错误信息
+${TFTP_COPY_OVER_SIZE_CONFIG_REGEXP}    sorry the ftp file is over 3145728 bytes in tftp_recvFile    # tftp方式copy一个大config文件，提示错误信息
+${OVER_SIZE_CONFIG_NAME}    over_size_config_name.cfg    # 大config文件，超过ftp/tftp copy img文件大小限制
+${FTP_COPY_OVER_SIZE_CONFIG_REGEXP}    sorry the img file is over 3145728 bytes in recvFileafter    # ftp方式copy一个大config文件，提示错误信息
+${FTP_COPY_OVER_SIZE_IMG_REGEXP}    sorry the img file is over 12582912 bytes in recvFileafter    # ftp方式copy一个大img文件，提示错误信息
+${USERNAME_FTP}    admin    # FTP服务器用户名
+${PASSWORD_FTP}    admin    # FTP服务器密码
+${FILE_NAME_AND_DIRECTORY_OF_EIGHTY}    123456789012345678901234567890123456789012345678901234567890123456789    # 包括绝对路径，文件名总共80个字符
+${BIG_SIZE_CONFIG_NAME}    big_size_config_name.cfg    # 大config文件
+${SIZE_OF_BIG_SIZE_CONFIG_FILE}    943.4K    # 大config文件的大小
+${SIZE_OF_BIG_SIZE_CONFIG_FILE_BYTES}    966062    # 大config文件字节大小
+${FILE_SIZE_IMG_BYTES}    11837100    # img文件字节大小
+${NOT_EXISTED_SOURCE_IMG_FILE_NAME}    111.img    # 不存在的img名称
+${NOT_EXISTED_SOURCE_CONFIG_FILE_NAME}    111.cfg    # 不存在的config文件
+${NOT_EXISTED_DEVICE}    flash111:    # 不存在的存储设备
+${INVALID_DEVICE}    123    # 无效的存储设备

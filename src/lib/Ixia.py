@@ -904,11 +904,10 @@ class Ixia(object):
         - streamRateMode: 0:percent ; 1: pps ; 2: bps
         - streamMode: stream control mode;
           0: continuously transmit the frames on this stream;
-          1: continuously transmit bursts of frames on this stream
-          2: stop transmission
-          3: advance
-          4: return to id ,default to stream 1
-        - numFrames: stream send packet num,enable when streamMode 2,3,4; default 100
+          1: stop transmission
+          2: advance
+          3: return to id ,default to stream 1
+        - numFrames: stream send packet num,enable when streamMode 1,2,3; default 100
         - ReturnId: enable when streamMode 4 ,default 1
 
         return:
@@ -961,6 +960,7 @@ class Ixia(object):
                       txstate: 0:stop,1:start;
                       lineSpeed: The speed configured for the port,unit:Mbps;
                       duplex: 0:half,1:full;
+                      flowControlFrames : flow Control Frames Received
 
         return:
         - non negative number: statics num
