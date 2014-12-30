@@ -532,13 +532,13 @@ Resource          resource_speed_duplex.txt
     #
     #
     Log Step Start    step4    check for "s1p1 auto 100 1000" to "ixia force10-full"
-    check negotiation    mode=4    port_updown=UP    port_speed=10    port_duplex=HALF    ixia_updown=1    ix_speed=10
-    ...    ix_duplex=1
+    check negotiation    mode=4    port_updown=DOWN    port_speed=None    port_duplex=None    ixia_updown=0    ix_speed=10
+    ...    ix_duplex=0
     Log Step End    step4
     #
     #
     Log Step Start    step5    check for "s1p1 auto 100 1000" to "ixia force10-half"
-    check negotiation    mode=5    port_updown=UP    port_speed=10    port_duplex=HALF    ixia_updown=1    ix_speed=10
+    check negotiation    mode=5    port_updown=DOWN    port_speed=None    port_duplex=None    ixia_updown=0    ix_speed=10
     ...    ix_duplex=0
     Log Step End    step5
     #
@@ -698,6 +698,7 @@ Resource          resource_speed_duplex.txt
 init
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
     Pass Execution If    '${S1P1_HW}'=='Fiber'    光口不支持速率双工配置    TAG_Skip
+    Unset Speed-duplex    ${s1_alias}    ${s1p1}
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
 
 uninit
@@ -713,4 +714,5 @@ uninit
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
     Pass Execution If    '${S1P1_HW}'=='Fiber'    光口不支持速率双工配置    TAG_Skip
     Pass Execution If    ${S1P1_MAX_SPD}<1000    百兆端口不支持配置千兆协商    TAG_skip
+    Unset Speed-duplex    ${s1_alias}    ${s1p1}
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<

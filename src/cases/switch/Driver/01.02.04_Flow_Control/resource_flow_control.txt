@@ -3,6 +3,7 @@ Resource          ../resource_driver.txt
 
 *** Variables ***
 ${CMD_FLOW_CONTROL}    flow control
+${BW_Rate}        10000
 
 *** Keywords ***
 init suite test

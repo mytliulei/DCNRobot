@@ -39,17 +39,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     ##
     Log Step Start    Step2    分别发送广播，组播，未知单播和已知单播流量，不受抑制。
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Log Step End    Step2
@@ -66,17 +66,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ...    - step 6 发送流量后,开启广播抑制,流量收到抑制,关闭广播抑制,流量恢复正常
     Log Step Start    Step1    广播抑制对出方向流量不生效
     Set Storm Control    ${s1_alias}    ${s1p2}    broadcast    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p2}    broadcast
@@ -85,17 +85,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    测试配置最小值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    broadcast    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    broadcast
@@ -104,17 +104,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    测试配置中间值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    broadcast    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    broadcast
@@ -123,17 +123,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    测试配置较大值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    broadcast    ${LIMIT_HIGH_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    broadcast
@@ -142,17 +142,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    配置广播抑制后，发送小于抑制值的流量，转发不受限制
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    broadcast    ${LIMIT_HIGHER_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    broadcast
@@ -183,17 +183,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ...    - step 6 发送流量后,开启组播抑制,流量收到抑制,关闭组播抑制,流量恢复正常
     Log Step Start    Step1    广播抑制对出方向流量不生效
     Set Storm Control    ${s1_alias}    ${s1p2}    multicast    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p2}    multicast
@@ -202,17 +202,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    测试配置最小值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    multicast    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    multicast
@@ -221,17 +221,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    测试配置中间值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    multicast    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    multicast
@@ -240,17 +240,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    测试配置较大值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    multicast    ${LIMIT_HIGH_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    multicast
@@ -259,17 +259,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    配置广播抑制后，发送小于抑制值的流量，转发正常
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    multicast    ${LIMIT_HIGHER_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    multicast
@@ -301,17 +301,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     Log Step Start    Step1    广播抑制对出方向流量不生效
     #Cat设备中, DLF抑制表示对未知单播的抑制
     Set Storm Control    ${s1_alias}    ${s1p2}    dlf    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p2}    dlf
@@ -320,17 +320,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    测试配置最小值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    dlf    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    dlf
@@ -339,17 +339,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    测试配置中间值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    dlf    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    dlf
@@ -358,17 +358,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    测试配置较大值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    dlf    ${LIMIT_HIGH_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    dlf
@@ -377,17 +377,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    配置广播抑制后，发送小于抑制值的流量，转发正常
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    dlf    ${LIMIT_HIGHER_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    dlf
@@ -419,17 +419,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     Log Step Start    Step1    广播抑制对出方向流量不生效
     #7.2 unicast的抑制是只对未知单播生效    除了7.0.3.5(R0224.0018)及之前版本的PonCat设备, 还使用dlf来表示对未知单播的抑制。
     Set Storm Control    ${s1_alias}    ${s1p2}    unicast    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p2}    unicast
@@ -438,17 +438,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    测试配置最小值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    tolerance=${0.15}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
@@ -457,17 +457,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    测试配置中间值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
@@ -476,17 +476,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    测试配置较大值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_HIGH_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
@@ -495,17 +495,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    配置广播抑制后，发送小于抑制值的流量，转发正常
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_HIGHER_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
@@ -537,17 +537,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     Log Step Start    Step1    广播抑制对出方向流量不生效
     #Cat 设备中, unicast抑制表示对已知单播抑制. 与其他设备不一样.
     Set Storm Control    ${s1_alias}    ${s1p2}    unicast    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p2}    unicast
@@ -556,17 +556,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    测试配置最小值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
     Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
@@ -575,17 +575,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    测试配置中间值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
     Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
@@ -594,17 +594,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    测试配置较大值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_HIGH_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
     Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
@@ -613,17 +613,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    配置广播抑制后，发送小于抑制值的流量，转发正常
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_HIGHER_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}    unicast
@@ -654,17 +654,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ...    - step 6 发送流量后,开启抑制,流量收到抑制,关闭抑制,流量恢复正常
     Log Step Start    Step1    广播抑制对出方向流量不生效
     Set Storm Control    ${s1_alias}    ${s1p2}    brmc    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p2}
@@ -673,17 +673,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    测试配置最小值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    brmc    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -692,17 +692,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    测试配置中间值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    brmc    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -711,17 +711,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    测试配置较大值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    brmc    ${LIMIT_HIGH_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -730,17 +730,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    配置广播抑制后，发送小于抑制值的流量，转发正常
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    brmc    ${LIMIT_HIGHER_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -777,17 +777,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ...    - step 6 发送流量后,开启抑制,流量收到抑制,关闭抑制,流量恢复正常
     Log Step Start    Step1    广播抑制对出方向流量不生效
     Set Storm Control    ${s1_alias}    ${s1p2}    brmcdlf    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p2}
@@ -796,17 +796,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    测试配置最小值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    brmcdlf    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -815,17 +815,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    测试配置中间值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    brmcdlf    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -834,17 +834,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    测试配置较大值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    brmcdlf    ${LIMIT_HIGH_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -853,17 +853,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    配置广播抑制后，发送小于抑制值的流量，转发正常
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    brmcdlf    ${LIMIT_HIGHER_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -902,7 +902,7 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ...    - step 6 发送流量后,开启抑制,流量收到抑制,关闭抑制,流量恢复正常
     Log Step Start    Step1    广播抑制对出方向流量不生效
     Set Storm Control    ${s1_alias}    ${s1p2}    all    ${LIMIT_LOW_RATE}
-    Comment    配置发送所有流量
+    tools.comment    配置发送所有流量
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}    stream_id=1    stream_mode=${IXIA_StreamMode_next}
     ...    reset=True
@@ -966,17 +966,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ...    - step 6 发送流量后,开启抑制,流量收到抑制,关闭抑制,流量恢复正常
     Log Step Start    Step1    广播抑制对出方向流量不生效
     Set Storm Control    ${s1_alias}    ${s1p2}    all    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p2}
@@ -985,17 +985,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    测试配置最小值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    all    ${LIMIT_LOW_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}    0.15
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -1004,17 +1004,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    测试配置中间值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    all    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -1023,17 +1023,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    测试配置较大值
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    all    ${LIMIT_HIGH_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -1042,17 +1042,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    配置广播抑制后，发送小于抑制值的流量，转发正常
     ${expect_value}=    Set Storm Control    ${s1_alias}    ${s1p1}    all    ${LIMIT_HIGHER_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Unset Storm Control    ${s1_alias}    ${s1p1}
@@ -1095,7 +1095,7 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ...    - step 8 发送已知单播流量,不受抑制
     ...    - step 9 恢复初始配置
     Log Step Start    Step1    未配置抑制时， 所有流量正常转发
-    Comment    配置发送所有流量
+    tools.comment    配置发送所有流量
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${${SEND_RATE}*3}    ${STREAM_TYPE}    stream_id=1    stream_mode=${IXIA_StreamMode_next}
     ...    reset=True
@@ -1169,17 +1169,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ...    - step 8 Cat设备配置广播,组播,未知单播,已知单播同时抑制， 会覆盖之前的抑制配置， 因此所有流量受到抑制
     ...    - step 9 恢复初始配置
     Log Step Start    Step1    未配置抑制时， 所有流量正常转发
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Log Step END    Step1    未配置抑制时， 所有流量正常转发
@@ -1187,17 +1187,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     #
     Log Step Start    step 2    配置广播流量抑制时， 只有广播流量被抑制
     ${expect_value_br}=    Set Storm Control    ${s1_alias}    ${s1p1}    broadcast    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value_br}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Log Step End    step 2    配置广播流量抑制时， 只有广播流量被抑制
@@ -1205,17 +1205,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 3    Cat设备配置组播抑制， 会覆盖之前抑制的配置， 因此只有组播流量受到抑制
     ${expect_value_mc}=    Set Storm Control    ${s1_alias}    ${s1p1}    multicast    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value_mc}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Log Step End    step 3    Cat设备配置组播抑制， 会覆盖之前抑制的配置， 因此只有组播流量受到抑制
@@ -1223,17 +1223,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 4    Cat设备配置未知单播抑制， 会覆盖之前的抑制配置， 因此只有未知单播流量受到抑制
     ${expect_value_dlf}=    Set Storm Control    ${s1_alias}    ${s1p1}    dlf    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value_dlf}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
     Log Step End    step 4    Cat设备配置未知单播抑制， 会覆盖之前的抑制配置， 因此只有未知单播流量受到抑制
@@ -1241,17 +1241,17 @@ ${LIMIT_HIGHER_RATE}    30000    #超大抑制值 确保大于${SEND_RATE} ,注�
     ##
     Log Step Start    step 5    Cat设备配置已知单播抑制， 会覆盖之前的抑制配置， 因此只有已知单播流量受到抑制
     ${expect_value_uc}=    Set Storm Control    ${s1_alias}    ${s1p1}    unicast    ${LIMIT_MIDDLE_RATE}
-    Comment    广播
+    tools.comment    广播
     #设置流量    #发送端口    #发送流量类型    #发送速率    #发送流量单位(bps,pps)
     Set stream    @{testerp1}    broadcast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    组播
+    tools.comment    组播
     Set stream    @{testerp1}    multicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    未知单播
+    tools.comment    未知单播
     Set stream    @{testerp1}    dlf    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${RECEIVE_RATE}
-    Comment    已知单播
+    tools.comment    已知单播
     Set stream    @{testerp1}    unicast    ${SEND_RATE}    ${STREAM_TYPE}
     Send Stream And Check    @{testerp1}    @{testerp2}    ${STREAM_TYPE}    ${expect_value_uc}
     Log Step End    step 5    Cat设备配置已知单播抑制， 会覆盖之前的抑制配置， 因此只有已知单播流量受到抑制

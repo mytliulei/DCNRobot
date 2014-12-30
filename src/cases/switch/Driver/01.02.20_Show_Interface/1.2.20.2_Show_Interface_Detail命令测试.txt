@@ -50,4 +50,4 @@ Resource          resource_show_interface.txt
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
 
 show for Test failed
-    log    a
+    log    ok

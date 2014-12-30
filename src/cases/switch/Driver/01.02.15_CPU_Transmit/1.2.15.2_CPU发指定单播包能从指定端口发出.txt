@@ -57,6 +57,7 @@ Resource          resource_cpu_transmit.txt
     Ixia.Set Port Mode Default    @{testerp1}
     Ixia.Set Port Mode Default    @{testerp2}
     Del Static Arp    ${s1_alias}    if=10    ip=10.1.1.2
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no switchport mode
     Exec Cmd List In ConfigMode    ${s1_alias}    no interface vlan 10
     Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<

@@ -354,8 +354,7 @@ Get Port Status
     Write bare    show interface ethernet status | include ${port_num}${SPACE}+
     sleep    500ms
     Write    ${SPACE}
-    ${ret}=    Read Until Regexp    \\r
-    Read Until Prompt
+    ${ret}=    Read Until Prompt
     ${updown}=    Get Value From String    ${ret}    (?i)${port_num}\\s+(UP|DOWN)
     ${duplex}=    Get Value From String    ${ret}    (?i)[af]-(FULL|HALF)    #获取a/f-FULL,或者a/f-HALF
     ${speed}=    Get Value From String    ${ret}    [af]-(\\d+\\w+)    #获取a-1G,或者f-100M
@@ -635,3 +634,27 @@ Del Static Nd
     ...    \- ${ipv6} #静态neibor ip地址
     Exec Cmd List In ConfigMode    ${alias}    interface vlan ${if}
     Exec Cmd    ${alias}    no ipv6 neighbor ${ipv6}
+
+Get STP Port Info
+    [Arguments]    ${alias}    ${port}    ${instance}=${0}    @{args}
+    Exec Cmd List    ${alias}
+    ${ret}=    Exec Cmd    ${alias}    show spanning-tree interface ${port}
+    @{rt_value}=    Create List
+    : FOR    ${item}    IN    @{args}
+    \    ${temp}=    Run Keyword If    '${item}'=='State'    Tools.Get Value From String    ${ret}    (?m)${instance}\\s+\\d+\\.\\d+\\s+\\d+\\s+(\\w+)\\s+
+    \    Run Keyword If    '${temp}' != '${None}'    Append To List    ${rt_value}    ${temp}
+    ${num}=    Get Length    ${args}
+    Return From Keyword If    ${num}==${1}    @{rt_value}[0]
+    Return From Keyword If    @{rt_value}
+
+Get LLDP Port Info
+    [Arguments]    ${alias}    ${port}    @{args}
+    Exec Cmd List    ${alias}
+    ${ret}=    Exec Cmd    ${alias}    show lldp neighbors interface ${port}
+    @{rt_value}=    Create List
+    : FOR    ${item}    IN    @{args}
+    \    ${temp}=    Run Keyword If    '${item}'=='PortRemoteCounter'    Tools.Get Value From String    ${ret}    Port Remote Counter : (\\d+)
+    \    Run Keyword If    '${temp}' != '${None}'    Append To List    ${rt_value}    ${temp}
+    ${num}=    Get Length    ${args}
+    Return From Keyword If    ${num}==${1}    @{rt_value}[0]
+    Return From Keyword If    @{rt_value}

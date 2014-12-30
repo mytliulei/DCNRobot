@@ -51,8 +51,8 @@ Resource          resource_speed_duplex.txt
 *** Keywords ***
 init
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
-    Pass Execution If    '${S1P1_HW}'=='Copper'    电口不支持光口协商配置    TAG_Skip
-    Pass Execution If    '${S1P1_MAX_SPD}'!=1000    非千兆光口不支持光口协商配置测试    TAG_Skip
+    Run Keyword If    '${S1P1_HW}'=='Copper'    Fail    电口不支持光口协商配置
+    Run Keyword If    '${S1P1_MAX_SPD}'!=1000    Fail    非千兆光口不支持光口协商配置测试
     @{cfg_list}=    Get Port Show Run    ${s1_alias}    ${s1p1}    (speed.*)\\s
     Set Test Variable    @{cfg_list}
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<

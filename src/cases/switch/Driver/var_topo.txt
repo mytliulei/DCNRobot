@@ -16,10 +16,10 @@ ${CROSS_STACK_MEMBER}    0    # 跨堆叠成员标记位 0为同member,1为跨me
 ${s1p3}           Ethernet1/0/3    # 辅测端口
 ${DEVICE_TYPE}    0    # 支持三层功能:0,不支持三层功能:1
 ${s1_chassis}     ${False}
-${apc_ccm_ip}     172.16.11.120
-${apc_ccm_port}    10003
-${apc_alias}      apc
-${s1_apc_port}    1
+${apc_ccm_ip}     172.16.11.120    #暂不使用
+${apc_ccm_port}    10003    #暂不使用
+${apc_alias}      apc    #暂不使用
+${s1_apc_port}    1    #暂不使用
 ${MC_ROUTE_SUPPORT}    ${True}    # 支持组播路由协议: ${True}, 不支持组播路由协议:${False}
 
 *** Keywords ***

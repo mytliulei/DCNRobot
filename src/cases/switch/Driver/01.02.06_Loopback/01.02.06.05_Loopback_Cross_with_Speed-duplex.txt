@@ -33,9 +33,9 @@ Resource          resource_loopback.txt
 01_uninit
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置
     Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no speed-duplex
+    Unset Loopback    ${s1_alias}    ${s1p1}
     : FOR    ${cfg}    IN    @{s1p1_config}
     \    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    ${cfg}
-    Unset Loopback    ${s1_alias}    ${s1p1}
     Ixiasend.Stop Transmit    @{testerp2}
     Ixia.Set Port Mode Default    @{testerp2}
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束

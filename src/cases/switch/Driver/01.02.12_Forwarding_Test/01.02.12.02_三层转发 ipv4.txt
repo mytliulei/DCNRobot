@@ -164,12 +164,12 @@ Resource          resource_forwarding.txt
     \    ${ret}=    Exec cmd    ${s1_alias}    show ip mroute
     \    ${res1}=    Tools.Is Match From String    ${ret}    225.0.2.2.*?${vlanoutIndex}:1\\s
     \    Exit For Loop If    ${res1}==${True}
-    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=5
-    Should Be True    ${res1}    组播转发表项的出接口应该为空
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=0.05
+    Should Be True    ${res1}    组播转发表项的出接口不应该为空
     Should Be True    ${res2}    tp1应该收到流量
     Log Step End    step3
     ##
-    Log Step Start    step4    tp2发送组播源流量,tp1点播,组播转发表项建立
+    Log Step Start    step4    tp2发送组播源流量,tp1发送leave,组播转发表项删除
     Ixiasend.Stop Transmit    @{testerp1}
     03_set tp1 ip igmp leave
     Ixiasend.Start Transmit    @{testerp1}
@@ -180,7 +180,7 @@ Resource          resource_forwarding.txt
     \    ${ret}=    Exec cmd    ${s1_alias}    show ip mroute
     \    ${res1}=    Tools.Is Match From String    ${ret}    225.0.2.2.*?0:0
     \    Exit For Loop If    ${res1}==${True}
-    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps    tolerance=5
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=5
     Should Be True    ${res1}    组播转发表项的出接口应该为空
     Should Be True    ${res2}    tp1不应该收到流量
     Log Step End    step4
@@ -218,8 +218,10 @@ Resource          resource_forwarding.txt
     Ixiasend.Stop Capture    @{testerp2}
     Ixiasend.Get Capture Packet    @{testerp1}
     Ixiasend.Get Capture Packet    @{testerp2}
-    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    dst host 10.1.1.2 and ip proto icmp
-    should be true    ${tp1_Rx}==${0}    ${TEST_NAME}\n Step1 tp1发送ttl=0的icmp报文后,收到icmp回复
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    dst host 10.1.1.2 and icmp[icmptype]==icmp-echoreply
+    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    dst host 10.1.1.1 and icmp[icmptype]==icmp-echo
+    should be true    ${tp1_Rx}==${0}    ${TEST_NAME}\n Step2 tp1发送ttl=0的icmp报文后,收到icmp回复
+    should be true    ${tp2_Rx}==${0}    ${TEST_NAME}\n Step2 tp1发送ttl=0的icmp报文后,不应该转发该报文
     Log Step End    step2
     #
     #
@@ -256,10 +258,10 @@ Resource          resource_forwarding.txt
     Ixiasend.Stop Capture    @{testerp2}
     Ixiasend.Get Capture Packet    @{testerp1}
     Ixiasend.Get Capture Packet    @{testerp2}
-    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    dst host 10.1.1.2 and ip proto icmp
-    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    dst host 20.1.1.2 and ip proto icmp
-    should be true    ${tp1_Rx}==${0}    ${TEST_NAME}\n Step1 tp1发送ttl=0的icmp报文后,收到icmp回复
-    should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step1 tp1发送ttl=0的icmp报文后,tp2收到了icmp报文
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    dst host 10.1.1.2 and icmp[icmptype]==icmp-timxceed
+    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    dst host 20.1.1.2 and icmp[icmptype]==icmp-echo
+    should be true    ${tp1_Rx}==${0}    ${TEST_NAME}\n Step1 tp1发送ttl=0的icmp报文后,不应该回复icmp超时
+    should not be true    ${tp2_Rx}>${0}    ${TEST_NAME}\n Step1 tp1发送ttl=0的icmp报文后,tp2不应该收到icmp报文
     Log Step End    step2
     #
     #

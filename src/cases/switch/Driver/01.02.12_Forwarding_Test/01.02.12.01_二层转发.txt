@@ -66,15 +66,15 @@ Resource          resource_forwarding.txt
     Log Step Start    step4    同vlan内组播转发
     Exec Cmd List    ${s1_alias}    clear mac-address-table dynamic    clear counters
     Set ixia stream l2    @{testerp1}    dst_mac=01:00:5E:00:01:01    src_mac=00:00:00:11:11:11    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
-    Set ixia stream l2    @{testerp2}    dst_mac=ff:ff:ff:ff:ff:ff    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+    Set ixia stream l2    @{testerp2}    dst_mac=33:33:00:00:01:01    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
     Ixiasend.Start Transmit    @{testerp1}
     Ixiasend.Start Transmit    @{testerp2}
     sleep    5s    wait for counter update
     ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
     ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
     ${p3_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p3}    5s_in_pps    5s_out_pps
-    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    3000    0.05
-    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    3000    0.05
+    ${res3}=    Check More or Less    ${p3_dict['5s_out_pps']}    3000    0.1
+    ${res4}=    Check More or Less    ${p3_dict['5s_in_pps']}    3000    0.1
     Ixiasend.Stop Transmit    @{testerp1}
     Ixiasend.Stop Transmit    @{testerp2}
     Run Keyword And Continue On Failure    should be true    ${res1}==${res2}==${res3}==${res4}==True    同vlan内已知单播转发正常
@@ -289,7 +289,7 @@ Resource          resource_forwarding.txt
     Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 1
     Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 1
     Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    no switchport mode    switchport access vlan 1    no loopback
-    Exec Cmd List In ConfigMode    ${s1_alias}    no ip igmp snooping vlan 10 immediately-leave     no ip igmp snooping vlan 10    no ip igmp snooping
+    Exec Cmd List In ConfigMode    ${s1_alias}    no ip igmp snooping vlan 10 immediately-leave    no ip igmp snooping vlan 10    no ip igmp snooping
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
     #
 
@@ -336,9 +336,10 @@ Resource          resource_forwarding.txt
     [Arguments]    ${type}
     Ixiasend.Set Port Mode Default    @{testerp2}
     Ixiasend.Build Ether    dst=01:00:5E:00:01:01    src=00:00:00:22:22:22
-    Ixiasend.Build Ip    src=10.1.1.2    dst=225.0.1.1    ttl=1    proto=${2}
-    Run Keyword If    '${type}'=='report'    Ixiasend.Build Igmpv1v2    version=${0x16}    group=225.0.1.1
-    ...    ELSE IF    '${type}'=='leave'    Ixiasend.Build Igmpv1v2    version=${0x17}    group=225.0.1.1
+    Ixiasend.Build Ip    src=10.1.1.2    dst=225.0.1.1    ttl=1
+    #编辑IGMP报文时，IP protocol不需要填写！
+    Run Keyword If    '${type}'=='report'    Ixiasend.Build Igmpv1v2    version=${0x16}    group=225.0.1.1    ELSE IF    '${type}'=='leave'
+    ...    Ixiasend.Build Igmpv1v2    version=${0x17}    group=225.0.1.1
     Ixiasend.Build Packet    length=64
     Ixiasend.Set Stream Packet By Api    @{testerp2}    streamId=1
     Ixiasend.Set Stream Control    @{testerp2}    streamId=1    streamRate=5    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}
@@ -347,9 +348,9 @@ Resource          resource_forwarding.txt
     [Arguments]    ${type}
     Ixiasend.Set Port Mode Default    @{testerp1}
     Ixiasend.Build Ether    dst=01:00:5E:00:02:02    src=00:00:00:11:11:11
-    Ixiasend.Build Ip    src=10.1.1.1    dst=225.0.2.2    ttl=1    proto=${2}
-    Run Keyword If    '${type}'=='report'    Ixiasend.Build Igmpv1v2    version=${0x16}    group=225.0.2.2
-    ...    ELSE IF    '${type}'=='leave'    Ixiasend.Build Igmpv1v2    version=${0x17}    group=225.0.2.2
+    Ixiasend.Build Ip    src=10.1.1.1    dst=225.0.2.2    ttl=1
+    Run Keyword If    '${type}'=='report'    Ixiasend.Build Igmpv1v2    version=${0x16}    group=225.0.2.2    ELSE IF    '${type}'=='leave'
+    ...    Ixiasend.Build Igmpv1v2    version=${0x17}    group=225.0.2.2
     Ixiasend.Build Packet    length=64
     Ixiasend.Set Stream Packet By Api    @{testerp1}    streamId=1
     Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=5    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}

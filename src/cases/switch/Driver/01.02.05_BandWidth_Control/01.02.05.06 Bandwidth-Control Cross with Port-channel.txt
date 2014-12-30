@@ -40,6 +40,7 @@ Resource          resource_bandwidth_control.txt
     Set ixia stream ip    @{testerp2}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:02:02:02
     Ixiasend.Start Transmit    @{testerp1}
     Ixiasend.Start Transmit    @{testerp2}
+    sleep    2s    等待桶令牌耗尽
     ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${TP2_RCV}
     ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${TP1_RCV}
     Ixiasend.Stop Transmit    @{testerp1}
