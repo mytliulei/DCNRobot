@@ -38,29 +38,29 @@ Resource          resource_bandwidth_control.txt
 03_带流量开关带宽控制,功能正确生效
     [Documentation]    先发送流量,开启带宽限制,流量受限,关闭带宽限制,流量恢复正常
     tools.Comment    先发送流量,开启带宽限制,流量受限,关闭带宽限制,流量恢复正常
-    Set ixia stream ip    @{testerp2}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True
+    Set ixia stream ip    @{testerp2}    stream_rate=70000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True
     Ixiasend.Start Transmit    @{testerp2}
-    ${res1}=    CheckIxiaReceiveRate    @{testerp1}    bps    80000000
+    ${res1}=    Check Ixia Rx Average Rate    @{testerp1}    bps    70000000
     ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    10000    direction=transmit
-    ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}
+    ${res2}=    Check Ixia Rx Average Rate    @{testerp1}    bps    ${receive_rate}
     Unset Bandwidth Control    ${s1_alias}    ${s1p1}
-    ${res3}=    CheckIxiaReceiveRate    @{testerp1}    bps    80000000
+    ${res3}=    Check Ixia Rx Average Rate    @{testerp1}    bps    70000000
     Ixiasend.Stop Transmit    @{testerp2}
     Should Be True    ${res1}==${res2}==${res3}==${TRUE}    ${TEST_NAME}Check Error.
 
 04_多个端口上配置带宽控制,不会互相影响
     [Documentation]    其他端口上配置广播抑制,不会互相影响
     tools.Comment    其他端口上配置广播抑制,不会互相影响
-    Set ixia stream ip    @{testerp2}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True
+    Set ixia stream ip    @{testerp2}    stream_rate=70000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True
     Ixiasend.Start Transmit    @{testerp2}
     #s1p3上配置广播抑制,不会影响s1p1的流量转发
     Set Bandwidth Control    ${s1_alias}    ${s1p3}    100    direction=transmit
-    ${res1}=    CheckIxiaReceiveRate    @{testerp1}    bps    received_rate=80000000
+    ${res1}=    Check Ixia Rx Average Rate    @{testerp1}    bps    received_rate=70000000
     ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    10000    direction=transmit
-    ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}
+    ${res2}=    Check Ixia Rx Average Rate    @{testerp1}    bps    ${receive_rate}
     #s1p3删除广播抑制,不会影响s1p1的流量转发
     unset Bandwidth Control    ${s1_alias}    ${s1p3}
-    ${res3}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}
+    ${res3}=    Check Ixia Rx Average Rate    @{testerp1}    bps    ${receive_rate}
     Ixiasend.Stop Transmit    @{testerp1}
     Should Be True    ${res1}==${res2}==${res3}==${TRUE}    ${TEST_NAME}Check Error.
 
@@ -73,14 +73,15 @@ set and check
     ...    - cfg_value #带宽限制配置值
     ...    - send_value #Tp1发送流量速率,单位为bps
     ...    - tolerance # 误差范围,取值:0~1
-    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${cfg_value}    direction=transmit
-    Set ixia stream ip    @{testerp2}    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa
-    Ixiasend.Start Transmit    @{testerp2}
-    sleep    2s    等待桶令牌耗尽
-    ${res}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}    ${tolerance}
-    Ixiasend.Stop Transmit    @{testerp2}
-    Run Keyword And Continue On Failure    Should Be True    ${res}    For Loop ${LOOP} Set bandwidth Control transmit ${cfg_value}kbps, TP2 Send ${send_rate}bps,but TP1 check Receive Error!!
-    Set Suite Variable    ${LOOP}    ${${LOOP}+1}
+    set and check for time-range    ${cfg_value}    ${send_rate}    ${tolerance}
+    #    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${cfg_value}    direction=transmit
+    #    Set ixia stream ip    @{testerp2}    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa
+    #    Ixiasend.Start Transmit    @{testerp2}
+    #    sleep    2s    等待桶令牌耗尽
+    #    ${res}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}    ${tolerance}
+    #    Ixiasend.Stop Transmit    @{testerp2}
+    #    Run Keyword And Continue On Failure    Should Be True    ${res}    For Loop ${LOOP} Set bandwidth Control transmit ${cfg_value}kbps, TP2 Send ${send_rate}bps,but TP1 check Receive Error!!
+    #    Set Suite Variable    ${LOOP}    ${${LOOP}+1}
 
 02_uninit
     Unset Bandwidth Control    ${s1_alias}    ${s1p1}
@@ -90,8 +91,8 @@ set and check
 02_init
     Set Suite Variable    ${LOOP}    ${1}
 
-set and check for statistic
-    [Arguments]    ${cfg_value}    ${send_rate}    ${tolerance}
+set and check for time-range
+    [Arguments]    ${cfg_value}    ${send_rate}    ${tolerance}    ${timeRange}=${20}
     [Documentation]    在端口上配置"出"方向带宽限制,TP2打入流量,检查TP1收到的流量是在预期范围内。
     ...
     ...    args:
@@ -99,14 +100,16 @@ set and check for statistic
     ...    - send_value #Tp1发送流量速率,单位为bps
     ...    - tolerance # 误差范围,取值:0~1
     ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${cfg_value}    direction=transmit
-    ${numPacket}=    Evaluate    ${send_rate}/64/8*30    #计算发送30s的报文数量
-    Set ixia stream ip    @{testerp2}    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa    stream_mode=${IXIA_StreamMode_Stop}
-    ...    numPacket=${numPacket}
-    Ixiasend.Clear Statics    @{testerp1}
+    Set ixia stream ip    @{testerp2}    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa
     Ixiasend.Start Transmit    @{testerp2}
-    Ixiasend.Wait For Transmit Done    @{testerp2}    #等待流量发送完成
-    ${tp1_rx}=    Get Statics    @{testerp1}    rxbits
-    ${tp1_rx_rate}=    Evaluate    ${tp1_rx}/30
-    ${res}=    Check More or Less    ${tp1_rx}    ${${cfg_value}*1000}    tolerance=0.05
+    sleep    2s    等待桶令牌耗尽
+    ${time1}=    Evaluate    time.time()    time
+    ${rx1}=    Get Statics    @{testerp1}    rxbits
+    sleep    ${timeRange}s
+    ${time2}=    Evaluate    time.time()    time
+    ${rx2}=    Get Statics    @{testerp1}    rxbits
+    ${limitRate}=    Evaluate    (${rx2}-${rx1})/(${time2}-${time1})
+    ${res}=    Check More or Less    ${limitRate}    ${receive_rate}    ${tolerance}
+    Ixiasend.Stop Transmit    @{testerp2}
     Run Keyword And Continue On Failure    Should Be True    ${res}    For Loop ${LOOP} Set bandwidth Control receive ${cfg_value}kbps, TP1 Send ${send_rate}bps,but \ TP2 check Receive Error!!
     Set Suite Variable    ${LOOP}    ${${LOOP}+1}

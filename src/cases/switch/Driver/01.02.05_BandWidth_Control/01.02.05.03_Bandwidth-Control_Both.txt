@@ -34,12 +34,12 @@ Resource          resource_bandwidth_control.txt
     Ixiasend.Start Transmit    @{testerp2}
     #配置带宽限制,缺省both方向均生效
     ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    10000
-    ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}
-    ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}
+    ${res1}=    Check Ixia Rx Average Rate    @{testerp2}    bps    ${receive_rate}
+    ${res2}=    Check Ixia Rx Average Rate    @{testerp1}    bps    ${receive_rate}
     #删除带宽限制,流量恢复
     Unset Bandwidth Control    ${s1_alias}    ${s1p1}
-    ${res3}=    CheckIxiaReceiveRate    @{testerp2}    bps    80000000
-    ${res4}=    CheckIxiaReceiveRate    @{testerp1}    bps    80000000
+    ${res3}=    Check Ixia Rx Average Rate    @{testerp2}    bps    80000000
+    ${res4}=    Check Ixia Rx Average Rate    @{testerp1}    bps    80000000
     Should Be True    ${res1}==${res2}==${res3}==${res4}==${TRUE}    ${TEST_NAME}Check Error.
     [Teardown]    02_uninit
 
@@ -50,14 +50,14 @@ Resource          resource_bandwidth_control.txt
     Ixiasend.Start Transmit    @{testerp2}
     #s1p3的带宽限制配置,不影响s1p1端口的配置
     Set Bandwidth Control    ${s1_alias}    ${s1p3}    500
-    ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    received_rate=80000000
-    ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    received_rate=80000000
+    ${res1}=    Check Ixia Rx Average Rate    @{testerp2}    bps    received_rate=80000000
+    ${res2}=    Check Ixia Rx Average Rate    @{testerp1}    bps    received_rate=80000000
     ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    10000
-    ${res3}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}
-    ${res4}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}
+    ${res3}=    Check Ixia Rx Average Rate    @{testerp2}    bps    ${receive_rate}
+    ${res4}=    Check Ixia Rx Average Rate    @{testerp1}    bps    ${receive_rate}
     unset Bandwidth Control    ${s1_alias}    ${s1p3}
-    ${res5}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}
-    ${res6}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}
+    ${res5}=    Check Ixia Rx Average Rate    @{testerp2}    bps    ${receive_rate}
+    ${res6}=    Check Ixia Rx Average Rate    @{testerp1}    bps    ${receive_rate}
     Should Be True    ${res1}==${res2}==${res3}==${res4}==${res5}==${res6}==${TRUE}    ${TEST_NAME} Check Error.
     [Teardown]    03_uninit
 
@@ -65,20 +65,21 @@ Resource          resource_bandwidth_control.txt
 set and check
     [Arguments]    ${in_cfg_value}    ${out_cfg_value}    ${tolerance}=0.05
     [Documentation]    验证端口同时配置入方向及出方向带宽限制时,功能各自生效。
-    tools.Comment    检查入方向带宽控制功能
-    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${in_cfg_value}    direction=receive
-    Ixiasend.Start Transmit    @{testerp1}
-    sleep    2s    等待桶令牌耗尽
-    ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}    ${tolerance}
-    Ixiasend.Stop Transmit    @{testerp1}
-    tools.Comment    检查出方向带宽控制功能
-    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${out_cfg_value}    direction=transmit
-    Ixiasend.Start Transmit    @{testerp2}
-    sleep    2s    等待桶令牌耗尽
-    ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}    ${tolerance}
-    Ixiasend.Stop Transmit    @{testerp2}
-    Run Keyword And Continue On Failure    Should Be True    ${res1}&${res2}    For Loop ${LOOP}: bandwidth control input ${in_cfg_value}kbps, ouput ${out_cfg_value} kbps ,Check Error!!
-    Set Suite Variable    ${LOOP}    ${${LOOP}+1}
+    set and check for time-range    ${in_cfg_value}    ${out_cfg_value}    ${tolerance}
+    #    tools.Comment    检查入方向带宽控制功能
+    #    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${in_cfg_value}    direction=receive
+    #    Ixiasend.Start Transmit    @{testerp1}
+    #    sleep    2s    等待桶令牌耗尽
+    #    ${res1}=    CheckIxiaReceiveRate    @{testerp2}    bps    ${receive_rate}    ${tolerance}
+    #    Ixiasend.Stop Transmit    @{testerp1}
+    #    tools.Comment    检查出方向带宽控制功能
+    #    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${out_cfg_value}    direction=transmit
+    #    Ixiasend.Start Transmit    @{testerp2}
+    #    sleep    2s    等待桶令牌耗尽
+    #    ${res2}=    CheckIxiaReceiveRate    @{testerp1}    bps    ${receive_rate}    ${tolerance}
+    #    Ixiasend.Stop Transmit    @{testerp2}
+    #    Run Keyword And Continue On Failure    Should Be True    ${res1}&${res2}    For Loop ${LOOP}: bandwidth control input ${in_cfg_value}kbps, ouput ${out_cfg_value} kbps ,Check Error!!
+    #    Set Suite Variable    ${LOOP}    ${${LOOP}+1}
 
 01_init
     Set Suite Variable    ${LOOP}    ${1}
@@ -114,3 +115,21 @@ set and check
     Ixiasend.Stop Transmit    @{testerp2}
     Ixia.Set Port Mode Default    @{testerp1}
     Ixia.Set Port Mode Default    @{testerp2}
+
+set and check for time-range
+    [Arguments]    ${in_cfg_value}    ${out_cfg_value}    ${tolerance}=0.05
+    [Documentation]    验证端口同时配置入方向及出方向带宽限制时,功能各自生效。
+    tools.Comment    检查入方向带宽控制功能
+    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${in_cfg_value}    direction=receive
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    2s    等待桶令牌耗尽
+    ${res1}=    Check Ixia Rx Average Rate    @{testerp2}    bps    ${receive_rate}    ${tolerance}
+    Ixiasend.Stop Transmit    @{testerp1}
+    tools.Comment    检查出方向带宽控制功能
+    ${receive_rate}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    ${out_cfg_value}    direction=transmit
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    2s    等待桶令牌耗尽
+    ${res2}=    Check Ixia Rx Average Rate    @{testerp1}    bps    ${receive_rate}    ${tolerance}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Run Keyword And Continue On Failure    Should Be True    ${res1}&${res2}    For Loop ${LOOP}: bandwidth control input ${in_cfg_value}kbps, ouput ${out_cfg_value} kbps ,Check Error!!
+    Set Suite Variable    ${LOOP}    ${${LOOP}+1}
