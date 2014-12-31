@@ -668,8 +668,8 @@ class Ixia(object):
                 raise AssertionError('can not load pcap,may be not installed')
             try:
                 matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
-            except Exception:
-                raise AssertionError('filter express error')
+            except Exception,ex:
+                raise AssertionError('filter express %s error: %s' % (capFilter,ex))
         else:
             matchPkt = None
         #filter packet
