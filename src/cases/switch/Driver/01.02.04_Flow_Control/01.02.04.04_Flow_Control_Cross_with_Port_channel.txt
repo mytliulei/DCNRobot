@@ -19,9 +19,9 @@ Resource          resource_flow_control.txt
     Ixiasend.Set Port Flowcontrol    @{testerp2}    1
     sleep    5s    等待s1p1与s1p2 UP
     Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    loopback
-    Exec Cmd List In ConfigMode    ${s1_alias}    port-group 100
-    Set Port Channel Member    ${s1_alias}    ${s1p1}    100    on
-    Set Port Channel Member    ${s1_alias}    ${s1p2}    100    on
+    Exec Cmd List In ConfigMode    ${s1_alias}    port-group 1
+    Set Port Channel Member    ${s1_alias}    ${s1p1}    1    on
+    Set Port Channel Member    ${s1_alias}    ${s1p2}    1    on
     log Step End    Step 1
     #
     #
@@ -66,7 +66,7 @@ Resource          resource_flow_control.txt
 
 01_uninit
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置>>>>>
-    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 100
+    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 1
     Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p3}    no loopback
     unset Flow Control    ${s1_alias}    ${s1p1}
     unset Flow Control    ${s1_alias}    ${s1p2}
@@ -81,7 +81,7 @@ Resource          resource_flow_control.txt
 
 02_uninit
     tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置>>>>>
-    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 100
+    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 1
     unset Flow Control    ${s1_alias}    ${s1p1}
     unset Flow Control    ${s1_alias}    ${s1p2}
     sleep    5s    wait for port up

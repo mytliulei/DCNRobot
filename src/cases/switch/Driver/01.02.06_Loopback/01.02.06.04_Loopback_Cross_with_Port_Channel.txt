@@ -26,7 +26,7 @@ Resource          resource_loopback.txt
     Ixiasend.Stop Transmit    @{testerp2}
     Ixiasend.Set Port Mode Default    @{testerp1}
     Ixiasend.Set Port Mode Default    @{testerp2}
-    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 100
+    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 1
     Unset Loopback    ${s1_alias}    ${s1p1}
     Unset Loopback    ${s1_alias}    ${s1p2}
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置完成<<<<<<

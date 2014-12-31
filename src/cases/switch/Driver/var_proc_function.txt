@@ -206,29 +206,29 @@ Check Cross with Port Channel type 3
     ...    - no_cmd 功能删除命令
     ...    - chk_cmd 功能检查命令,用于检查功能是否配置成功,部分命令例如bandwidth control由于配置后交换机会自适配配置值,因此不能用${cmd}来判断,只能通过chk_cmd来判断。
     tools.comment    !!Start!!Check Cross with Port channel    Step1    端口配置对应命令"${cmd}"后, 加入聚合端口, 检查聚合成功,有对应配置.
-    Exec Cmd List In ConfigMode    ${alias}    port-group 100
+    Exec Cmd List In ConfigMode    ${alias}    port-group 1
     : FOR    ${port}    IN    @{portlist}
     \    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${cmd}
     \    ${port_status}=    Check Port Show Run    ${alias}    ${port}    ${chk_cmd}
     \    Should be true    ${port_status}    ${cmd} should set successful!!
-    \    Set Port Channel Member    ${alias}    ${port}    channel_name=100    mode=on
+    \    Set Port Channel Member    ${alias}    ${port}    channel_name=1    mode=on
     tools.comment    !!End!!Check Cross with Port channel    Step1    端口配置对应命令"${cmd}"后, 加入聚合端口, 检查聚合成功,有对应配置.
     #
     #
     tools.comment    !!Start!!Check Cross with Port channel    step 2    port-channel下没有该功能配置
-    ${res}=    Check Port Show Run    ${alias}    port-channel 100    ${chk_cmd}
+    ${res}=    Check Port Show Run    ${alias}    port-channel 1    ${chk_cmd}
     Should be true    ${res}==False    port-channel下没有'${chk_cmd}'配置
     tools.comment    !!End!!Check Cross with Port channel    step 2    port-channel下没有该功能配置
     #
     #
     tools.comment    !!Start!!Check Cross with Port channel    step 3    port-channel不能修改和删除该配置
-    Exec Cmd List In ConfigMode    ${alias}    interface port-channel 100
+    Exec Cmd List In ConfigMode    ${alias}    interface port-channel 1
     ${ret}=    Exec Cmd    ${alias}    ${cmd}
-    Exec Cmd    ${alias}    show run interface port-channel 100
+    Exec Cmd    ${alias}    show run interface port-channel 1
     ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
     Run Keyword If    ${check_result} ==False    Fail    port-channel不能修改${cmd}配置
     ${ret}=    Exec Cmd    ${alias}    ${no_cmd}
-    Exec Cmd    ${alias}    show run interface port-channel 100
+    Exec Cmd    ${alias}    show run interface port-channel 1
     ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
     Run Keyword If    ${check_result} ==False    Fail    ${SUITE_NAME} ${TEST_NAME} ${STEP} port-channel不能删除${cmd}配置
     tools.comment    !!End!!Check Cross with Port channel    step 3    port-channel不能修改和删除该配置
@@ -252,14 +252,14 @@ Check Cross with Port Channel type 3
     ${port}=    get from list    ${portlist}    0
     Exec Cmd List In ConfigMode    ${alias}    interface ${port}    no port-group    ${no_cmd}
     Exec Cmd    ${alias}    show run interface ${port}
-    Set Port Channel Member Fail    ${alias}    ${port}    channel_name=100    mode=on
-    ${check_result}=    Check Port Channel Member    ${alias}    ${port}    channel_name=100    loglevel=INFO
-    Should be true    ${check_result}==False    ${port} shouldn't be port-channel 100 's member!!
+    Set Port Channel Member Fail    ${alias}    ${port}    channel_name=1    mode=on
+    ${check_result}=    Check Port Channel Member    ${alias}    ${port}    channel_name=1    loglevel=INFO
+    Should be true    ${check_result}==False    ${port} shouldn't be port-channel 1 's member!!
     tools.comment    !!End!!Check Cross with Port channel    step 5    删除端口的port-channel配置, 修改端口的配置为不同值后, 重新聚合,聚合失败
     #
     #
     tools.comment    !!Start!!Check Cross with Port channel    step 6    恢复初始配置
-    Exec Cmd List In ConfigMode    ${alias}    no port-group 100
+    Exec Cmd List In ConfigMode    ${alias}    no port-group 1
     : FOR    ${port}    IN    @{portlist}
     \    Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${no_cmd}
     \    ${port_status}=    Check Port Show Run    ${alias}    ${port}    ${chk_cmd}
@@ -274,26 +274,26 @@ Check Cross with Port Channel type 1
     ...    - port-channel不能修改和删除
     ...    - 成员端口不能修改和删除
     tools.comment    !!Start!! Check Cross with Port channel    Step1    端口配置对应命令"${cmd}"后, 无法加入port-channel
-    Exec Cmd List In ConfigMode    ${alias}    port-group 100
+    Exec Cmd List In ConfigMode    ${alias}    port-group 1
     ${port}=    get from list    ${portlist}    0
     Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${cmd}
     ${port_status}=    Check Port Show Run    ${alias}    ${port}    ${chk_cmd}
     Should be true    ${port_status}    ${cmd} should set successful!!
-    Set Port Channel Member Fail    ${alias}    ${port}    channel_name=100    mode=on
+    Set Port Channel Member Fail    ${alias}    ${port}    channel_name=1    mode=on
     Exec Cmd List In ConfigMode    ${alias}    interface ${port}    ${no_cmd}
     tools.comment    !!End!!Check Cross with Port channel    Step1    端口配置对应命令"${cmd}"后, 无法加入port-channel
     #
     #
     tools.comment    !!Start!!Check Cross with Port channel    step 2    port-channel不能修改和删除该配置
     : FOR    ${port}    IN    @{portlist}
-    \    Set Port Channel Member    ${alias}    ${port}    channel_name=100    mode=on
-    Exec Cmd List In ConfigMode    ${alias}    interface port-channel 100
+    \    Set Port Channel Member    ${alias}    ${port}    channel_name=1    mode=on
+    Exec Cmd List In ConfigMode    ${alias}    interface port-channel 1
     ${ret}=    Exec Cmd    ${alias}    ${cmd}
-    Exec Cmd    ${alias}    show run interface port-channel 100
+    Exec Cmd    ${alias}    show run interface port-channel 1
     ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
     Run Keyword unless    ${check_result}    Fail    ${SUITE_NAME} ${TEST_NAME} port-channel不能配置${cmd}
     ${ret}=    Exec Cmd    ${alias}    ${no_cmd}
-    Exec Cmd    ${alias}    show run interface port-channel 100
+    Exec Cmd    ${alias}    show run interface port-channel 1
     ${check_result}=    Tools.Is Match From String    ${ret}    (not supported on group member port|Invalid input)
     Run Keyword unless    ${check_result}    Fail    ${SUITE_NAME} ${TEST_NAME} port-channel不能配置${no_cmd}
     tools.comment    !!End!!Check Cross with Port channel    step 2    port-channel不能修改和删除该配置
@@ -314,7 +314,7 @@ Check Cross with Port Channel type 1
     #
     #
     tools.comment    !!Start!!Check Cross with Port channel    step 4    恢复初始配置
-    Exec Cmd List In ConfigMode    ${alias}    no port-group 100
+    Exec Cmd List In ConfigMode    ${alias}    no port-group 1
     tools.comment    !!End!!Check Cross with Port channel    step 4    恢复初始配置
 
 Get Port Show Run
