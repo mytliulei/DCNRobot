@@ -29,17 +29,13 @@ Init StormControl pps Test
     Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
     tools.comment    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
     ##测试条件检查及初始配置
-    log    检查是否支持pps
-    Run Keyword if    ${SUPPORT_pps}!=${1}    log    设备不支持基于pps的风暴抑制    WARN
-    Pass Execution If    ${SUPPORT_pps}!=${1}    设备不支持基于pps的风暴抑制
-    log    只支持测试同芯片端口
-    Run Keyword if    ${CROSS_CHIP}!=${0}    log    不支持跨芯片测试    WARN
-    Pass Execution If    ${CROSS_CHIP}!=${0}    不支持跨芯片测试
-    Run Keyword if    ${CROSS_SLOT}!=${0}    log    不支持跨板卡试    WARN
-    Pass Execution If    ${CROSS_SLOT}!=${0}    不支持跨板卡试
-    Run Keyword if    ${CROSS_STACK_MEMBER}!=${0}    log    不支持跨堆叠member测试    WARN
-    Pass Execution If    ${CROSS_STACK_MEMBER}!=${0}    不支持跨堆叠member测试
-    log    配置静态mac，为后面测试已知单播准备。
+    #    检查是否支持pps
+    Run Keyword If    ${SUPPORT_pps}!=${1}    Fail    设备不支持基于pps的风暴抑制
+    #    #    只支持测试同芯片端口
+    #    Run Keyword If    ${CROSS_CHIP}!=${0}    Fail    不支持跨芯片测试    Not_Support_StormControl_CrossChip
+    #    Run Keyword If    ${CROSS_SLOT}!=${0}    Fail    不支持跨板卡试    Not_Support_StormControl_CrossSlot
+    #    Run Keyword if    ${CROSS_STACK_MEMBER}!=${0}    Fail    不支持跨堆叠member测试    Not_Support_StormControl_CrossStack
+    #    配置静态mac，为后面测试已知单播准备。
     Set Static Mac    ${s1_alias}    ${s1p2}    1    ${STATIC_UNICAST_MAC}
     ##ixia初始化
     Connect To Ixia    ${testerp1_ip}
@@ -62,17 +58,13 @@ Init StormControl kbps Test
     Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
     tools.comment    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
     ##测试条件检查及初始配置
-    log    检查是否支持pps
-    Run Keyword if    ${SUPPORT_kbps}!=${1}    log    设备不支持基于kbps的风暴抑制    WARN
-    Pass Execution If    ${SUPPORT_kbps}!=${1}    设备不支持基于kbps的风暴抑制
-    log    只支持测试同芯片端口
-    Run Keyword if    ${CROSS_CHIP}!=${0}    log    不支持跨芯片测试    WARN
-    Pass Execution If    ${CROSS_CHIP}!=${0}    不支持跨芯片测试
-    Run Keyword if    ${CROSS_SLOT}!=${0}    log    不支持跨板卡试    WARN
-    Pass Execution If    ${CROSS_SLOT}!=${0}    不支持跨板卡试
-    Run Keyword if    ${CROSS_STACK_MEMBER}!=${0}    log    不支持跨堆叠member测试    WARN
-    Pass Execution If    ${CROSS_STACK_MEMBER}!=${0}    不支持跨堆叠member测试
-    log    配置静态mac，为后面测试已知单播准备。
+    #    检查是否支持pps
+    Run Keyword if    ${SUPPORT_kbps}!=${1}    Fail    设备不支持基于kbps的风暴抑制    Not_Support_StormControl_PPS
+    #    #    只支持测试同芯片端口
+    #    Run Keyword if    ${CROSS_CHIP}!=${0}    Fail    不支持跨芯片测试    Not_Support_StormControl_CrossChip
+    #    Run Keyword if    ${CROSS_SLOT}!=${0}    Fail    不支持跨板卡试    Not_Support_StormControl_CrossSlot
+    #    Run Keyword if    ${CROSS_STACK_MEMBER}!=${0}    Fail    不支持跨堆叠member测试    Not_Support_StormControl_CrossStack
+    #    配置静态mac，为后面测试已知单播准备。
     Set Static Mac    ${s1_alias}    ${s1p2}    1    ${STATIC_UNICAST_MAC}
     ##ixia初始化
     Connect To Ixia    ${testerp1_ip}
@@ -165,11 +157,11 @@ Send Stream And Check
     Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{sport}
     Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{dport}
     Run Keyword If    ${transmit_tag}==True    Ixiasend.Start Transmit    @{sport}
-    #    sleep    1s
     sleep    5s
     #获取发包速率,用于出错时检查
     Get Statics    @{sport}    tx${received_type}
     ${ret}    CheckIxiaReceiveRate    @{dport}    ${received_type}    ${received_rate}    ${tolerance}
+    #    ${ret}    Check Ixia Rx Average Rate    @{dport}    ${received_type}    ${received_rate}    ${tolerance}
     Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n check stream error!
     #若检查有误, 则debug交换机
     Run Keyword unless    ${ret}    Repeat Keyword    2 times    Exec Cmd List    ${s1_alias}    show interface ${s1p1} | begin Statistics
