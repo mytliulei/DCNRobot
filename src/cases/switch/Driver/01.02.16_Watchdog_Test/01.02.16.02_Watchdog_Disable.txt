@@ -10,7 +10,7 @@ Resource          resource_watchdog.txt
     Set WatchDog Disable    ${s1_alias}
     Enter Superdiag Mode    ${s1_alias}    ${s1p1}
     ${ret}=    exec cmd    ${s1_alias}    tshell debug call taskList
-    ${ptr}=    Tools.Get Value From String    ${ret}    tL2Input th: (.*?) s:
+    ${ptr}=    Tools.Get Value From String    ${ret}    tL2Input th:\\s+(.*?) s:
     Run Keyword If    '${ptr}'=='${None}'    Fail    ${TEST_NAME}\n Step1 无法获取tL2Input任务的task地址
     Log Step End    step1
     #
