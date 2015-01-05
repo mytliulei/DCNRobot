@@ -56,7 +56,7 @@ Resource          resource_flow_control.txt
     #    若s1p1是光口则跳过
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化检查,若s1p1是光口则跳过执行
     ${hw}=    Get Port Hardware    ${s1_alias}    ${s1p1}
-    Pass Execution If    '${hw}'=='Fiber'    光口不支持配置半双工模式,跳过执行
+    Run Keyword If    '${hw}'=='Fiber'    Fail    光口不支持配置半双工模式
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化检查结束
     #
     #    设置s1p1为百兆半双工
@@ -67,7 +67,7 @@ Resource          resource_flow_control.txt
     Exec Cmd List    ${s1_alias}    clear counters
     sleep    10s    等待s1p1 up
     ${p1_status}=    CheckPortUpdown    ${s1_alias}    ${s1p1}
-    Run Keyword unless    ${p1_status}    Fail    ${s1p1} is DOWN after set speed-duplex force-100half in 5 seconds
+    Run Keyword unless    ${p1_status}    Fail    ${s1p1} is DOWN after set speed-duplex force-100half in 10 seconds
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置结束
 
 01_uninit
