@@ -377,13 +377,13 @@ Get Port Status
     Return From Keyword If    ${len}==1    ${status_list[0]}    #返回单个值
     Return From Keyword    @{status_list}    #返回指定端口状态的list变量
 
-Set Negoation
+Set Negotiation
     [Arguments]    ${alias}    ${port}    ${arg}
     Exec Cmd List In ConfigMode    ${alias}    interface ${s1p1}
-    ${ret}=    Exec Cmd    ${alias}    negoation ${arg}
+    ${ret}=    Exec Cmd    ${alias}    negotiation ${arg}
     Exec Cmd List In ConfigMode    ${alias}    show running interface ${s1p1}
     ${res}=    Tools.Is Match From String    ${ret}    Cannot config
-    Run Keyword If    ${res}    Fail    Can't config "negoation ${arg}" on "interface ${s1p1}"
+    Run Keyword If    ${res}    Fail    Can't config "negotiation ${arg}" on "interface ${s1p1}"
 
 Set Static Arp
     [Arguments]    ${alias}    ${port}    ${if}    ${ip}    ${mac}
