@@ -16,8 +16,8 @@
   1. windows
 
     * 建议win7系统，xp系统需要安装ipv6组件，即在cmd里执行ipv6 install
-    * 登陆 ftp://10.1.145.36/RobotFramework/安装包/win32.rar ，解压后点击setup.bat安装（使用管理员权限）， **解压路径和程序安装路径不要有中文**
-    * https://github.com/mytliulei/DCNRobotInstallPackages ，下载到本地，进入DCNRobotInstallPackages/windows/win32/ 执行setp.bat
+    * 下载 ftp://10.1.145.36/RobotFramework/安装包/win32.rar ，解压后点击setup.bat安装（使用管理员权限）， **解压路径和程序安装路径不要有中文**
+    * 或访问https://github.com/mytliulei/DCNRobotInstallPackages ，下载到本地，进入DCNRobotInstallPackages/windows/win32/ 执行setup.bat
 
 
   2. linux
@@ -28,7 +28,7 @@
 
    * https://github.com/mytliulei/DCNRobot ，右下角Download ZIP ，点击下载，解压
    ![img of download zip](./doc/img/install_1.png)
-   * 或者访问github，下载ftp://10.1.145.36/RobotFramework/脚本/DCNRobot.zip ，解压
+   * 如不能访问github，下载ftp://10.1.145.36/RobotFramework/脚本/DCNRobot.zip ，解压
 
 ## 7. 构建ixia运行环境
    
