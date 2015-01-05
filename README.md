@@ -27,15 +27,14 @@
 ## 6. 脚本下载
 
    * https://github.com/mytliulei/DCNRobot ，右下角Download ZIP ，点击下载，解压
-   ![Image of Yaktocat](https://octodex.github.com/images/yaktocat.png)
-   
+   ![img of download zip](https://github.com/mytliulei/DCNRobot/blob/master/doc/img/install_1.png)
    * 或者访问github，下载ftp://10.1.145.36/RobotFramework/脚本/DCNRobot.zip ，解压
 
 ## 7. 构建ixia运行环境
    
    测试仪需要ixia的，需构建ixia运行环境
    * 下载 ftp://10.1.145.36/RobotFramework/ixia运行环境/ixia.rar ， 解压到脚本DCNRobot\src\tools目录下，**注意解压后的目录结构为:**
-   ![Image of Yaktocat](https://octodex.github.com/images/yaktocat.png)
+   ![img of directory structure](https://github.com/mytliulei/DCNRobot/blob/master/doc/img/install_2.png)
 
    * 或者下载https://github.com/mytliulei/IxTclHal ，将ixia目录解压到脚本DCNRobot\src\tools目录下，目录结构同上
    
