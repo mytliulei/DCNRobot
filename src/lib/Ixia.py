@@ -204,9 +204,9 @@ class Ixia(object):
             cmd = 'connect_ixia %s\n' % ixia_ip
             try:
                 self._ixia_client_handle.sendall(cmd)
-            except Exception:
+            except Exception,ex:
                 self._close_ixia_client()
-                raise AssertionError('write cmd to proxy server error')
+                raise AssertionError('client write cmd to proxy server error: %s' % ex)
             readret = self._read_ret_select()
             if not readret[0]:
                 raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -340,9 +340,9 @@ class Ixia(object):
         cmd = 'start_transmit %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -366,9 +366,9 @@ class Ixia(object):
         cmd = 'stop_transmit %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -394,9 +394,9 @@ class Ixia(object):
         cmd = 'start_capture %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -420,9 +420,9 @@ class Ixia(object):
         cmd = 'stop_capture %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -446,9 +446,9 @@ class Ixia(object):
         cmd = 'clear_statics %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -477,9 +477,9 @@ class Ixia(object):
         while elapsed <= timeout:
             try:
                 self._ixia_client_handle.sendall(cmd)
-            except Exception:
+            except Exception,ex:
                 self._close_ixia_client()
-                raise AssertionError('write cmd to proxy server error')
+                raise AssertionError('client write cmd to proxy server error: %s' % ex)
             readret = self._read_ret_select()
             if not readret[0]:
                 raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -507,9 +507,9 @@ class Ixia(object):
         cmd = 'get_capture_packet_num %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -533,9 +533,9 @@ class Ixia(object):
         cmd = 'set_port_mode_default %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -564,9 +564,9 @@ class Ixia(object):
         cmd = 'get_capture_packet %s %s %s %s %s\n' % (chasId,card,port,packet_from,packet_to)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -668,8 +668,8 @@ class Ixia(object):
                 raise AssertionError('can not load pcap,may be not installed')
             try:
                 matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
-            except Exception:
-                raise AssertionError('filter express error')
+            except Exception,ex:
+                raise AssertionError('filter express %s error: %s' % (capFilter,ex))
         else:
             matchPkt = None
         #filter packet
@@ -748,9 +748,9 @@ class Ixia(object):
         cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -843,9 +843,9 @@ class Ixia(object):
         cmd = 'set_stream_from_hexstr %s %s %s %s %s\n' % (chasId,card,port,streamId,streamStr)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -879,9 +879,9 @@ class Ixia(object):
         cmd = 'set_stream_from_ixiaapi %s %s %s %s %s %s\n' % (chasId,card,port,streamId,fcs,streamStr)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -917,9 +917,9 @@ class Ixia(object):
         cmd = 'set_stream_control %s %s %s %s %s %s %s %s %s\n' % (chasId,card,port,streamId,streamRateMode,streamRate,streamMode,numFrames,ReturnId)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -936,9 +936,9 @@ class Ixia(object):
         cmd = 'set_stream_enable %s %s %s %s %s\n' % (chasId,card,port,streamId,flag)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -973,9 +973,44 @@ class Ixia(object):
         cmd += '\n'
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        retList = ret.strip().split()
+        return retList[0] if len(retList) == 1 else retList
+
+    def get_statistics_between_timeout(self,chasId,card,port,statisType,timeout):
+        '''
+        get port two statics between timeout
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - statisType: txpps,txBps,txbps,txpackets,txbytes,txbits
+                      rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
+                      updown: 0:down,1:up;
+                      txstate: 0:stop,1:start;
+                      lineSpeed: The speed configured for the port,unit:Mbps;
+                      duplex: 0:half,1:full;
+                      flowControlFrames : flow Control Frames Received
+        - timeout: unit: ms, note that timeout should less than 60s, if more than 60s,please use keyword Sleep of Buildtin in script
+
+        return:
+        - non negative number list including two item statics num, the first is before timeout item, the sencond is after timeout item
+        - negative number: error code
+        '''
+        cmd = 'get_statistics_for_timeout %s %s %s %s %s\n' % (chasId,card,port,statisType,timeout)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -1022,9 +1057,9 @@ class Ixia(object):
         cmd = 'set_port_speed_duplex %s %s %s %s %s\n' % (chasId,card,port,mode,mulchoice)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -1051,9 +1086,9 @@ class Ixia(object):
         cmd = 'set_port_flowcontrol %s %s %s %s\n' % (chasId,card,port,flag)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -1082,9 +1117,9 @@ class Ixia(object):
         cmd = 'set_port_ignorelink %s %s %s %s\n' % (chasId,card,port,flag)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
@@ -1110,9 +1145,9 @@ class Ixia(object):
         cmd = 'set_port_config_default %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
-        except Exception:
+        except Exception,ex:
             self._close_ixia_client()
-            raise AssertionError('write cmd to proxy server error')
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
         readret = self._read_ret_select()
         if not readret[0]:
             raise AssertionError('ixia proxy server error: %s' % readret[1])
