@@ -158,6 +158,11 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -979
             }
         }
+        "get_statistics_for_timeout" {
+            if {[catch {set ret [GetStatisticsTimeout $cmdstr]} result]} {
+                set ret -978
+            }
+        }
         default {
             set ret -900
         }
@@ -980,6 +985,192 @@ proc SetPortIgnoreLink {cmdstr} {
     #ixWriteConfigToHardware portlist
     ixWritePortsToHardware portlist
     return 0
+}
+
+#get ixia statistics
+#err code : 2800-2899
+proc GetStatisticsTimeout {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 4} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set portlist [list [list $chasId $port $card] ]
+    set ret ""
+    set statis [lindex $cmdlist 3]
+    set timeout [lindex $cmdlist 4]
+    switch -exact $statis {
+        "txpps" {
+            stat getRate statframesSent $chasId $port $card
+            set statnum1 [stat cget -framesSent]
+            after $timeout
+            stat getRate statframesSent $chasId $port $card
+            set statnum2 [stat cget -framesSent]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "txBps" {
+            stat getRate statbytesSent $chasId $port $card
+            set statnum1 [stat cget -bytesSent]
+            after $timeout
+            stat getRate statbytesSent $chasId $port $card
+            set statnum2 [stat cget -bytesSent]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "txbps" {
+            stat getRate statbitsSent $chasId $port $card
+            set statnum1 [stat cget -bitsSent]
+            after $timeout
+            stat getRate statbitsSent $chasId $port $card
+            set statnum2 [stat cget -bitsSent]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "txpackets" {
+            stat get statframesSent $chasId $port $card
+            set statnum1 [stat cget -framesSent]
+            after $timeout
+            stat get statframesSent $chasId $port $card
+            set statnum2 [stat cget -framesSent]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "txbytes" {
+            stat get statbytesSent $chasId $port $card
+            set statnum1 [stat cget -bytesSent]
+            after $timeout
+            stat get statbytesSent $chasId $port $card
+            set statnum2 [stat cget -bytesSent]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "txbits" {
+            stat get statbitsSent $chasId $port $card
+            set statnum1 [stat cget -bitsSent]
+            after $timeout
+            stat get statbitsSent $chasId $port $card
+            set statnum2 [stat cget -bitsSent]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "rxpps" {
+            stat getRate statframesReceived $chasId $port $card
+            set statnum1 [stat cget -framesReceived]
+            after $timeout
+            stat getRate statframesReceived $chasId $port $card
+            set statnum2 [stat cget -framesReceived]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "rxBps" {
+            stat getRate statbytesReceived $chasId $port $card
+            set statnum1 [stat cget -bytesReceived]
+            after $timeout
+            stat getRate statbytesReceived $chasId $port $card
+            set statnum2 [stat cget -bytesReceived]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "rxbps" {
+            stat getRate statbitsReceived $chasId $port $card
+            set statnum1 [stat cget -bitsReceived]
+            after $timeout
+            stat getRate statbitsReceived $chasId $port $card
+            set statnum2 [stat cget -bitsReceived]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "rxpackets" {
+            stat get statframesReceived $chasId $port $card
+            set statnum1 [stat cget -framesReceived]
+            after $timeout
+            stat get statframesReceived $chasId $port $card
+            set statnum2 [stat cget -framesReceived]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "rxbytes" {
+            stat get statbytesReceived $chasId $port $card
+            set statnum1 [stat cget -bytesReceived]
+            after $timeout
+            stat get statbytesReceived $chasId $port $card
+            set statnum2 [stat cget -bytesReceived]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "rxbits" {
+            stat get statbitsReceived $chasId $port $card
+            set statnum1 [stat cget -bitsReceived]
+            after $timeout
+            stat get statbitsReceived $chasId $port $card
+            set statnum2 [stat cget -bitsReceived]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "updown" {
+            stat get statlink $chasId $port $card
+            set statnum1 [stat cget -link]
+            if {$statnum1 != 1} {
+                set statnum1 0
+            }
+            after $timeout
+            stat get statlink $chasId $port $card
+            set statnum2 [stat cget -link]
+            if {$statnum2 != 1} {
+                set statnum2 0
+            }
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "txstate" {
+            stat get allStats $chasId $port $card
+            set statnum1 [stat cget -transmitState]
+            after $timeout
+            stat get allStats $chasId $port $card
+            set statnum2 [stat cget -transmitState]
+            after $timeout
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "lineSpeed" {
+            stat get allStats $chasId $port $card
+            set statnum1 [stat cget -lineSpeed]
+            after $timeout
+            stat get allStats $chasId $port $card
+            set statnum2 [stat cget -lineSpeed]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "duplex" {
+            stat get allStats $chasId $port $card
+            set statnum1 [stat cget -duplexMode]
+            after $timeout
+            stat get allStats $chasId $port $card
+            set statnum2 [stat cget -duplexMode]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+        "flowControlFrames" {
+            stat get allStats $chasId $port $card
+            set statnum1 [stat cget -flowControlFrames]
+            after $timeout
+            stat get allStats $chasId $port $card
+            set statnum2 [stat cget -flowControlFrames]
+            lappend ret $statnum1
+            lappend ret $statnum2
+        }
+    }
+    set retstr [join $ret]
+    return $retstr
 }
 
 #connect to ixia

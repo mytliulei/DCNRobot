@@ -1,4 +1,8 @@
 The core team members over the years:
-liulei                    2014 -
+liulei                    2014.7  -
+wuzq                      2014.11 - 
 
 Other contributors:
+lupingc                   2014.11 - 
+zhangweidd                2014.11 - 
+liuyje                    2014.9  - 2014.10
