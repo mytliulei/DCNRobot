@@ -28,16 +28,12 @@ Init StormControl pps Test
     ...    在s1p2上配置静态mac地址,作为已知单播流量使用.
     Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
     tools.comment    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
-    ##测试条件检查及初始配置
     #    检查是否支持pps
     Run Keyword If    ${SUPPORT_pps}!=${1}    Fail    设备不支持基于pps的风暴抑制
-    #    #    只支持测试同芯片端口
-    #    Run Keyword If    ${CROSS_CHIP}!=${0}    Fail    不支持跨芯片测试    Not_Support_StormControl_CrossChip
-    #    Run Keyword If    ${CROSS_SLOT}!=${0}    Fail    不支持跨板卡试    Not_Support_StormControl_CrossSlot
-    #    Run Keyword if    ${CROSS_STACK_MEMBER}!=${0}    Fail    不支持跨堆叠member测试    Not_Support_StormControl_CrossStack
+    Run Keyword If    ${GLOBAL_StormControl_MODE}    Set Global Storm Control    ${s1_alias}    pps
     #    配置静态mac，为后面测试已知单播准备。
     Set Static Mac    ${s1_alias}    ${s1p2}    1    ${STATIC_UNICAST_MAC}
-    ##ixia初始化
+    #    #ixia初始化
     Connect To Ixia    ${testerp1_ip}
     Ixiasend.Set Port Mode Default    @{testerp1}
     Run Keyword if    "${testerp1_ip}"!="${testerp2_ip}"    Connect To Ixia    ${testerp2_ip}
@@ -57,13 +53,9 @@ Init StormControl kbps Test
     ...    在s1p2上配置静态mac地址,作为已知单播流量使用.
     Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
     tools.comment    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
-    ##测试条件检查及初始配置
     #    检查是否支持pps
-    Run Keyword if    ${SUPPORT_kbps}!=${1}    Fail    设备不支持基于kbps的风暴抑制    Not_Support_StormControl_PPS
-    #    #    只支持测试同芯片端口
-    #    Run Keyword if    ${CROSS_CHIP}!=${0}    Fail    不支持跨芯片测试    Not_Support_StormControl_CrossChip
-    #    Run Keyword if    ${CROSS_SLOT}!=${0}    Fail    不支持跨板卡试    Not_Support_StormControl_CrossSlot
-    #    Run Keyword if    ${CROSS_STACK_MEMBER}!=${0}    Fail    不支持跨堆叠member测试    Not_Support_StormControl_CrossStack
+    Run Keyword if    ${SUPPORT_kbps}!=${1}    Fail    设备不支持基于kbps的风暴抑制    Not_Support_StormControl_kbps
+    Run Keyword If    ${GLOBAL_StormControl_MODE}    Set Global Storm Control    ${s1_alias}    kbps
     #    配置静态mac，为后面测试已知单播准备。
     Set Static Mac    ${s1_alias}    ${s1p2}    1    ${STATIC_UNICAST_MAC}
     ##ixia初始化
@@ -85,23 +77,11 @@ Init StormControl Test
     Open Console    ${s1_ccm_ip}    ${s1_ccm_port}    ${s1_alias}
     tools.comment    ${s1_alias}    !!Start!! TEST SUITE:${SUITE_NAME}
     ##参数初始化
-    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}
-    log    确定是否支持kbps,pps并检查命令行配置模式
-    ${ret}=    Exec Cmd    ${s1_alias}    ${CMD_STORM_CONTROL} broadcast ?
-    Read
-    ${check_support_kbps}=    Tools.Is Match From String    '${ret}'    kbps
-    ${check_support_pps}=    Tools.Is Match From String    '${ret}'    pps
-    Run Keyword If    ${check_support_kbps}    Set Global Variable    ${SUPPORT_kbps}    ${1}    ELSE    Set Global Variable
-    ...    ${SUPPORT_kbps}    ${0}
-    Run Keyword If    ${check_support_pps}    Set Global Variable    ${SUPPORT_pps}    ${1}    ELSE    Set Global Variable
-    ...    ${SUPPORT_pps}    ${0}
-    Run Keyword If    ${check_support_kbps} or ${check_support_pps}    Set Global Variable    ${CMD_CFG_STORM_CONTROL_MODE}    ${2}
-    Run Keyword unless    ${check_support_kbps} and ${check_support_pps}    Set Global Variable    ${SUPPORT_kbps}    ${1}
-    Run Keyword unless    ${check_support_kbps} and ${check_support_pps}    Set Global Variable    ${CMD_CFG_STORM_CONTROL_MODE}    ${1}
-    ${ret}=    Exec Cmd    ${s1_alias}    no ${CMD_STORM_CONTROL} ?
-    Read
-    ${check_res}=    Tools.Is Match From String    '${ret}'    broadcast
-    Run Keyword If    ${check_res}    Set Global Variable    ${CMD_CFG_NO_STORM_CONTROL_MODE}    ${2}
+    tools.comment    确定是否支持kbps,pps并检查命令行配置模式
+    ##    检查是否支持全局命令模式    rocket\rtk芯片设备支持
+    Check Global Cmd Mode
+    ##    如果不支持全局命令配置，则检查端口命令模式
+    Run Keyword Unless    ${GLOBAL_StormControl_MODE}    Check Interface Cmd Mode
     close console    ${s1_alias}
 
 Uninit Suite Test
@@ -125,6 +105,7 @@ Uninit Suite Test
     Unset Storm Control    ${s1_alias}    ${s1p3}    broadcast
     Unset Storm Control    ${s1_alias}    ${s1p3}    multicast
     Unset Storm Control    ${s1_alias}    ${s1p3}    unicast
+    Unset Global Storm Control    ${s1_alias}
     Ixia.Set Port Mode Default    @{testerp1}
     Ixia.Set Port Mode Default    @{testerp2}
     tools.comment    ${s1_alias}    !!END!! TEST SUITE:${SUITE_NAME}
@@ -157,13 +138,13 @@ Send Stream And Check
     Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{sport}
     Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{dport}
     Run Keyword If    ${transmit_tag}==True    Ixiasend.Start Transmit    @{sport}
-    sleep    5s
-    #获取发包速率,用于出错时检查
+    sleep    5s    等待桶令牌耗尽
+    #    获取发包速率,用于出错时检查
     Get Statics    @{sport}    tx${received_type}
     ${ret}    CheckIxiaReceiveRate    @{dport}    ${received_type}    ${received_rate}    ${tolerance}
     #    ${ret}    Check Ixia Rx Average Rate    @{dport}    ${received_type}    ${received_rate}    ${tolerance}
     Run Keyword And Continue On Failure    Should Be True    ${ret}    ${TEST_NAME}\n check stream error!
-    #若检查有误, 则debug交换机
+    #    若检查有误, 则debug交换机
     Run Keyword unless    ${ret}    Repeat Keyword    2 times    Exec Cmd List    ${s1_alias}    show interface ${s1p1} | begin Statistics
     Run Keyword unless    ${ret}    Repeat Keyword    2 times    Exec Cmd List    ${s1_alias}    show interface ${s1p2} | begin Statistics
     Run Keyword If    ${stop_trans_tag}==True    Ixiasend.Stop Transmit    @{sport}
@@ -405,3 +386,57 @@ Check Set Storm Control
     ${check_result}=    Tools.Is Match From String    ${ret}    ${cfg_command}
     Run Keyword If    ${check_result} !=True    log    Can not find "${cfg_command}" in Show run interface ${port}    ${loglevel}
     [Return]    ${check_result}
+
+Check Global Cmd Mode
+    Exec Cmd List In ConfigMode    ${s1_alias}
+    ${ret}=    Exec Cmd    ${s1_alias}    ${CMD_STORM_CONTROL} ?
+    ${check_global_mode}=    Tools.Is Match From String    '${ret}'    Unrecognized|Invalid
+    Run Keyword unless    ${check_global_mode}    Set Global Variable    ${GLOBAL_StormControl_MODE}    ${True}    ELSE    Set Global Variable
+    ...    ${GLOBAL_StormControl_MODE}    ${False}
+    ${check_support_kbps}=    Tools.Is Match From String    '${ret}'    kbps
+    ${check_support_pps}=    Tools.Is Match From String    '${ret}'    pps
+    Run Keyword If    ${check_support_kbps}    Set Global Variable    ${SUPPORT_kbps}    ${1}    ELSE    Set Global Variable
+    ...    ${SUPPORT_kbps}    ${0}
+    Run Keyword If    ${check_support_pps}    Set Global Variable    ${SUPPORT_pps}    ${1}    ELSE    Set Global Variable
+    ...    ${SUPPORT_pps}    ${0}
+    Run Keyword If    ${GLOBAL_StormControl_MODE}    Set Global Variable    ${CMD_CFG_STORM_CONTROL_MODE}    ${1}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}
+    ${ret}=    Exec Cmd    ${s1_alias}    no ${CMD_STORM_CONTROL} ?
+    Read
+    ${check_res}=    Tools.Is Match From String    '${ret}'    broadcast
+    Run Keyword If    ${check_res}    Set Global Variable    ${CMD_CFG_NO_STORM_CONTROL_MODE}    ${2}
+
+Check Interface Cmd Mode
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}
+    ${ret}=    Exec Cmd    ${s1_alias}    ${CMD_STORM_CONTROL} broadcast ?
+    Read
+    ${check_support_kbps}=    Tools.Is Match From String    '${ret}'    kbps
+    ${check_support_pps}=    Tools.Is Match From String    '${ret}'    pps
+    Run Keyword If    ${check_support_kbps}    Set Global Variable    ${SUPPORT_kbps}    ${1}    ELSE    Set Global Variable
+    ...    ${SUPPORT_kbps}    ${0}
+    Run Keyword If    ${check_support_pps}    Set Global Variable    ${SUPPORT_pps}    ${1}    ELSE    Set Global Variable
+    ...    ${SUPPORT_pps}    ${0}
+    Run Keyword If    ${check_support_kbps} or ${check_support_pps}    Set Global Variable    ${CMD_CFG_STORM_CONTROL_MODE}    ${2}
+    Run Keyword unless    ${check_support_kbps} and ${check_support_pps}    Set Global Variable    ${SUPPORT_kbps}    ${1}
+    Run Keyword unless    ${check_support_kbps} and ${check_support_pps}    Set Global Variable    ${CMD_CFG_STORM_CONTROL_MODE}    ${1}
+    ${ret}=    Exec Cmd    ${s1_alias}    no ${CMD_STORM_CONTROL} ?
+    Read
+    ${check_res}=    Tools.Is Match From String    '${ret}'    broadcast
+    Run Keyword If    ${check_res}    Set Global Variable    ${CMD_CFG_NO_STORM_CONTROL_MODE}    ${2}
+
+Set Global Storm Control
+    [Arguments]    ${alias}    ${type}
+    [Documentation]    功能:在全局模式下配置风暴抑制功能
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    ...    \- type#抑制方式
+    Exec Cmd List In ConfigMode    ${alias}    ${CMD_STORM_CONTROL} ${type}
+
+Unset Global Storm Control
+    [Arguments]    ${alias}
+    [Documentation]    功能:在全局模式下恢复风暴抑制功能为缺省值
+    ...
+    ...    \args:
+    ...    \- alias #指定设备
+    Exec Cmd List In ConfigMode    ${alias}    no ${CMD_STORM_CONTROL}
