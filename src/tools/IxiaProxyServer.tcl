@@ -432,6 +432,21 @@ proc GetStatistics {cmdstr} {
                 set statnum [stat cget -flowControlFrames]
                 lappend ret $statnum
             }
+            "rxIpv4Packets" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -ipPackets]
+                lappend ret $statnum
+            }
+            "rxUdpPackets" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -udpPackets]
+                lappend ret $statnum
+            }
+            "rxTcpPackets" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -tcpPackets]
+                lappend ret $statnum
+            }
         }
     }
     set retstr [join $ret]

@@ -239,8 +239,9 @@ Get Statics
     ...    - card: ixia card
     ...    - port: ixia port
     ...    - stats: a string or a string list;
-    ...    \ \ \ \ tx include:txpps,txBps,txbps,txpackets,txbytes,txbits
-    ...    \ \ \ \ rx include:rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
+    ...    \ \ \ \ tx include:txpps,txBps,txbps,txpackets,txbytes,txbits;
+    ...    \ \ \ \ rx include:rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits;
+    ...    \ \ \ \ rxIpv4Packets,rxUdpPackets,rxTcpPackets;
     ...    \ \ \ \ other info:updown: 0:down,1:up;
     ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ txstate: 0:stop,1:start;
     ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lineSpeed: The speed configured for the port,unit:Mbps;
@@ -1080,6 +1081,5 @@ Get Statics Between Timeout
     ...    return:
     ...    - non negative number list including two item statics num, the first is before timeout item, the sencond is after timeout item
     ...    - negative number: error code
-    ...
     ${rc}=    Ixia.Get Statistics Between Timeout    ${chasId}    ${card}    ${port}    ${stats}    ${timeout}
     [Return]    ${rc}

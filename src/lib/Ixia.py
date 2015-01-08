@@ -954,8 +954,9 @@ class Ixia(object):
         - chasId: normally should be 1
         - card:   ixia card
         - port:   ixia port
-        - statisType: txpps,txBps,txbps,txpackets,txbytes,txbits
-                      rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits
+        - statisType: txpps,txBps,txbps,txpackets,txbytes,txbits;
+                      rxpps,rxBps,rxbps,rxpackets,rxbytes,rxbits;
+                      rxIpv4Packets,rxUdpPackets,rxTcpPackets;
                       updown: 0:down,1:up;
                       txstate: 0:stop,1:start;
                       lineSpeed: The speed configured for the port,unit:Mbps;
