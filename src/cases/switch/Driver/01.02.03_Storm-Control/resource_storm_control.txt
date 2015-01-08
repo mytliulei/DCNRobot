@@ -391,8 +391,8 @@ Check Global Cmd Mode
     Exec Cmd List In ConfigMode    ${s1_alias}
     ${ret}=    Exec Cmd    ${s1_alias}    ${CMD_STORM_CONTROL} ?
     ${check_global_mode}=    Tools.Is Match From String    '${ret}'    Unrecognized|Invalid
-    Run Keyword unless    ${check_global_mode}    Set Global Variable    ${GLOBAL_StormControl_MODE}    ${True}    ELSE    Set Global Variable
-    ...    ${GLOBAL_StormControl_MODE}    ${False}
+    Run Keyword if    ${check_global_mode}    Set Global Variable    ${GLOBAL_StormControl_MODE}    ${False}
+    ...    ELSE    Set Global Variable    ${GLOBAL_StormControl_MODE}    ${True}
     ${check_support_kbps}=    Tools.Is Match From String    '${ret}'    kbps
     ${check_support_pps}=    Tools.Is Match From String    '${ret}'    pps
     Run Keyword If    ${check_support_kbps}    Set Global Variable    ${SUPPORT_kbps}    ${1}    ELSE    Set Global Variable
