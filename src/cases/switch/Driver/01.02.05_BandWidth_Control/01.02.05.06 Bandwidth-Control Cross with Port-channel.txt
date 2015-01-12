@@ -17,8 +17,6 @@ Resource          resource_bandwidth_control.txt
     Log Step Start    Step1    S1P1与S1P3配置带宽限制后, 加入聚合端口, 检查聚合成功,有风暴抑制配置.
     ${expect_value_receive}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    10000    direction=receive
     ${expect_value_trans}=    Set Bandwidth Control    ${s1_alias}    ${s1p1}    20000    direction=transmit
-    Set Suite Variable    ${TP2_RCV}    ${expect_value_receive}
-    Set Suite Variable    ${TP1_RCV}    ${expect_value_trans}
     Set Bandwidth Control    ${s1_alias}    ${s1p3}    10000    direction=receive
     Set Bandwidth Control    ${s1_alias}    ${s1p3}    20000    direction=transmit
     ${p1_rcv}=    Check Port Show Run    ${s1_alias}    ${s1p1}    ${CMD_BANDWIDTH_CONTROL} \\d+ receive
@@ -31,20 +29,23 @@ Resource          resource_bandwidth_control.txt
     Set Port Channel Member    ${s1_alias}    ${s1p3}    channel_name=1    mode=on
     ${p1_result}=    Check Port Channel Member    ${s1_alias}    ${s1p1}    channel_name=1
     ${p3_result}=    Check Port Channel Member    ${s1_alias}    ${s1p3}    channel_name=1
-    Run Keyword And Continue On Failure    Should be true    ${p1_result}==${p3_result}==True    ${s1p1}与${s1p3}是port-channel 1的成员端口
+    Run Keyword And Continue On Failure    Should be true    ${p1_result}==${p3_result}==True    ${s1p1}与${s1p3}应该是port-channel 1的成员端口
     Log Step END    Step1    S1P1与S1P3配置带宽限制后, 加入聚合端口, 检查聚合成功,有风暴抑制配置.
     #
     #
     Log Step Start    step 2    带宽抑制功能正常生效
-    Set ixia stream ip    @{testerp1}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:01:01:01
-    Set ixia stream ip    @{testerp2}    stream_rate=80000000    stream_rate_mode=${IXIA_StreamRateMode_bps}    reset=True    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:02:02:02
-    Ixiasend.Start Transmit    @{testerp1}
-    Ixiasend.Start Transmit    @{testerp2}
-    sleep    2s    等待桶令牌耗尽
-    ${res1}=    Check Ixia Rx Average Rate    @{testerp2}    bps    ${TP2_RCV}
-    ${res2}=    Check Ixia Rx Average Rate    @{testerp1}    bps    ${TP1_RCV}
-    Ixiasend.Stop Transmit    @{testerp1}
-    Ixiasend.Stop Transmit    @{testerp2}
+    ${pktNum1}=    Evaluate    int(${send_rate}/64/8*5)    #计算5s的发包数量
+    ${pktNum2}=    Evaluate    int(${send_rate}/64/8*${timeRange})    #计算timeRange时间内的发包数量
+    Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:11:11:11    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_next}
+    ...    numPacket=${pktNum1}    reset=True
+    Set ixia stream ip    @{testerp1}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:11:11:11    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
+    ...    numPacket=${pktNum2}    stream_id=${2}    reset=False
+    Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:22:22:22    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_next}
+    ...    numPacket=${pktNum1}    reset=True
+    Set ixia stream ip    @{testerp2}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:22:22:22    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
+    ...    numPacket=${pktNum2}    stream_id=${2}    reset=False
+    ${res1}=    check limit rate for rx    ${expect_value_receive}
+    ${res2}=    check limit rate for tx    ${expect_value_trans}
     Should Be True    ${res1}==${res2}==True    bandwidth control Error.
     Log Step END    step 2    带宽抑制功能正常生效
     #
@@ -95,3 +96,29 @@ Resource          resource_bandwidth_control.txt
     Unset Bandwidth Control    ${s1_alias}    ${s1p1}
     Unset Bandwidth Control    ${s1_alias}    ${s1p3}
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置完成<<<<<<
+
+check limit rate for rx
+    [Arguments]    ${receive_rate}    ${tolerance}=${0.05}
+    ${rx1}=    Get Statics    @{testerp2}    rxIpv4Packets
+    ${rx1}=    Evaluate    ${rx1}*64*8
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Wait For Transmit Done    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp1}
+    ${rx2}=    Get Statics    @{testerp2}    rxIpv4Packets
+    ${rx2}=    Evaluate    ${rx2}*64*8
+    ${limitRate}=    Evaluate    (${rx2}-${rx1})/${timeRange}
+    ${res}=    Check More or Less    ${limitRate}    ${receive_rate}    ${tolerance}
+    [Return]    ${res}
+
+check limit rate for tx
+    [Arguments]    ${receive_rate}    ${tolerance}=${0.05}
+    ${rx1}=    Get Statics    @{testerp1}    rxIpv4Packets
+    ${rx1}=    Evaluate    ${rx1}*64*8
+    Ixiasend.Start Transmit    @{testerp2}
+    Ixiasend.Wait For Transmit Done    @{testerp2}
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${rx2}=    Get Statics    @{testerp1}    rxIpv4Packets
+    ${rx2}=    Evaluate    ${rx2}*64*8
+    ${limitRate}=    Evaluate    (${rx2}-${rx1})/${timeRange}
+    ${res}=    Check More or Less    ${limitRate}    ${receive_rate}    ${tolerance}
+    [Return]    ${res}
