@@ -309,3 +309,21 @@ get stream arp extend var
     ...    sourceHardwareAddrRepeatCount    sourceProtocolAddrMode    sourceProtocolAddrRepeatCount
     Keep In Dictionary    ${new_dict}    @{list}
     Return From Keyword    ${new_dict}
+
+Check Ixia Rx Average Rate
+    [Arguments]    ${chassis}    ${card}    ${port}    ${received_type}    ${received_rate}    ${tolerance}=${0.05}
+    ...    ${timeRange}=${20}
+    @{dport}=    Set Variable    ${chassis}    ${card}    ${port}
+    #    ${time1}=    Evaluate    time.time()    time
+    #    ${rx1}=    Run Keyword If    '${received_type}'=='bps'    Get Statics    @{dport}    rxbits
+    ...    #ELSE    Get Statics    @{dport}    rxpackets
+    #    sleep    ${timeRange}s
+    #    ${rx2}=    Run Keyword If    '${received_type}'=='bps'    Get Statics    @{dport}    rxbits
+    ...    #ELSE    Get Statics    @{dport}    rxpackets
+    #    ${time2}=    Evaluate    time.time()    time
+    #    ${limitRate}=    Evaluate    (${rx2}-${rx1})/((${time2}-${time1}-${timeRange})/2+${timeRange})
+    ${rx1}    ${rx2}=    Run Keyword If    '${received_type}'=='bps'    Get Statics Between Timeout    @{dport}    rxbits
+    ...    ${${timeRange}*1000}    ELSE    Get Statics Between Timeout    @{dport}    rxpackets    ${${timeRange}*1000}
+    ${avgRate}=    Evaluate    (${rx2}-${rx1})/${timeRange}
+    ${ret}=    Check More or Less    ${avgRate}    ${received_rate}    ${tolerance}
+    [Return]    ${ret}

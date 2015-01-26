@@ -4,13 +4,13 @@ Suite Teardown    uninit suite test
 Resource          resource_speed_duplex.txt
 
 *** Test Cases ***
-01 Fiber Negoation on
+01 Fiber Negotiation on
     [Setup]    init
     Log Step Start    step1    非强制千兆速率,关闭协商后再重新打开,对端也开启协商,可以正常up
     Unset Speed-duplex    ${s1_alias}    ${s1p1}
-    Set Negoation    ${s1_alias}    ${s1p1}    off
+    Set Negotiation    ${s1_alias}    ${s1p1}    off
     sleep    2
-    Set Negoation    ${s1_alias}    ${s1p1}    on
+    Set Negotiation    ${s1_alias}    ${s1p1}    on
     sleep    5
     check negotiation    mode=0    port_updown=UP    port_speed=1000    port_duplex=FULL    ixia_updown=1    ix_speed=1000
     ...    ix_duplex=1
@@ -19,20 +19,20 @@ Resource          resource_speed_duplex.txt
     #
     Log Step Start    step1    强制端口为千兆速率,关闭协商后再重新打开,对端也开启协商,可以正常up
     Set Speed-duplex    ${s1_alias}    ${s1p1}    force1g-full
-    Set Negoation    ${s1_alias}    ${s1p1}    off
+    Set Negotiation    ${s1_alias}    ${s1p1}    off
     sleep    2
-    Set Negoation    ${s1_alias}    ${s1p1}    on
+    Set Negotiation    ${s1_alias}    ${s1p1}    on
     sleep    5
     check negotiation    mode=0    port_updown=UP    port_speed=1000    port_duplex=FULL    ixia_updown=1    ix_speed=1000
     ...    ix_duplex=1
     Log Step End    step1
     [Teardown]    uninit
 
-02 Fiber Negoation off
+02 Fiber Negotiation off
     [Setup]    init
     Log Step Start    step1    非强制千兆速率,关闭协商后,对端也关闭协商,可以正常up
     Unset Speed-duplex    ${s1_alias}    ${s1p1}
-    Set Negoation    ${s1_alias}    ${s1p1}    off
+    Set Negotiation    ${s1_alias}    ${s1p1}    off
     sleep    5
     check negotiation    mode=6    port_updown=UP    port_speed=1000    port_duplex=FULL    ixia_updown=1    ix_speed=1000
     ...    ix_duplex=1
@@ -41,7 +41,7 @@ Resource          resource_speed_duplex.txt
     #
     Log Step Start    step1    强制端口为千兆速率,关闭协商后,对端也关闭协商,可以正常up
     Set Speed-duplex    ${s1_alias}    ${s1p1}    force1g-full
-    Set Negoation    ${s1_alias}    ${s1p1}    off
+    Set Negotiation    ${s1_alias}    ${s1p1}    off
     sleep    5
     check negotiation    mode=6    port_updown=UP    port_speed=1000    port_duplex=FULL    ixia_updown=1    ix_speed=1000
     ...    ix_duplex=1
@@ -51,10 +51,10 @@ Resource          resource_speed_duplex.txt
 *** Keywords ***
 init
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
-    Run Keyword If    '${S1P1_HW}'=='Copper'    Fail    电口不支持光口协商配置
-    Run Keyword If    '${S1P1_MAX_SPD}'!=1000    Fail    非千兆光口不支持光口协商配置测试
     @{cfg_list}=    Get Port Show Run    ${s1_alias}    ${s1p1}    (speed.*)\\s
     Set Test Variable    @{cfg_list}
+    Run Keyword If    '${S1P1_HW}'=='Copper'    Fail    电口不支持光口协商配置
+    Run Keyword If    '${S1P1_MAX_SPD}'!=1000    Fail    非千兆光口不支持光口协商配置测试
     tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
 
 uninit

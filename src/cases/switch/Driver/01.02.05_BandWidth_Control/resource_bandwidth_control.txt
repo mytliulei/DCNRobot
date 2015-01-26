@@ -7,6 +7,8 @@ Resource          ../resource_driver.txt
 
 *** Variables ***
 ${CMD_BANDWIDTH_CONTROL}    bandwidth control
+${send_rate}      70000000    # tp1/tp2发送报文速率 单位:bps
+${timeRange}      10    # 检查平均抑制速率的时间窗口，单位:s
 
 *** Keywords ***
 Init Suite Test
