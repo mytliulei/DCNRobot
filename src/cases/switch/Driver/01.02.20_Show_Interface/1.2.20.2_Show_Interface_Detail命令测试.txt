@@ -31,10 +31,10 @@ Resource          resource_show_interface.txt
     ${count6}=    Get Line Count    ${str6}
     should be true    ${count1}==${portNum}
     should be true    ${count2}==${portNum}
-    should be true    ${count3}==${portNum}
-    should be true    ${count4}==${portNum}
-    should be true    ${count5}==${portNum}
-    should be true    ${count6}==${portNum}
+    Run Keyword If    ${DEVICE_TYPE}==${0}    should be true    ${count3}==${portNum}
+    Run Keyword If    ${DEVICE_TYPE}==${0}    should be true    ${count4}==${portNum}
+    Run Keyword If    ${DEVICE_TYPE}==${0}    should be true    ${count5}==${portNum}
+    Run Keyword If    ${DEVICE_TYPE}==${0}    should be true    ${count6}==${portNum}
     Log Step End    step2
 
 *** Key Words ***
