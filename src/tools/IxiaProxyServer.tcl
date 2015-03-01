@@ -163,6 +163,11 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -978
             }
         }
+        "set_port_filters_enable" {
+            if {[catch {set ret [SetPortFiltersEnable $cmdstr]} result]} {
+                set ret -977
+            }
+        }
         default {
             set ret -900
         }
@@ -445,6 +450,46 @@ proc GetStatistics {cmdstr} {
             "rxTcpPackets" {
                 stat get allStats $chasId $port $card
                 set statnum [stat cget -tcpPackets]
+                lappend ret $statnum
+            }
+            "userStat1" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -userDefinedStat1]
+                lappend ret $statnum
+            }
+            "userStat2" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -userDefinedStat2]
+                lappend ret $statnum
+            }
+            "captureFilter" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -captureFilter]
+                lappend ret $statnum
+            }
+            "captureTrigger" {
+                stat get allStats $chasId $port $card
+                set statnum [stat cget -captureTrigger]
+                lappend ret $statnum
+            }
+            "userStat1_pps" {
+                stat getRate statUserDefinedStat1 $chasId $port $card
+                set statnum [stat cget -userDefinedStat1]
+                lappend ret $statnum
+            }
+            "userStat2_pps" {
+                stat getRate statUserDefinedStat2 $chasId $port $card
+                set statnum [stat cget -userDefinedStat2]
+                lappend ret $statnum
+            }
+            "captureFilter_pps" {
+                stat getRate statCaptureFilter $chasId $port $card
+                set statnum [stat cget -captureFilter]
+                lappend ret $statnum
+            }
+            "captureTrigger_pps" {
+                stat getRate statCaptureTrigger $chasId $port $card
+                set statnum [stat cget -captureTrigger]
                 lappend ret $statnum
             }
         }
@@ -1186,6 +1231,72 @@ proc GetStatisticsTimeout {cmdstr} {
     }
     set retstr [join $ret]
     return $retstr
+}
+
+#set ixia port filters
+#err code : 2900-2999
+proc SetPortFiltersEnable {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 3} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    global logflag
+    global logfid
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set card [lindex $cmdlist 1]
+    set port [lindex $cmdlist 2]
+    set filterlist [lrange $cmdlist 3 end]
+    set filter_cmdstr [join $filterlist " "]
+    if {$logflag == 1} {
+        puts $logfid $filter_cmdstr
+    }
+    set filter_cmdlist [split $filter_cmdstr "$"]
+    set filter_cmd1 [lindex $filter_cmdlist 0]
+    set filter_cmd2 [lindex $filter_cmdlist 1]
+    #config filter
+    filter setDefault
+    if {$logflag == 1} {
+        puts $logfid "filter setDefault"
+    }
+    set filter_cmd1_list [split $filter_cmd1 "@"]
+    foreach ecmd $filter_cmd1_list {
+        eval $ecmd
+        if {$logflag == 1} {
+            puts $logfid $ecmd
+        }
+    }
+    filter set $chasId $card $port
+    if {$logflag == 1} {
+        puts $logfid "filter set $chasId $card $port"
+    }
+    #config filterPallette
+    filterPallette setDefault
+    if {$logflag == 1} {
+        puts $logfid "filterPallette setDefault"
+    }
+    set filter_cmd2_list [split $filter_cmd2 "@"]
+    foreach ecmd $filter_cmd2_list {
+        eval $ecmd
+        if {$logflag == 1} {
+            puts $logfid $ecmd
+        }
+    }
+    filterPallette set $chasId $card $port
+    if {$logflag == 1} {
+        puts $logfid "filterPallette set $chasId $card $port"
+    }
+    port set $chasId $card $port
+    if {$logflag == 1} {
+        puts $logfid "port set $chasId $card $port"
+    }
+    set portlist [list [list $chasId $card $port]]
+    ixWriteConfigToHardware portlist
 }
 
 #connect to ixia

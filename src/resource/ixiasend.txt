@@ -247,6 +247,10 @@ Get Statics
     ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lineSpeed: The speed configured for the port,unit:Mbps;
     ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ duplex: 0:half,1:full;
     ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ flowControlFrames : flow Control Frames Received
+    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ userStat1: user defined statistics 1
+    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ userStat2: user defined statistics 2
+    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ captureFilter: capture Filter statistics
+    ...    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ captureTrigger: capture Trigger statistics
     ...
     ...    return:
     ...    - a statics number or a statics number list; statics number will be a non negative number:
@@ -1082,4 +1086,146 @@ Get Statics Between Timeout
     ...    - non negative number list including two item statics num, the first is before timeout item, the sencond is after timeout item
     ...    - negative number: error code
     ${rc}=    Ixia.Get Statistics Between Timeout    ${chasId}    ${card}    ${port}    ${stats}    ${timeout}
+    [Return]    ${rc}
+
+Set Port Filters Da
+    [Arguments]    ${da1}=${None}    ${mask1}=${None}    ${da2}=${None}    ${mask2}=${None}
+    [Documentation]    config DA1 and DA2 in ixia port filterPallette
+    ...
+    ...    args:
+    ...    - da1: \ \ dst mac1 address,for example: 00 00 00 00 00 01
+    ...    - mask1: dst mac1 address mask, for example: 00 00 00 00 00 00
+    ...    - da2: \ \ dst mac2 address
+    ...    - mask2: dst mac2 address mask
+    ...
+    ...    return:
+    ...    - True : ok
+    ${rc}=    Ixia.Set Port Filters Da    ${da1}    ${mask1}    ${da2}    ${mask2}
+    [Return]    ${rc}
+
+Set Port Filters Sa
+    [Arguments]    ${sa1}=${None}    ${mask1}=${None}    ${sa2}=${None}    ${mask2}=${None}
+    [Documentation]    config SA1 and SA2 in ixia port filterPallette
+    ...
+    ...    args:
+    ...    - sa1: \ \ src mac1 address,for example: 00 00 00 00 00 01
+    ...    - mask1: src mac1 address mask, for example: 00 00 00 00 00 00
+    ...    - sa2: \ \ src mac2 address
+    ...    - mask2: src mac2 address mask
+    ...
+    ...    return:
+    ...    - True : ok
+    ${rc}=    Ixia.Set Port Filters Sa    ${sa1}    ${mask1}    ${sa2}    ${mask2}
+    [Return]    ${rc}
+
+Set Port Filters Pattern Custom
+    [Arguments]    ${offset1}=${None}    ${pattern1}=${None}    ${mask1}=${None}    ${offset2}=${None}    ${pattern2}=${None}    ${mask2}=${None}
+    [Documentation]    config custom mode in ixia port filterPallette Pattern1 and Pattern2
+    ...
+    ...    args:
+    ...    - offset1: \ \ offset in Pattern1, same to ixia config in IxExplorer
+    ...    - pattern1: \ pattern in Pattern1, same to ixia config in IxExplorer
+    ...    - mask1: \ \ \ \ mask in Pattern1, same to ixia config in IxExplorer
+    ...    - offset2: \ \ offset in Pattern2, same to ixia config in IxExplorer
+    ...    - pattern2: \ pattern in Pattern2, same to ixia config in IxExplorer
+    ...    - mask2: \ \ \ \ mask in Pattern2, same to ixia config in IxExplorer
+    ...
+    ...    return:
+    ...    - True : ok
+    ${rc}=    Ixia.Set Port Filters Pattern Custom    ${offset1}    ${pattern1}    ${mask1}    ${offset2}    ${pattern2}
+    ...    ${mask2}
+    [Return]    ${rc}
+
+Set Port Filters Uds1
+    [Arguments]    ${da}=${None}    ${sa}=${None}    ${pattern}=${None}    ${errors}=${None}    ${size_min}=${None}    ${size_max}=${None}
+    [Documentation]    config uds1 in ixia port filters
+    ...
+    ...    args:
+    ...    - da: \ \ \ \ \ \ 0: any; 1: DA1; 2: Not DA1; 3: DA2; 4: Not DA2;
+    ...    - sa: \ \ \ \ \ \ 0: any; 1: SA1; 2: Not SA1; 3: SA2; 4: Not SA2;
+    ...    - pattern: \ 0: any; 1: pattern1; 2: not pattern1; 3: pattern2; 4: not pattern2; 5: pattern1 & pattern2;
+    ...    - errors: \ \ 0: any; 1: good packet; 2: bad crc; 3: bad packet;
+    ...    - size_min: minimum packet size
+    ...    - size_max: maximum packet size
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Filters Uds1    ${da}    ${sa}    ${pattern}    ${errors}    ${size_min}
+    ...    ${size_max}
+    [Return]    ${rc}
+
+Set Port Filters Uds2
+    [Arguments]    ${da}=${None}    ${sa}=${None}    ${pattern}=${None}    ${errors}=${None}    ${size_min}=${None}    ${size_max}=${None}
+    [Documentation]    config uds2 in ixia port filters
+    ...
+    ...    args:
+    ...    - da: \ \ \ \ \ \ 0: any; 1: DA1; 2: Not DA1; 3: DA2; 4: Not DA2;
+    ...    - sa: \ \ \ \ \ \ 0: any; 1: SA1; 2: Not SA1; 3: SA2; 4: Not SA2;
+    ...    - pattern: \ 0: any; 1: pattern1; 2: not pattern1; 3: pattern2; 4: not pattern2; 5: pattern1 & pattern2;
+    ...    - errors: \ \ 0: any; 1: good packet; 2: bad crc; 3: bad packet;
+    ...    - size_min: minimum packet size
+    ...    - size_max: maximum packet size
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Filters Uds2    ${da}    ${sa}    ${pattern}    ${errors}    ${size_min}
+    ...    ${size_max}
+    [Return]    ${rc}
+
+Set Port Filters CaptureFilter
+    [Arguments]    ${da}=${None}    ${sa}=${None}    ${pattern}=${None}    ${errors}=${None}    ${size_min}=${None}    ${size_max}=${None}
+    [Documentation]    config capture filter in ixia port filters
+    ...
+    ...    args:
+    ...    - da: \ \ \ \ \ \ 0: any; 1: DA1; 2: Not DA1; 3: DA2; 4: Not DA2;
+    ...    - sa: \ \ \ \ \ \ 0: any; 1: SA1; 2: Not SA1; 3: SA2; 4: Not SA2;
+    ...    - pattern: \ 0: any; 1: pattern1; 2: not pattern1; 3: pattern2; 4: not pattern2; 5: pattern1 & pattern2;
+    ...    - errors: \ \ 0: any; 1: good packet; 2: bad crc; 3: bad packet;
+    ...    - size_min: minimum packet size
+    ...    - size_max: maximum packet size
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Filters Capfilter    ${da}    ${sa}    ${pattern}    ${errors}    ${size_min}
+    ...    ${size_max}
+    [Return]    ${rc}
+
+Set Port Filters CaptureTrigger
+    [Arguments]    ${da}=${None}    ${sa}=${None}    ${pattern}=${None}    ${errors}=${None}    ${size_min}=${None}    ${size_max}=${None}
+    [Documentation]    config capture trigger in ixia port filters
+    ...
+    ...    args:
+    ...    - da: \ \ \ \ \ \ 0: any; 1: DA1; 2: Not DA1; 3: DA2; 4: Not DA2;
+    ...    - sa: \ \ \ \ \ \ 0: any; 1: SA1; 2: Not SA1; 3: SA2; 4: Not SA2;
+    ...    - pattern: \ 0: any; 1: pattern1; 2: not pattern1; 3: pattern2; 4: not pattern2; 5: pattern1 & pattern2;
+    ...    - errors: \ \ 0: any; 1: good packet; 2: bad crc; 3: bad packet;
+    ...    - size_min: minimum packet size
+    ...    - size_max: maximum packet size
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Filters Captrigger    ${da}    ${sa}    ${pattern}    ${errors}    ${size_min}
+    ...    ${size_max}
+    [Return]    ${rc}
+
+Set Port Filters Enable
+    [Arguments]    ${chasId}    ${card}    ${port}
+    [Documentation]    enable ixia port filters \
+    ...
+    ...    *Note use keyword Set Port Config Default to clear the filter configuration*
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Filters Enable    ${chasId}    ${card}    ${port}
+    Should Be Equal As Integers    ${rc}    0
     [Return]    ${rc}
