@@ -75,6 +75,22 @@ class Ixia(object):
         self._proxy_server_retcode = None
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
+        self._port_filters = {
+            'da1_address': None,
+            'da2_address': None,
+            'sa1_address': None,
+            'sa2_address': None,
+            'da1_mask': None,
+            'da2_mask': None,
+            'sa1_mask': None,
+            'sa2_mask': None,
+            'patten1_mode': None,
+            'patten2_mode': None,
+            'uds1_flag': False,
+            'uds2_flag': False,
+            'captrigger_flag': False,
+            'capfilter_flag': False,
+        }
         self.expect_err_Re = re.compile(r'ixia proxy error buffer end..',re.DOTALL)
         self.expect_ret_Re = re.compile(r'\n')
 
@@ -962,7 +978,10 @@ class Ixia(object):
                       lineSpeed: The speed configured for the port,unit:Mbps;
                       duplex: 0:half,1:full;
                       flowControlFrames : flow Control Frames Received
-
+                      userStat1: user defined statistics 1
+                      userStat2: user defined statistics 2
+                      captureFilter: capture Filter statistics
+                      captureTrigger: capture Trigger statistics
         return:
         - non negative number: statics num
         - negative number: error code
@@ -1155,6 +1174,368 @@ class Ixia(object):
         ret = readret[1]
         self._flush_proxy_server()
         return ret.strip()
+
+    def set_port_filters_da(self,da1=None,mask1=None,da2=None,mask2=None):
+        '''
+        config ixia port filterPallette DA1 and DA2
+
+        args:
+        - da1:   dst mac1 address,for example: 00 00 00 00 00 01
+        - mask1: dst mac1 address mask, for example: 00 00 00 00 00 00
+        - da2:   dst mac2 address
+        - mask2: dst mac2 address mask
+
+        return:
+        - True : ok
+        '''
+        #check parameter format
+        if da1:
+            if len(da1.split()) != 6:
+                raise AssertionError('da1 format error')
+            self._port_filters['da1_address'] = da1
+        else:
+            self._port_filters['da1_address'] = None
+        if da2:
+            if len(da2.split()) != 6:
+                raise AssertionError('da2 format error')
+            self._port_filters['da2_address'] = da2
+        else:
+            self._port_filters['da2_address'] = None
+        if mask1:
+            if len(mask1.split()) != 6:
+                raise AssertionError('da1 mask format error')
+            self._port_filters['da1_mask'] = mask1
+        else:
+            self._port_filters['da1_mask'] = None
+        if mask2:
+            if len(mask2.split()) != 6:
+                raise AssertionError('da2 mask format error')
+            self._port_filters['da2_mask'] = mask2
+        else:
+            self._port_filters['da2_mask'] = None
+        return True
+
+    def set_port_filters_sa(self,sa1=None,mask1=None,sa2=None,mask2=None):
+        '''
+        config ixia port filterPallette SA1 and SA2
+
+        args:
+        - sa1:   src mac1 address,for example: 00 00 00 00 00 01
+        - mask1: src mac1 address mask, for example: 00 00 00 00 00 00
+        - sa2:   src mac2 address
+        - mask2: src mac2 address mask
+
+        return:
+        - True : ok
+        '''
+        #check parameter format
+        if sa1:
+            if len(sa1.split()) != 6:
+                raise AssertionError('sa1 format error')
+            self._port_filters['sa1_address'] = sa1
+        else:
+            self._port_filters['sa1_address'] = None
+        if sa2:
+            if len(sa2.split()) != 6:
+                raise AssertionError('sa2 format error')
+            self._port_filters['sa2_address'] = sa2
+        else:
+            self._port_filters['sa2_address'] = None
+        if mask1:
+            if len(mask1.split()) != 6:
+                raise AssertionError('sa1 mask format error')
+            self._port_filters['sa1_mask'] = mask1
+        else:
+            self._port_filters['sa1_mask'] = None
+        if mask2:
+            if len(mask2.split()) != 6:
+                raise AssertionError('sa2 mask format error')
+            self._port_filters['sa2_mask'] = mask2
+        else:
+            self._port_filters['sa2_mask'] = None
+        return True
+
+    def set_port_filters_pattern_custom(self,offset1=None,pattern1=None,mask1=None,offset2=None,pattern2=None,mask2=None):
+        '''
+        config custom mode in ixia port filterPallette Pattern1 and Pattern2
+
+        args:
+        - offset1:   offset in Pattern1, same to ixia config in IxExplorer
+        - pattern1:  pattern in Pattern1, same to ixia config in IxExplorer
+        - mask1:     mask in Pattern1, same to ixia config in IxExplorer
+        - offset2:   offset in Pattern2, same to ixia config in IxExplorer
+        - pattern2:  pattern in Pattern2, same to ixia config in IxExplorer
+        - mask2:     mask in Pattern2, same to ixia config in IxExplorer
+
+        return:
+        - True : ok
+        '''
+        if issubclass(type(offset1),basestring):
+            if offset1.startswith('0x'):
+                offset1 = int(offset1,16)
+            else:
+                offset1 = int(offset1)
+        if issubclass(type(offset2),basestring):
+            if offset2.startswith('0x'):
+                offset2 = int(offset2,16)
+            else:
+                offset2 = int(offset2)
+        if len(pattern1.split()) > 16 or len(pattern1.split()) < 1:
+            raise AssertionError('pattern1 format error')
+        if len(pattern1.split()) != len(mask1.split()):
+            raise AssertionError('mask1 format error')
+        if len(pattern2.split()) > 16 or len(pattern2.split()) < 1:
+            raise AssertionError('pattern2 format error')
+        if len(pattern2.split()) != len(mask2.split()):
+            raise AssertionError('mask2 format error')
+        if offset1:
+            self._port_filters['patten1_mode'] = 'matchUser'
+            self._port_filters['pattern1_matchUser_offset'] = offset1
+            self._port_filters['pattern1_matchUser_pattern'] = pattern1
+            self._port_filters['pattern1_matchUser_mask'] = mask1
+        else:
+            self._port_filters['patten1_mode'] = None
+        if offset2:
+            self._port_filters['patten2_mode'] = 'matchUser'
+            self._port_filters['pattern2_matchUser_offset'] = offset2
+            self._port_filters['pattern2_matchUser_pattern'] = pattern2
+            self._port_filters['pattern2_matchUser_mask'] = mask2
+        else:
+            self._port_filters['patten2_mode'] = None
+        return True
+
+    def set_port_filters_uds1(self,da=None,sa=None,pattern=None,errors=None,size_min=None,size_max=None):
+        '''
+        config uds1 in ixia port filter
+
+        args:
+        - da:       0: any; 1: DA1; 2: Not DA1; 3: DA2; 4: Not DA2;
+        - sa:       0: any; 1: SA1; 2: Not SA1; 3: SA2; 4: Not SA2;
+        - pattern:  0: any; 1: pattern1; 2: not pattern1; 3: pattern2;
+                    4: not pattern2; 5: pattern1 & pattern2;
+        - errors:   0: any; 1: good packet; 2: bad crc; 3: bad packet;
+        - size_min: minimum packet size
+        - size_max: maximum packet size
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        if type(size_min) is not type(size_max):
+            raise AssertionError('size_min and size_max should be same type')
+        self._port_filters['uds1_flag'] = True
+        self._port_filters['uds1_da'] = da
+        self._port_filters['uds1_sa'] = sa
+        self._port_filters['uds1_pattern'] = pattern
+        self._port_filters['uds1_errors'] = errors
+        self._port_filters['uds1_size_min'] = size_min
+        self._port_filters['uds1_size_max'] = size_max
+        return 0
+
+    def set_port_filters_uds2(self,da=None,sa=None,pattern=None,errors=None,size_min=None,size_max=None):
+        '''
+        config uds2 in ixia port filter
+
+        args:
+        - da:       0: any; 1: DA1; 2: Not DA1; 3: DA2; 4: Not DA2;
+        - sa:       0: any; 1: SA1; 2: Not SA1; 3: SA2; 4: Not SA2;
+        - pattern:  0: any; 1: pattern1; 2: not pattern1; 3: pattern2;
+                    4: not pattern2; 5: pattern1 & pattern2;
+        - errors:   0: any; 1: good packet; 2: bad crc; 3: bad packet;
+        - size_min: minimum packet size
+        - size_max: maximum packet size
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        if type(size_min) is not type(size_max):
+            raise AssertionError('size_min and size_max should be same type')
+        self._port_filters['uds2_flag'] = True
+        self._port_filters['uds2_da'] = da
+        self._port_filters['uds2_sa'] = sa
+        self._port_filters['uds2_pattern'] = pattern
+        self._port_filters['uds2_errors'] = errors
+        self._port_filters['uds2_size_min'] = size_min
+        self._port_filters['uds2_size_max'] = size_max
+        return 0
+
+    def set_port_filters_captrigger(self,da=None,sa=None,pattern=None,errors=None,size_min=None,size_max=None):
+        '''
+        config capture trigger in ixia port filter
+
+        args:
+        - da:       0: any; 1: DA1; 2: Not DA1; 3: DA2; 4: Not DA2;
+        - sa:       0: any; 1: SA1; 2: Not SA1; 3: SA2; 4: Not SA2;
+        - pattern:  0: any; 1: pattern1; 2: not pattern1; 3: pattern2;
+                    4: not pattern2; 5: pattern1 & pattern2;
+        - errors:   0: any; 1: good packet; 2: bad crc; 3: bad packet;
+        - size_min: minimum packet size
+        - size_max: maximum packet size
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        if type(size_min) is not type(size_max):
+            raise AssertionError('size_min and size_max should be same type')
+        self._port_filters['captrigger_flag'] = True
+        self._port_filters['captrigger_da'] = da
+        self._port_filters['captrigger_sa'] = sa
+        self._port_filters['captrigger_pattern'] = pattern
+        self._port_filters['captrigger_errors'] = errors
+        self._port_filters['captrigger_size_min'] = size_min
+        self._port_filters['captrigger_size_max'] = size_max
+        return 0
+
+    def set_port_filters_capfilter(self,da=None,sa=None,pattern=None,errors=None,size_min=None,size_max=None):
+        '''
+        config capture filter in ixia port filter
+
+        args:
+        - da:       0: any; 1: DA1; 2: Not DA1; 3: DA2; 4: Not DA2;
+        - sa:       0: any; 1: SA1; 2: Not SA1; 3: SA2; 4: Not SA2;
+        - pattern:  0: any; 1: pattern1; 2: not pattern1; 3: pattern2;
+                    4: not pattern2; 5: pattern1 & pattern2;
+        - errors:   0: any; 1: good packet; 2: bad crc; 3: bad packet;
+        - size_min: minimum packet size
+        - size_max: maximum packet size
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        if type(size_min) is not type(size_max):
+            raise AssertionError('size_min and size_max should be same type')
+        self._port_filters['capfilter_flag'] = True
+        self._port_filters['capfilter_da'] = da
+        self._port_filters['capfilter_sa'] = sa
+        self._port_filters['capfilter_pattern'] = pattern
+        self._port_filters['capfilter_errors'] = errors
+        self._port_filters['capfilter_size_min'] = size_min
+        self._port_filters['capfilter_size_max'] = size_max
+        return 0
+
+    def set_port_filters_enable(self,chasId,card,port):
+        '''
+        enable ixia port filter, Note use keyword Set Port Config Default to clear the filter configuration
+
+        args:
+        - chasId:     normally should be 1
+        - card:       ixia card
+        - port:       ixia port
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        filter_cmd = self._get_port_filters_cmd()
+        if not filter_cmd:
+            raise AssertionError('port filters get cmd string error')
+        self._reset_port_filters_config()
+        cmd = 'set_port_filters_enable %s %s %s %s\n' % (chasId,card,port,filter_cmd)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def _get_port_filters_cmd(self):
+        '''
+        get ixia port filters cmd
+        '''
+        cmd = []
+        #config filter
+        filter_flag_list = [
+        ('uds1_','userDefinedStat1'),('uds2_','userDefinedStat2'),
+        ('captrigger_','captureTrigger'),('capfilter_','captureFilter'),
+        ]
+        icmd = []
+        for (ifiler,jfilter) in filter_flag_list:
+            nkey = ifiler+'flag'
+            if self._port_filters[nkey]:
+                #add DA,SA,Pattern,
+                if self._port_filters[ifiler+'da'] is not None:
+                    icmd.append('filter config -%sDA %s' % (jfilter,self._port_filters[ifiler+'da']))
+                if self._port_filters[ifiler+'sa'] is not None:
+                    icmd.append('filter config -%sSA %s' % (jfilter,self._port_filters[ifiler+'sa']))
+                if self._port_filters[ifiler+'pattern'] is not None:
+                    icmd.append('filter config -%sPattern %s' % (jfilter,self._port_filters[ifiler+'pattern']))
+                if self._port_filters[ifiler+'errors'] is not None:
+                    icmd.append('filter config -%sError %s' % (jfilter,self._port_filters[ifiler+'errors']))
+                if self._port_filters[ifiler+'size_min'] is not None and self._port_filters[ifiler+'size_max'] is not None:
+                    icmd.append('filter config -%sFrameSizeEnable true' % jfilter)
+                    icmd.append('filter config -%sFrameSizeFrom %s' % (jfilter,self._port_filters[ifiler+'size_min']))
+                    icmd.append('filter config -%sFrameSizeTo %s' % (jfilter,self._port_filters[ifiler+'size_max']))
+                #add enable
+                icmd.append('filter config -%sEnable true' % jfilter)
+        if icmd:
+            icmd_str = '@'.join(icmd)
+            cmd.append(icmd_str)
+        #config filterPallette
+        filterPallette_flag_list1 = [
+        ('da1_address','DA1'),('da1_mask','DAMask1'),
+        ('da2_address','DA2'),('da2_mask','DAMask2'),
+        ('sa1_address','SA1'),('sa1_mask','SAMask1'),
+        ('sa2_address','SA2'),('sa2_mask','SAMask2'),
+        ]
+        icmd = []
+        for (ifilerPallette,jfilterPallette) in filterPallette_flag_list1:
+            if self._port_filters[ifilerPallette]:
+                icmd.append('filterPallette config -%s {%s}' % (jfilterPallette,self._port_filters[ifilerPallette]))
+        filterPallette_pattern_dict = {
+        'matchUser':(('matchUser_offset','patternOffset'),('matchUser_pattern','pattern'),('matchUser_mask','patternMask')),
+        }
+        if self._port_filters['patten1_mode']:
+            ikey = self._port_filters['patten1_mode']
+            icmd.append('filterPallette config -matchType1 %s' % ikey)
+            if ikey in filterPallette_pattern_dict.keys():
+                for (jkey,kkey) in filterPallette_pattern_dict[ikey]:
+                    nkey = 'pattern1_' + jkey
+                    mkey = kkey + '1'
+                    if self._port_filters[nkey] is not None:
+                        icmd.append('filterPallette config -%s "%s"' % (mkey,self._port_filters[nkey]))
+        if self._port_filters['patten2_mode']:
+            ikey = self._port_filters['patten2_mode']
+            icmd.append('filterPallette config -matchType2 %s' % ikey)
+            if ikey in filterPallette_pattern_dict.keys():
+                for (jkey,kkey) in filterPallette_pattern_dict[ikey]:
+                    nkey = 'pattern2_' + jkey
+                    mkey = kkey + '2'
+                    if self._port_filters[nkey] is not None:
+                        icmd.append('filterPallette config -%s "%s"' % (mkey,self._port_filters[nkey]))
+        if icmd:
+            icmd_str = '@'.join(icmd)
+            cmd.append(icmd_str)
+        #join filter and filterPallette cmd
+        if cmd:
+            return '$'.join(cmd)
+        else:
+            return None
+
+    def _reset_port_filters_config(self):
+        '''
+        '''
+        self._port_filters['da1_address'] = None
+        self._port_filters['da2_address'] = None
+        self._port_filters['sa1_address'] = None
+        self._port_filters['sa1_address'] = None
+        self._port_filters['da1_mask'] = None
+        self._port_filters['da2_mask'] = None
+        self._port_filters['sa1_mask'] = None
+        self._port_filters['sa2_mask'] = None
+        self._port_filters['patten1_mode'] = None
+        self._port_filters['patten2_mode'] = None
+        self._port_filters['uds1_flag'] = False
+        self._port_filters['uds2_flag'] = False
+        self._port_filters['captrigger_flag'] = False
+        self._port_filters['capfilter_flag'] = False
 
     def _fileno(self):
         """Return the fileno() of the socket object used internally."""
