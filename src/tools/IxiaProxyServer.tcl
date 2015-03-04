@@ -168,6 +168,11 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -977
             }
         }
+        "get_capture_packet_timestamp" {
+            if {[catch {set ret [GetCapturePacketTimestamp $cmdstr]} result]} {
+                set ret -976
+            }
+        }
         default {
             set ret -900
         }
@@ -1297,6 +1302,60 @@ proc SetPortFiltersEnable {cmdstr} {
     }
     set portlist [list [list $chasId $card $port]]
     ixWriteConfigToHardware portlist
+}
+
+#get capture packet timestamp
+#err code : 2800-2899
+proc GetCapturePacketTimestamp {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 5} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set fromPacket [lindex $cmdlist 3]
+    set toPacket [lindex $cmdlist 4]
+    if {$fromPacket < 1} {
+        return -2803
+    }
+    if {$fromPacket > $toPacket} {
+        return -2802
+    }
+    set capres [capture get $chasId $port $card]
+    if {$capres != 0} {
+        return -2801
+    }
+    set capnum [capture cget -nPackets]
+    if {$capnum == 0} {
+        return ""
+    }
+    if {$capnum < $toPacket} {
+        set toPacket $capnum
+    }
+    if {$fromPacket > $toPacket} {
+        return ""
+    }
+    set capres [captureBuffer get $chasId $port $card $fromPacket $toPacket]
+    if {$capres != 0} {
+        return -2804
+    }
+    set ret ""
+    for {set i $fromPacket} {$i <= $toPacket} {incr i} {
+        set ires [captureBuffer getframe $i]
+        if {$ires == 0} {
+            set data [captureBuffer cget -timestamp]
+            lappend ret $data
+        }
+    }
+    set retstr [join $ret "$"]
+    return $retstr
 }
 
 #connect to ixia

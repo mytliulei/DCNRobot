@@ -1215,7 +1215,6 @@ Set Port Filters CaptureTrigger
 Set Port Filters Enable
     [Arguments]    ${chasId}    ${card}    ${port}
     [Documentation]    enable ixia port filters \
-    ...
     ...    *Note use keyword Set Port Config Default to clear the filter configuration*
     ...
     ...    args:
@@ -1229,3 +1228,44 @@ Set Port Filters Enable
     ${rc}=    Ixia.Set Port Filters Enable    ${chasId}    ${card}    ${port}
     Should Be Equal As Integers    ${rc}    0
     [Return]    ${rc}
+
+Get Capture Packet Timestamp
+    [Arguments]    ${chasId}    ${card}    ${port}    ${from}=${1}    ${to}=${1000}
+    [Documentation]    get capture packet timestamp, and save internally
+    ...
+    ...    Note:please use this keyword after Start Capture and Stop Capture
+    ...
+    ...    args:
+    ...    - chasId: \ \ \ \ \ \ \ normally should be 1
+    ...    - card: \ \ \ \ \ \ \ \ \ ixia card
+    ...    - port: \ \ \ \ \ \ \ \ \ ixia port
+    ...    - packet_from: \ \ default 1
+    ...    - packet_to: \ \ \ \ default 1000, and will be adjust by actual capture num
+    ...
+    ...    return:
+    ...    - (non negative number,timestamp list): num of capture packet timestamp, timestamp list
+    ...    - (negative number,[]): error code
+    @{rc}=    Ixia.Get Capture Packet Timestamp    ${chasId}    ${card}    ${port}    ${from}    ${to}
+    Should Be True    @{rc}[0] >= 0
+    [Return]    @{rc}
+
+Get Filter Capture Packet Timestamp
+    [Arguments]    ${chasId}    ${card}    ${port}    ${fliter}=${None}
+    [Documentation]    get timestamp of filter the capture packet, return a list including filter timestamp num and filter packets timestamp
+    ...
+    ...    Note:please use this keyword after Get Capture Packet and Get Capture Packet Timestamp
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - filter: filter expression, default None,not filter capture packets;to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html WinPcap用户指南--过滤串表达式的语法
+    ...
+    ...    return:
+    ...    - (num of filter timestamp,packet timestamp of filter)
+    ...
+    ...    ---
+    ...    过滤串表达式的语法见关键字Filter Capture Packet
+    @{filterres}=    Ixia.Get Filter Capture Packet Timestamp    ${chasId}    ${card}    ${port}    ${fliter}
+    Should Be True    @{filterres}[0] >= 0
+    [Return]    @{filterres}
