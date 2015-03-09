@@ -90,12 +90,18 @@ set and check
     ${pktNum2}=    Evaluate    int(${send_rate}/64/8*${timeRange})    #计算timeRange时间内的发包数量
     Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:11:11:11    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_next}
     ...    numPacket=${pktNum1}    reset=True
-    Set ixia stream ip    @{testerp1}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:11:11:11    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
+    Set ixia stream ip    @{testerp1}    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:11:11:11    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
     ...    numPacket=${pktNum2}    stream_id=${2}    reset=False
     Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:22:22:22    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_next}
     ...    numPacket=${pktNum1}    reset=True
-    Set ixia stream ip    @{testerp2}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:22:22:22    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
+    Set ixia stream ip    @{testerp2}    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:22:22:22    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
     ...    numPacket=${pktNum2}    stream_id=${2}    reset=False
+    Set Port Filters Da    da1=00 00 00 bb bb bb    mask1=00 00 00 00 00 00    #匹配发送的ip报文
+    Set Port Filters Uds1    da=1    #使用UDS计算收到的ip报文数量
+    Set Port Filters Enable    @{testerp1}
+    Set Port Filters Da    da1=00 00 00 bb bb bb    mask1=00 00 00 00 00 00    #匹配发送的ip报文
+    Set Port Filters Uds1    da=1    #使用UDS计算收到的ip报文数量
+    Set Port Filters Enable    @{testerp2}
 
 01_uninit
     Unset Bandwidth Control    ${s1_alias}    ${s1p1}
@@ -131,12 +137,12 @@ set and check
 
 check limit rate for rx
     [Arguments]    ${receive_rate}    ${tolerance}=${0.05}
-    ${rx1}=    Get Statics    @{testerp2}    rxIpv4Packets
+    ${rx1}=    Get Statics    @{testerp2}    userStat1
     ${rx1}=    Evaluate    ${rx1}*64*8
     Ixiasend.Start Transmit    @{testerp1}
     Ixiasend.Wait For Transmit Done    @{testerp1}
     Ixiasend.Stop Transmit    @{testerp1}
-    ${rx2}=    Get Statics    @{testerp2}    rxIpv4Packets
+    ${rx2}=    Get Statics    @{testerp2}    userStat1
     ${rx2}=    Evaluate    ${rx2}*64*8
     ${limitRate}=    Evaluate    (${rx2}-${rx1})/${timeRange}
     ${res}=    Check More or Less    ${limitRate}    ${receive_rate}    ${tolerance}
@@ -144,12 +150,12 @@ check limit rate for rx
 
 check limit rate for tx
     [Arguments]    ${receive_rate}    ${tolerance}=${0.05}
-    ${rx1}=    Get Statics    @{testerp1}    rxIpv4Packets
+    ${rx1}=    Get Statics    @{testerp1}    userStat1
     ${rx1}=    Evaluate    ${rx1}*64*8
     Ixiasend.Start Transmit    @{testerp2}
     Ixiasend.Wait For Transmit Done    @{testerp2}
     Ixiasend.Stop Transmit    @{testerp2}
-    ${rx2}=    Get Statics    @{testerp1}    rxIpv4Packets
+    ${rx2}=    Get Statics    @{testerp1}    userStat1
     ${rx2}=    Evaluate    ${rx2}*64*8
     ${limitRate}=    Evaluate    (${rx2}-${rx1})/${timeRange}
     ${res}=    Check More or Less    ${limitRate}    ${receive_rate}    ${tolerance}
@@ -161,12 +167,18 @@ check limit rate for tx
     ${pktNum2}=    Evaluate    int(${send_rate}/64/8*${timeRange})    #计算timeRange时间内的发包数量
     Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:11:11:11    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_next}
     ...    numPacket=${pktNum1}    reset=True
-    Set ixia stream ip    @{testerp1}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:11:11:11    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
+    Set ixia stream ip    @{testerp1}    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:11:11:11    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
     ...    numPacket=${pktNum2}    stream_id=${2}    reset=False
     Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:22:22:22    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_next}
     ...    numPacket=${pktNum1}    reset=True
-    Set ixia stream ip    @{testerp2}    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:22:22:22    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
+    Set ixia stream ip    @{testerp2}    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:22:22:22    stream_rate=${send_rate}    stream_rate_mode=${IXIA_StreamRateMode_bps}    stream_mode=${IXIA_StreamMode_stop}
     ...    numPacket=${pktNum2}    stream_id=${2}    reset=False
+    Set Port Filters Da    da1=00 00 00 bb bb bb    mask1=00 00 00 00 00 00    #匹配发送的ip报文
+    Set Port Filters Uds1    da=1    #使用UDS计算收到的ip报文数量
+    Set Port Filters Enable    @{testerp1}
+    Set Port Filters Da    da1=00 00 00 bb bb bb    mask1=00 00 00 00 00 00    #匹配发送的ip报文
+    Set Port Filters Uds1    da=1    #使用UDS计算收到的ip报文数量
+    Set Port Filters Enable    @{testerp2}
     ${res1}=    check limit rate for rx    ${receive_rate}
     ${res2}=    check limit rate for tx    ${receive_rate}
     Should Be True    ${res1}&${res2}    Set bandwidth Control both10000 kbps, but check strem error
