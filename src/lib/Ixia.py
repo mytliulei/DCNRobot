@@ -75,6 +75,7 @@ class Ixia(object):
         self._proxy_server_retcode = None
         self._ixia_client_handle = None
         self._capture_packet_buffer = {}
+        self._capture_packet_timestamp_buffer = {}
         self._port_filters = {
             'da1_address': None,
             'da2_address': None,
@@ -407,6 +408,7 @@ class Ixia(object):
         '''
         capture_index = '%s %s %s' % (chasId,card,port)
         self._capture_packet_buffer[capture_index] = []
+        self._capture_packet_timestamp_buffer[capture_index] = []
         cmd = 'start_capture %s %s %s\n' % (chasId,card,port)
         try:
             self._ixia_client_handle.sendall(cmd)
@@ -634,6 +636,53 @@ class Ixia(object):
         self._capture_packet_buffer[capture_index] = packetList
         return n
 
+    def _get_capture_packet_timestamp(self,chasId,card,port,packet_from,packet_to):
+        '''
+        '''
+        cmd = 'get_capture_packet_timestamp %s %s %s %s %s\n' % (chasId,card,port,packet_from,packet_to)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def get_capture_packet_timestamp(self,chasId,card,port,packet_from=1,packet_to=1000):
+        '''
+        get capture packet timestamp, and save internally
+
+        Note:please use this keyword after Start Capture and Stop Capture
+
+        args:
+        - chasId:        normally should be 1
+        - card:          ixia card
+        - port:          ixia port
+        - packet_from:   default 1
+        - packet_to:     default 1000, and will be adjust by actual capture num
+
+        return:
+        - (non negative number,timestamp list): num of capture packet timestamp, timestamp list
+        - (negative number,[]): error code
+        '''
+        capture_index = '%s %s %s' % (chasId,card,port)
+        packetTimestampStr = self._get_capture_packet_timestamp(chasId,card,port,packet_from,packet_to)
+        if not packetTimestampStr:
+            return 0,[]
+        packetTSStrList = packetTimestampStr.split('$')
+        try:
+            err_code = int(packetTimestampStr)
+        except Exception:
+            pass
+        else:
+            return err_code,[]
+        self._capture_packet_timestamp_buffer[capture_index] = packetTSStrList
+        return len(packetTSStrList),packetTSStrList
+
     def clear_capture_packet(self,chasId,card,port):
         '''
         clear saved capture packet
@@ -651,6 +700,7 @@ class Ixia(object):
         '''
         capture_index = '%s %s %s' % (chasId,card,port)
         self._capture_packet_buffer[capture_index] = None
+        self._capture_packet_timestamp_buffer[capture_index] = None
         return 0
 
     def filter_capture_packet(self,chasId,card,port,capFilter=None):
@@ -696,6 +746,60 @@ class Ixia(object):
                 pktFiltered.append(ipkt)
                 i += 1
         return i,pktFiltered
+
+    def get_filter_capture_packet_timestamp(self,chasId,card,port,capFilter=None):
+        '''
+        get timestamp of filter the capture packet, return a list including filter timestamp num and filter packets timestamp
+
+        Note:please use this keyword after Get Capture Packet and Get Capture Packet Timestamp
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - capFilter: filter expression, default None,not filter capture packets;to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html
+
+        return:
+        - (num of filter timestamp,packet timestamp of filter)
+        '''
+        capture_index = '%s %s %s' % (chasId,card,port)
+        if capture_index not in self._capture_packet_buffer.keys():
+            return -2,[]
+        if self._capture_packet_buffer[capture_index] is None:
+            return -1,[]
+        if not self._capture_packet_buffer[capture_index]:
+            return 0,[]
+        if capture_index not in self._capture_packet_timestamp_buffer.keys():
+            return -4,[]
+        if self._capture_packet_timestamp_buffer[capture_index] is None:
+            return -3,[]
+        if not self._capture_packet_timestamp_buffer[capture_index]:
+            return 0,[]
+        tn = len(self._capture_packet_timestamp_buffer[capture_index])
+        pn = len(self._capture_packet_buffer[capture_index])
+        if pn != tn:
+            raise AssertionError('the num of get capture packet is %s and timestamp is %, they should be equal' % (pn,tn))
+        if capFilter:
+            if not issubclass(type(capFilter),basestring):
+                raise AssertionError('capFilter must be a string')
+            try:
+                import pcapy
+            except Exception:
+                raise AssertionError('can not load pcap,may be not installed')
+            try:
+                matchPkt = pcapy.compile(pcapy.DLT_EN10MB,1500,capFilter,1,0xffffff)
+            except Exception,ex:
+                raise AssertionError('filter express %s error: %s' % (capFilter,ex))
+        else:
+            matchPkt = None
+        #filter packet
+        pktTSFiltered = []
+        i = 0
+        for ipkt in self._capture_packet_buffer[capture_index]:
+            if not matchPkt or matchPkt.filter(str(ipkt)) > 0:
+                pktTSFiltered.append(self._capture_packet_timestamp_buffer[capture_index][i])
+            i += 1
+        return len(pktTSFiltered),pktTSFiltered
 
     def modify_capture_packet(self,pkt,offset=None,hexstring=None):
         '''
