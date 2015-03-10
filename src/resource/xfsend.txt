@@ -14,8 +14,8 @@ Start Transmit
     [Return]    ${rc}
 
 Set Stream From Scapy
-    [Arguments]    ${alias}    ${ifNum}    ${packetStrList}
-    ${rc}=    Run Keyword    ${alias}.Set Stream From Scapy    ${ifNum}    ${packetStrList}
+    [Arguments]    ${alias}    ${ifNum}    ${packetStrList}    ${streamId}
+    ${rc}=    Run Keyword    ${alias}.Set Stream From Scapy    ${ifNum}    ${packetStrList}    ${streamId}
     [Return]    ${rc}
 
 Get Stream
@@ -39,13 +39,13 @@ Stop Capture
     [Return]    ${rc}
 
 Set Stream From Pcap
-    [Arguments]    ${alias}    ${ifNum}    ${packetbytes}
-    ${rc}=    Run Keyword    ${alias}.Set Stream From Pcap    ${ifNum}    ${packetbytes}
+    [Arguments]    ${alias}    ${ifNum}    ${packetbytes}    ${streamId}
+    ${rc}=    Run Keyword    ${alias}.Set Stream From Pcap    ${ifNum}    ${packetbytes}    ${streamId}
     [Return]    ${rc}
 
 Set Stream From HexStr
-    [Arguments]    ${alias}    ${ifNum}    ${packetStrList}
-    ${rc}=    Run Keyword    ${alias}.Set Stream From Hexstr    ${ifNum}    ${packetStrList}
+    [Arguments]    ${alias}    ${ifNum}    ${packetStrList}    ${streamId}
+    ${rc}=    Run Keyword    ${alias}.Set Stream From Hexstr    ${ifNum}    ${packetStrList}    ${streamId}
     [Return]    ${rc}
 
 Get Capture Packet Num
@@ -85,7 +85,7 @@ Get Stream From Pcap
     ${packetbytes}=    XiaoFish.Get Stream From Pcapfile    ${filename}
     [Return]    ${packetbytes}
 
-Build Stream
+Build Stream[Del]
     ${StreamList}=    XiaoFish.Build Stream
     [Return]    ${StreamList}
 
@@ -97,8 +97,9 @@ Build Packet
     ...
     ...    - length \ \ \ \ : \ \ 报文长度，不足的由00补足
     ...    - packetstr : \ \ 默认为None，该参数被赋值后，组成的报文将由packetstr决定，而不是由之前建立的各层字段，packetstr是scapy包的命令字符串，一般情况下用不到
-    ${rc}=    XiaoFish.Build Packet    ${length}    ${packetstr}
-    [Return]    ${rc}
+    XiaoFish.Build Packet    ${length}    ${packetstr}
+    ${StreamList}=    XiaoFish.Build Stream
+    [Return]    ${StreamList}
 
 Build Ether
     [Arguments]    ${dst}=ff:ff:ff:ff:ff:ff    ${src}=00:00:00:00:00:00    ${typeid}=${None}
@@ -208,3 +209,32 @@ Build Payload
     ...    \ | Build Payload | 000102030405 |
     ${packetlen}=    XiaoFish.Build Payload    ${payload}
     [Return]    ${packetlen}
+
+Set Stream Control
+    [Arguments]    ${alias}    ${ifNum}    ${streamId}    ${streamRate}    ${streamRateMode}    ${streamMode}
+    ...    ${numPackets}=${100}    ${returnToId}=1
+    [Documentation]    set stream trasmit mode
+    ...
+    ...    Note:please use this keyword after Set Stream From Scapy or Set Stream From HexStr or Set Stream From Pcap
+    ...
+    ...    args:
+    ...    - alias: stream tester alias
+    ...    - ifNum: stream tester port num
+    ...    - streamId: stream id
+    ...    - streamRate: stream send rate
+    ...    - streamRateMode: 0:percent ; 1: pps ; 2: bps, now only support 1
+    ...    - streamMode: stream control mode;
+    ...    0: continuously transmit the frames on this stream;
+    ...    1: stop transmission
+    ...    2: advance
+    ...    3: return to id ,default to stream 1
+    ...    - numFrames: stream send packet num,enable when streamMode 1,2,3; default 100
+    ...    - ReturnId: enable when streamMode 3 ,default 1
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    Should Not Be Equal As Integers    ${streamRate}    ${0}
+    ${rc}=    Run Keyword    ${alias}.Set Stream Control    ${ifNum}     ${streamId}    ${streamRate}    ${streamRateMode}
+    ...    ${streamMode}    ${numPackets}    ${returnToId}
+    [Return]    ${rc}
