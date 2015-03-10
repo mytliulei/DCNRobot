@@ -551,7 +551,7 @@ Set Stream Control
     ...    2: advance
     ...    3: return to id ,default to stream 1
     ...    - numFrames: stream send packet num,enable when streamMode 1,2,3; default 100
-    ...    - ReturnId: enable when streamMode 4 ,default 1
+    ...    - ReturnId: enable when streamMode 3 ,default 1
     ...
     ...    return:
     ...    - 0: ok
@@ -1214,8 +1214,7 @@ Set Port Filters CaptureTrigger
 
 Set Port Filters Enable
     [Arguments]    ${chasId}    ${card}    ${port}
-    [Documentation]    enable ixia port filters \
-    ...    *Note use keyword Set Port Config Default to clear the filter configuration*
+    [Documentation]    enable ixia port filters \ *Note use keyword Set Port Config Default to clear the filter configuration*
     ...
     ...    args:
     ...    - chasId: normally should be 1
