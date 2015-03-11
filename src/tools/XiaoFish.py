@@ -218,7 +218,7 @@ class XiaoFish(object):
         streamRateMode = int(streamRateMode)
         streamMode = int(streamMode)
         numPacket = int(numPacket)
-        returnId = str(returnId)
+        returnId = int(returnId)
         self._streamConDict[ifNum][streamId] = [streamInterval,streamRateMode,streamMode,numPacket,returnId]
         return 0
 
@@ -296,6 +296,7 @@ class XiaoFish(object):
         if ifNum not in self._packetDict.keys():
             return -3
         if not self._packetDict[ifNum]:
+            raise AssertionError("iface %s stream not set" % ifNum)
             return -4
         if self._sendThreadDict and self._sendThreadDict[ifNum] and self._sendThreadDict[ifNum].isAlive():
             return self._sendThreadDict[ifNum].xfstats
@@ -311,7 +312,7 @@ class XiaoFish(object):
                 raise AssertionError("iface %s stream %s not set" % (ifNum,sNum))
                 return -5
             if sNum in self._streamConDict[ifNum].keys():
-                s_contr = self._streamConDict[ifNum][sNum]
+                sControl.append(self._streamConDict[ifNum][sNum])
             else:
                 raise AssertionError("iface %s stream %s contrl not set" % (ifNum,sNum))
                 return -6
@@ -427,6 +428,24 @@ class XiaoFish(object):
             return -2
         return str(self._capThreadDict[ifNum].xfcappacket)
 
+    def _get_capture_packet_hexstr(self,ifNum):
+        '''
+        '''
+        if ifNum not in self._ifDict.keys():
+            return -3
+        if not self._capThreadDict or not self._capThreadDict[ifNum]:
+            return -1
+        if self._capThreadDict[ifNum].xfstats == 1:
+            return 1
+        elif self._capThreadDict[ifNum].xfstats == 0:
+            return 0
+        elif self._capThreadDict[ifNum].xfstats == -2:
+            return -2
+        cap_hexstr = []
+        for icap in self._capThreadDict[ifNum].xfcappacket:
+            cap_hexstr.append(hexstr(str(icap),0,1))
+        return cap_hexstr
+
     def get_capture_status(self,ifNum):
         '''return status
            - -2 : error
@@ -437,7 +456,7 @@ class XiaoFish(object):
         if ifNum not in self._ifDict.keys():
             return -2
         if not self._capThreadDict or not self._capThreadDict[ifNum]:
-            return -2
+            return -3
         return self._capThreadDict[ifNum].xfstats
 
     def get_statics(self,ifNum,stats=None):
@@ -601,22 +620,22 @@ class XFSend(threading.Thread):
         verbose = None
         #n = 0
         self._xfsendnum = 0
-        pindex = 1
-        pindexStr = str(pindex)
+        pindex = 0
+        #pindexStr = str(pindex)
         plen = len(x)
-        pmode = mode[pindexStr][2]
+        pmode = mode[pindex][2]
         if  pmode == 0:
             count = None
         else:
-            count = mode[pindexStr][3]
-        inter = mode[pindexStr][0]
-        preturnId = mode[pindexStr][4]
+            count = mode[pindex][3]
+        inter = mode[pindex][0]
+        preturnId = mode[pindex][4]
         while True:
             if count is not None:
                 loop = -count
-            elif not loop:
+            else:
                 loop=-1
-            px = x[pindexStr]
+            px = x[pindex]
             dt0 = None
             while loop:
                 for p in px:
@@ -644,19 +663,21 @@ class XFSend(threading.Thread):
                 break
             elif pmode == 2:
                 pindex += 1
-                pindexStr = str(pindex)
+                #pindexStr = str(pindex)
             elif pmode == 3:
-                pindexStr = preturnId
-                pindex = int(pindexStr)
+                #pindexStr = preturnId
+                pindex = preturnId - 1
             else:
                 pass
-            pmode = mode[pindexStr][2]
+            if pindex >= plen:
+                break
+            pmode = mode[pindex][2]
             if  pmode == 0:
                 count = None
             else:
-                count = mode[pindexStr][3]
-                inter = mode[pindexStr][0]
-                preturnId = mode[pindexStr][4]
+                count = mode[pindex][3]
+                inter = mode[pindex][0]
+                preturnId = mode[pindex][4]
 
         s.close()
         #if verbose:
