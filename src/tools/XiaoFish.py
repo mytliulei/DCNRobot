@@ -708,7 +708,15 @@ class XFCapture(threading.Thread):
         self._xfcappacket = None
         self._xffilter = xffilter
         self._xf_stop_pipe = None
+        self._xf_l2listensocket = XFL2ListenSocket
 
+    @property
+    def xf_l2listensocket(self):
+        return self._xf_l2listensocket
+    @xf_l2listensocket.setter
+    def xf_l2listensocket(self, value):
+        self._xf_l2listensocket = value
+    
     @property
     def xftimeout(self):
         return self._xftimeout
@@ -767,12 +775,14 @@ class XFCapture(threading.Thread):
             if self._has_epoll:
                 self._xfcappacket = self._xf_sniff_epoll(
                     count=self._xfcount,iface=self._iface,
-                    timeout=self._xftimeout,filter=self._xffilter
+                    timeout=self._xftimeout,filter=self._xffilter,
+                    L2socket=self._xf_l2listensocket
                     )
             else:
                 self._xfcappacket = self._xf_sniff_select(
                     count=self._xfcount,iface=self._iface,
-                    timeout=self._xftimeout,filter=self._xffilter
+                    timeout=self._xftimeout,filter=self._xffilter,
+                    L2socket=self._xf_l2listensocket
                     )
         except Exception,ex:
             self._xfstats = -2
@@ -960,22 +970,6 @@ class XFIfStats(threading.Thread):
         self._iface = iface
         self._xftimeout = timeout or 1
         self._xfstats = -1
-        # self._xftxbytes = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xftxbytes = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xftxpackets = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xftxpackets = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xftxpps = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xftxpps = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xfrxbytes = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xfrxbytes = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xfrxpackets = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xfrxpps = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xftxBps = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xfrxBps = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xf_bm_txbytes = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xf_bm_rxbytes = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xf_bm_txpackets = {ifstr:0 for ifstr in self._ifaceList}
-        # self._xf_bm_rxpackets = {ifstr:0 for ifstr in self._ifaceList}
         self._xftxbytes = 0
         self._xftxbytes = 0
         self._xftxpackets = 0
@@ -996,11 +990,6 @@ class XFIfStats(threading.Thread):
         self._kwargs = kwargs
         self.errmsg = ''
         self._net_dir = '/sys/class/net'
-        # self._xf_rxbytes_file = {ifstr:None for ifstr in self._ifaceList}
-        # self._xf_rxpackets_file = {ifstr:None for ifstr in self._ifaceList}
-        # self._xf_txbytes_file = {ifstr:None for ifstr in self._ifaceList}
-        # self._xf_txpackets_file = {ifstr:None for ifstr in self._ifaceList}
-        # self._xfclearstats = {ifstr:0 for ifstr in self._ifaceList}
         self._xf_rxbytes_file = None
         self._xf_rxpackets_file = None
         self._xf_txbytes_file = None
@@ -1127,6 +1116,37 @@ class XFIfStats(threading.Thread):
             #sleep 1s
             time.sleep(self._xftimeout)
 
+class XFL2ListenSocket(L2ListenSocket):
+    '''
+    override the method recv
+    only recv the data of rx wire,not tx wire
+    '''
+    def __init__(self,iface=None, type= ETH_P_ALL, promisc=None, filter=None,nofilter=0):
+        super(XFL2ListenSocket,self).__init__(iface,type,promisc,filter,nofilter)
+
+    def recv(self, x=MTU):
+        while True:
+            pkt, sa_ll = self.ins.recvfrom(x)
+            if sa_ll[2] == socket.PACKET_OUTGOING:
+                continue
+            if sa_ll[3] in conf.l2types :
+                cls = conf.l2types[sa_ll[3]]
+            elif sa_ll[1] in conf.l3types:
+                cls = conf.l3types[sa_ll[1]]
+            else:
+                cls = conf.default_l2
+                warning("Unable to guess type (interface=%s protocol=%#x family=%i). Using %s" % (sa_ll[0],sa_ll[1],sa_ll[3],cls.name))
+
+            try:
+                pkt = cls(pkt)
+            except KeyboardInterrupt:
+                raise
+            except:
+                if conf.debug_dissector:
+                    raise
+                pkt = conf.raw_layer(pkt)
+            pkt.time = get_last_packet_timestamp(self.ins)
+            return pkt
 
 def main():
     robotremoteserver.RobotRemoteServer(
