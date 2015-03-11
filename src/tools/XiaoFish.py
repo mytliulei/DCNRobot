@@ -308,11 +308,13 @@ class XiaoFish(object):
             if sNum in self._packetDict[ifNum].keys():
                 sPacket.append(self._packetDict[ifNum][sNum])
             else:
-                sPacket.append(None)
+                raise AssertionError("iface %s stream %s not set" % (ifNum,sNum))
+                return -5
             if sNum in self._streamConDict[ifNum].keys():
                 s_contr = self._streamConDict[ifNum][sNum]
             else:
-                sControl.append(None)
+                raise AssertionError("iface %s stream %s contrl not set" % (ifNum,sNum))
+                return -6
         try:
             self._sendThreadDict[ifNum] = XFSend(
                 self._ifDict[ifNum],sPacket,sControl)
@@ -493,7 +495,7 @@ class XiaoFish(object):
             raise AssertionError("clear_statics fail: _ifstatsThreadDict not start")
             return -2
         self._ifstatsThreadDict[ifNum].clear_stats()
-        time.sleep(self._ifstatsThreadDict[ifNum].xftimeout)
+        #time.sleep(self._ifstatsThreadDict[ifNum].xftimeout)
         return 0
 
 
@@ -1088,7 +1090,7 @@ class XFIfStats(threading.Thread):
             with open(self._xf_txpackets_file) as f:
                 tx_packets = long(f.read()) - self._xf_bm_txpackets
             with open(self._xf_rxbytes_file) as f:
-                rx_bytes = long(f.read()) - self._xf_bm_rxbytes
+                rx_bytes = long(f.read()) - self._xf_bm_rxbytes + 4*rx_packets
             with open(self._xf_txbytes_file) as f:
                 tx_bytes = long(f.read()) - self._xf_bm_txbytes + 4*tx_packets
             #compute stats num
