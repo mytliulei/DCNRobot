@@ -716,7 +716,7 @@ class XFCapture(threading.Thread):
     @xf_l2listensocket.setter
     def xf_l2listensocket(self, value):
         self._xf_l2listensocket = value
-    
+
     @property
     def xftimeout(self):
         return self._xftimeout
@@ -844,6 +844,8 @@ class XFCapture(threading.Thread):
                     p = s.recv(MTU)
                     if p is None:
                         break
+                    elif p is False:
+                        continue
                     if lfilter and not lfilter(p):
                         continue
                     if store:
@@ -929,6 +931,8 @@ class XFCapture(threading.Thread):
                                 p = s.recv(MTU)
                                 if p is None:
                                     break
+                                elif p is False:
+                                    continue
                                 if lfilter and not lfilter(p):
                                     continue
                                 if store:
@@ -1125,28 +1129,27 @@ class XFL2ListenSocket(L2ListenSocket):
         super(XFL2ListenSocket,self).__init__(iface,type,promisc,filter,nofilter)
 
     def recv(self, x=MTU):
-        while True:
-            pkt, sa_ll = self.ins.recvfrom(x)
-            if sa_ll[2] == socket.PACKET_OUTGOING:
-                continue
-            if sa_ll[3] in conf.l2types :
-                cls = conf.l2types[sa_ll[3]]
-            elif sa_ll[1] in conf.l3types:
-                cls = conf.l3types[sa_ll[1]]
-            else:
-                cls = conf.default_l2
-                warning("Unable to guess type (interface=%s protocol=%#x family=%i). Using %s" % (sa_ll[0],sa_ll[1],sa_ll[3],cls.name))
+        pkt, sa_ll = self.ins.recvfrom(x)
+        if sa_ll[2] == socket.PACKET_OUTGOING:
+            return False
+        if sa_ll[3] in conf.l2types :
+            cls = conf.l2types[sa_ll[3]]
+        elif sa_ll[1] in conf.l3types:
+            cls = conf.l3types[sa_ll[1]]
+        else:
+            cls = conf.default_l2
+            warning("Unable to guess type (interface=%s protocol=%#x family=%i). Using %s" % (sa_ll[0],sa_ll[1],sa_ll[3],cls.name))
 
-            try:
-                pkt = cls(pkt)
-            except KeyboardInterrupt:
+        try:
+            pkt = cls(pkt)
+        except KeyboardInterrupt:
+            raise
+        except:
+            if conf.debug_dissector:
                 raise
-            except:
-                if conf.debug_dissector:
-                    raise
-                pkt = conf.raw_layer(pkt)
-            pkt.time = get_last_packet_timestamp(self.ins)
-            return pkt
+            pkt = conf.raw_layer(pkt)
+        pkt.time = get_last_packet_timestamp(self.ins)
+        return pkt
 
 def main():
     robotremoteserver.RobotRemoteServer(
