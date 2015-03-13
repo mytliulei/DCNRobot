@@ -13,9 +13,11 @@ import threading
 import select
 import time
 import traceback
+from cPickle import dumps
 
 import daemonocle
 import robotremoteserver
+import rpyc
 from scapy.all import *
 
 
@@ -222,6 +224,30 @@ class XiaoFish(object):
         self._streamConDict[ifNum][streamId] = [streamInterval,streamRateMode,streamMode,numPacket,returnId]
         return 0
 
+    def get_stream_control(self,ifNum,streamId='0'):
+        '''
+        '''
+        if not self.ifList:
+            raise AssertionError("Not attach any iface in XiaoFish RobotRemoteServer")
+            return -1
+        ifNum = str(ifNum)
+        if ifNum not in self._streamConDict.keys():
+            return -2
+        streamId = str(streamId)
+        conList = []
+        if streamId == '0':
+            for i in range(self._packetLenDict[ifNum]):
+                istr += 1
+                istr = str(istr)
+                conList.append(self._streamConDict[ifNum][istr])
+        else:
+            if streamId in self._streamConDict[ifNum].keys():
+                conList = self._streamConDict[ifNum][streamId]
+            else:
+                pass
+        return conList
+
+
     def clear_stream(self,ifNum):
         '''
         '''
@@ -243,7 +269,43 @@ class XiaoFish(object):
             self._streamConDict[ifNum] = {}
         return 0
 
-    def get_stream(self,ifNum,streamId,num=0):
+    # def get_stream(self,ifNum,streamId,num=0):
+    #     ''''''
+    #     if type(num) is str:
+    #         num = int(num)
+    #     ifNum = str(ifNum)
+    #     streamId = str(streamId)
+    #     if ifNum not in self._packetDict.keys():
+    #         raise AssertionError("ifNum %s not in _packetDict" % ifNum)
+    #     if streamId not in self._packetDict[streamId].keys():
+    #         raise AssertionError("streamId %s not in _packetDict[%s]" % (streamId,ifNum))
+    #     packet = ''
+    #     old_stdout = sys.stdout
+    #     packetout = StringIO.StringIO()
+    #     sys.stdout = packetout
+    #     try:
+    #         if num > 0:
+    #             if num <= len(self._packetDict[ifNum][streamId]):
+    #                 print 'packet num %i:' % num
+    #                 self._packetDict[ifNum][streamId][num-1].show()
+    #             else:
+    #                 print('')
+    #         elif num == 0:
+    #             for i in range(len(self._packetDict[ifNum][streamId])):
+    #                 print 'packet num %i:' % (i+1)
+    #                 self._packetDict[ifNum][streamId][i].show()
+    #         else:
+    #             print('')
+    #     except Exception,ex:
+    #         packet = ''
+    #         sys.stdout = old_stdout
+    #         raise AssertionError("read iface %s stream %s fail: %s" % (self._ifDict[ifNum],num,ex))
+    #     else:
+    #         packet += packetout.getvalue()
+    #         sys.stdout = old_stdout
+    #     return packet
+
+    def get_stream(self,ifNum,streamId=0,num=0):
         ''''''
         if type(num) is str:
             num = int(num)
@@ -251,33 +313,65 @@ class XiaoFish(object):
         streamId = str(streamId)
         if ifNum not in self._packetDict.keys():
             raise AssertionError("ifNum %s not in _packetDict" % ifNum)
-        if streamId not in self._packetDict[streamId].keys():
-            raise AssertionError("streamId %s not in _packetDict[%s]" % (streamId,ifNum))
-        packet = ''
-        old_stdout = sys.stdout
-        packetout = StringIO.StringIO()
-        sys.stdout = packetout
-        try:
-            if num > 0:
-                if num <= len(self._packetDict[ifNum][streamId]):
-                    print 'packet num %i:' % num
-                    self._packetDict[ifNum][streamId][num-1].show()
-                else:
-                    print('')
-            elif num == 0:
-                for i in range(len(self._packetDict[ifNum][streamId])):
-                    print 'packet num %i:' % (i+1)
-                    self._packetDict[ifNum][streamId][i].show()
-            else:
-                print('')
-        except Exception,ex:
-            packet = ''
-            sys.stdout = old_stdout
-            raise AssertionError("read iface %s stream %s fail: %s" % (self._ifDict[ifNum],num,ex))
+        packetList = []
+        if streamId == '0':
+            for i in range(self._packetLenDict[ifNum]):
+                istr += 1
+                istr = str(istr)
+                rtstr = (str(ipstr) for ipstr in self._packetDict[ifNum][istr])
+                packetList.append(rtstr)
+            return packetList
         else:
-            packet += packetout.getvalue()
-            sys.stdout = old_stdout
-        return packet
+            if streamId not in self._packetDict[streamId].keys():
+                raise AssertionError("streamId %s not in _packetDict[%s]" % (streamId,ifNum))
+                return packetList
+            try:
+                if num > 0:
+                    if num <= len(self._packetDict[ifNum][streamId]):
+                        packetList.append(self._packetDict[ifNum][streamId][num-1])
+                    else:
+                        pass
+                elif num == 0:
+                    packetList = self._packetDict[ifNum][streamId]
+                else:
+                    pass
+            except Exception,ex:
+                packetList = []
+        return (str(rtp) for rtp in packetList)
+
+    def get_stream_packet_size(self,ifNum,streamId=0,num=0):
+        ''''''
+        if type(num) is str:
+            num = int(num)
+        ifNum = str(ifNum)
+        streamId = str(streamId)
+        if ifNum not in self._packetDict.keys():
+            raise AssertionError("ifNum %s not in _packetDict" % ifNum)
+        packetSizeList = []
+        if streamId == '0':
+            for i in range(self._packetLenDict[ifNum]):
+                istr += 1
+                istr = str(istr)
+                psize = (len(ips) for ips in self._packetDict[ifNum][istr])
+                packetSizeList.append(psize)
+        else:
+            if streamId not in self._packetDict[streamId].keys():
+                raise AssertionError("streamId %s not in _packetDict[%s]" % (streamId,ifNum))
+                return str(packetSizeList)
+            try:
+                if num > 0:
+                    if num <= len(self._packetDict[ifNum][streamId]):
+                        packetSizeList.append(len(self._packetDict[ifNum][streamId][num-1]))
+                    else:
+                        pass
+                elif num == 0:
+                    psize = (len(ips) for ips in self._packetDict[ifNum][streamId])
+                    packetSizeList = psize
+                else:
+                    pass
+            except Exception,ex:
+                packetSizeList = []
+        return packetSizeList
 
     def _modify_stream(self,iface,*args):
         ''''''
@@ -414,7 +508,7 @@ class XiaoFish(object):
             return -1
         return self._capThreadDict[ifNum].xfcapnum
 
-    def get_capture_packet(self,ifNum):
+    def get_capture_packet(self,ifNum,num=0):
         ''''''
         if ifNum not in self._ifDict.keys():
             return -3
@@ -426,9 +520,16 @@ class XiaoFish(object):
             return 0
         elif self._capThreadDict[ifNum].xfstats == -2:
             return -2
-        return str(self._capThreadDict[ifNum].xfcappacket)
+        num = int(num)
+        if num == 0:
+            return str(self._capThreadDict[ifNum].xfcappacket)
+        else:
+            if num <= self._capThreadDict[ifNum].xfcapnum:
+                return str(self._capThreadDict[ifNum].xfcappacket[num-1])
+            else:
+                return str(self._capThreadDict[ifNum].xfcappacket[-1])
 
-    def _get_capture_packet_hexstr(self,ifNum):
+    def get_capture_packet_hexstr(self,ifNum,num=0):
         '''
         '''
         if ifNum not in self._ifDict.keys():
@@ -441,10 +542,18 @@ class XiaoFish(object):
             return 0
         elif self._capThreadDict[ifNum].xfstats == -2:
             return -2
-        cap_hexstr = []
-        for icap in self._capThreadDict[ifNum].xfcappacket:
-            cap_hexstr.append(hexstr(str(icap),0,1))
-        return cap_hexstr
+        num = int(num)
+        if num == 0:
+            cap_hexstr = []
+            for icap in self._capThreadDict[ifNum].xfcappacket:
+                cap_hexstr.append(hexstr(str(icap),0,1))
+            return cap_hexstr
+        else:
+            if num <= self._capThreadDict[ifNum].xfcapnum:
+                cp = self._capThreadDict[ifNum].xfcappacket[num-1]
+            else:
+                cp = self._capThreadDict[ifNum].xfcappacket[-1]
+            return hexstr(str(cp),0,1)
 
     def get_capture_status(self,ifNum):
         '''return status
@@ -1125,8 +1234,6 @@ class XFL2ListenSocket(L2ListenSocket):
     override the method recv
     only recv the data of rx wire,not tx wire
     '''
-    def __init__(self,iface=None, type= ETH_P_ALL, promisc=None, filter=None,nofilter=0):
-        super(XFL2ListenSocket,self).__init__(iface,type,promisc,filter,nofilter)
 
     def recv(self, x=MTU):
         pkt, sa_ll = self.ins.recvfrom(x)
@@ -1151,17 +1258,203 @@ class XFL2ListenSocket(L2ListenSocket):
         pkt.time = get_last_packet_timestamp(self.ins)
         return pkt
 
-def main():
-    robotremoteserver.RobotRemoteServer(
-        XiaoFish(['eth0','eth1']),host='0.0.0.0',port=11918
-    )
+
+class XFServer(object):
+    '''
+    '''
+    def __init__(self,port,mode,tp,hostip):
+        '''
+        '''
+        self.bindport = port
+        self.server_mode = mode
+        self.tester_portList = tp.split(",")
+        self.host = hostip
+        self.xf = None
+        self.robot_handler = None
+        self.rpyc_handler = None
+        os.system('iptables -F')
+
+    def runRobotServer(self):
+        '''
+        '''
+        self.robot_handler = robotremoteserver.RobotRemoteServer(
+            self.xf,host=self.host,port=self.bindport
+            )
+
+    def runRpycServer(self):
+        '''
+        '''
+        self.rpyc_handler = rpyc.utils.server.ThreadedServer(DsendService,hostname=self.host,port=self.bindport,auto_register=False)
+        self.rpyc_handler.start()
+
+    def runServer(self):
+        '''
+        '''
+        self.xf = XiaoFish(self.tester_portList)
+        if self.server_mode == '1':
+            self.runRobotServer()
+        elif self.server_mode == '2':
+            DsendService.xf = self.xf
+            self.runRpycServer()
+        else:
+            pass
+
+
+class DsendService(rpyc.Service):
+    '''
+    '''
+    xf = None
+
+    def exposed_getRate(self,port,stat_type):
+        '''
+        '''
+        if stat_type == 'packetSendRate':
+            ret = self.xf.get_statics(port,'txpps')
+        elif stat_type == 'byteSendRate':
+            ret = self.xf.get_statics(port,'txBps')
+        elif stat_type== 'packetReceiveRate':
+            ret = self.xf.get_statics(port,'rxpps')
+        elif stat_type == 'byteReceiveRate':
+            ret = self.xf.get_statics(port,'rxBps')
+        elif stat_type == 'packetSendNum':
+            ret = self.xf.get_statics(port,'txpackets')
+        elif stat_type == 'byteSendNum':
+            ret = self.xf.get_statics(port,'txbytes')
+        elif stat_type== 'packetReceiveNum':
+            ret = self.xf.get_statics(port,'rxpackets')
+        elif stat_type == 'byteReceiveNum':
+            ret = self.xf.get_statics(port,'rxbytes')
+        elif stat_type == 'debug':
+            ret = None
+        else:
+            ret = None
+        return ret
+
+    def exposed_handle(self,proc,port,args):
+        '''
+        '''
+        if proc == "startCapture":
+            ret = self.xf.capture_packet(port)
+        elif proc == "stopCapture":
+            ret = self.xf.stop_capture(port)
+        elif proc == "getPcapFname":
+            ret = "xfserver"
+        elif proc == "getPcapFile":
+            ret = self.xf.get_capture_packet_hexstr(port)
+        elif proc == "restartServer":
+            #do not restart,only return 0
+            ret = 0
+        elif proc == "getCaptureBuffer":
+            args = str(args)
+            num = self.xf.get_capture_packet_num(port)
+            if num == 0:
+                return dumps([])
+            #capture args
+            if args == "all":
+                hstrList = self.xf.get_capture_packet_hexstr(port)
+            elif args == "count":
+                hstrList = str(num)
+            elif args.find('detail') >= 0:
+                inum=args.replace('detail','')
+                hstrList = self.xf.get_capture_packet_hexstr(port,inum)
+            elif args.find('pak') > 0:
+                requireNumber=args.replace('pak','')
+                if num >= int(requireNumber):
+                    num = int(requireNumber)
+                bufferItem = self.xf.get_capture_packet_hexstr(port)
+                hstrList = bufferItem[:num]
+            elif args.find('pak') == 0:
+                requireNumber=args.replace('pak','')
+                if num >= int(requireNumber):
+                    num = int(requireNumber)
+                bufferItem = self.xf.get_capture_packet_hexstr(port)
+                hstrList = bufferItem[-num:]
+            else:
+                requireNumber = int(args) - 1
+                hstrList = self.xf.get_capture_packet_hexstr(port,requireNumber)
+            return dumps(hstrList)
+        elif proc == "getPortStatus":
+            ret = "NULL"
+        elif proc == "setStream":
+            pass
+        elif proc == "startTransmit":
+            ret = self.xf.send_stream(port)
+        elif proc == "stopTransmit":
+            ret = self.xf.stop_stream(port)
+        elif proc == "clearStatistic":
+            ret = self.xf.clear_statics(port)
+        elif proc == "resetPortState":
+            ret = 0
+        elif proc == "getPortState":
+            ret = 0
+        elif proc == "getSendState":
+            ret = self.xf.get_send_stream_status(port)
+            if ret == 1:
+                pass
+            else:
+                ret = 0
+        elif proc == "getStream":
+            ret = self.xf.get_stream(port)
+        elif proc == "getPortDetail":
+            # ret1 = self.xf.get_stream(port)
+            # retx2 = self.xf.get_send_stream_status(port)
+            # retx3 = self.xf.get_stream_control(port)
+            # retx4 = self.xf.get_stream_packet_size(port)
+            # if retx2 == 1:
+            #     ret1 = 1
+            # else:
+            #     ret1 = 0
+            # ret2 = 
+            # retList = []
+            ret = 0
+        elif proc == "quit":
+            ret = self.xf.stop_stream(port)
+        else:
+            ret = 'Please input correct function name!'
+        return dumps(str(ret))
+
+
+
+def usage():
+    print("usage")
+
 
 if __name__ == '__main__':
     if os.geteuid() != 0:
         print('should be run as root,please check')
-        import sys
         sys.exit(1)
+    #get argv
+    import getopt
+    bindport = 11918
+    server_mode = "1"
+    test_port = "veth0,veth1"
+    action = "start"
+    host = '0.0.0.0'
+    opts,args = getopt.getopt(sys.argv[1:],'hp:m:i:t:o',['help','port=','iface=','mode=','action=','host='])
+    for opt,arg in opts:
+        if opt in ("-h","--help"):
+            usage
+            sys.exit(1)
+        elif opt in ("-p","--port"):
+            try:
+                bindport = int(arg)
+            except Exception:
+                usage
+                sys.exit(1)
+        elif opt in ("-m","--mode"):
+            server_mode = arg
+        elif opt in ("-i","--iface"):
+            test_port = arg
+        elif opt in ("-t","--action"):
+            action = arg
+        elif opt in ("-o","--host"):
+            host = arg
+        else:
+            pass
+    #xf server instance
+    s = XFServer(bindport,server_mode,test_port,host)
+    #detach the xiaofish
     daemon = daemonocle.Daemon(
-        worker=main,pidfile='/tmp/daemonocle_xiaofish.pid',
+        worker=s.runServer,pidfile='/tmp/daemonocle_xiaofish.pid',
         )
-    daemon.do_action(sys.argv[1])
+    daemon.do_action(action)
