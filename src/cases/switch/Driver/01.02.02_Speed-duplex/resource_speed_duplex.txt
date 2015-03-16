@@ -43,8 +43,10 @@ check negotiation
     [Arguments]    ${mode}    ${port_updown}    ${port_speed}    ${port_duplex}    ${ixia_updown}    ${ix_speed}
     ...    ${ix_duplex}    ${neglist}=${EMPTY}
     ${len}=    Get Length    ${neglist}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    shutdown    #RDM35284 ixia修改速率双工设置时,reset链路的时间过短，部分设备可能无法正确触发重新协商而保持之前的协商状态。由于协议没有规定多长时间的重置才能触发重协商，因此在设置ixia前先将端口shut，设置完成后开启。
     Run Keyword If    ${len}==${0}    Ixiasend.Set Port Speed Duplex    @{testerp1}    ${mode}    ELSE    Ixiasend.Set Port Speed Duplex
     ...    @{testerp1}    ${mode}    @{neglist}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no shutdown    #RDM35284
     sleep    8s    wait for port up
     ${s1p1_up}    ${s1p1_speed}    ${s1p1_duplex}=    Get Port Status    ${s1_alias}    ${s1p1}    updown
     ...    speed    duplex
