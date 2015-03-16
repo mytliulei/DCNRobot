@@ -1214,8 +1214,7 @@ Set Port Filters CaptureTrigger
 
 Set Port Filters Enable
     [Arguments]    ${chasId}    ${card}    ${port}
-    [Documentation]    enable ixia port filters \
-    ...    *Note use keyword Set Port Config Default to clear the filter configuration*
+    [Documentation]    enable ixia port filters \ *Note use keyword Set Port Config Default to clear the filter configuration*
     ...
     ...    args:
     ...    - chasId: normally should be 1
@@ -1269,3 +1268,84 @@ Get Filter Capture Packet Timestamp
     @{filterres}=    Ixia.Get Filter Capture Packet Timestamp    ${chasId}    ${card}    ${port}    ${fliter}
     Should Be True    @{filterres}[0] >= 0
     [Return]    @{filterres}
+
+Create Portgroup Id
+    [Arguments]    ${chasId}    ${groupId}
+    [Documentation]    Creates a port group and assigns it the ID groupID. Specific errors are:
+    ...    - The groupID port group already exists
+    ...
+    ...    args:
+    ...    - chasId: \ \ \ \ normally should be 1
+    ...    - groupID: \ \ \ port group id
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Create Portgroup Id    ${chasId}    ${groupId}
+    [Return]    ${rc}
+
+Destroy Portgroup Id
+    [Arguments]    ${chasId}    ${groupId}
+    [Documentation]    Destroys the port group with ID groupID. Specific errors are:
+    ...    - The groupID port group already exists
+    ...
+    ...    args:
+    ...    - chasId: \ \ \ \ normally should be 1
+    ...    - groupID: \ \ \ port group id
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Destroy Portgroup Id    ${chasId}    ${groupId}
+    [Return]    ${rc}
+
+Add Port To Portgroup
+    [Arguments]    ${chasId}    ${card}    ${port}    ${groupId}
+    [Documentation]    Adds this port to a group with ID groupID. Specific errors are:
+    ...    - No connection to a chassis
+    ...    - The groupID port group does not exist
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - groupID: \ port group id
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Add Port To Portgroup    ${chasId}    ${card}    ${port}    ${groupId}
+    [Return]    ${rc}
+
+Del Port To Portgroup
+    [Arguments]    ${chasId}    ${card}    ${port}    ${groupId}
+    [Documentation]    Deletes this port from the group with ID groupID. Specific errors are:
+    ...    - No connection to a chassis
+    ...    - The groupID port group does not exist
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - groupID: \ port group id
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Del Port To Portgroup    ${chasId}    ${card}    ${port}    ${groupId}
+    [Return]    ${rc}
+
+Set Cmd To Portgroup
+    [Arguments]    ${chasId}    ${groupId}    ${cmd}
+    [Documentation]    Performs the action or command cmd specified on all ports in the group with groupID
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - groupID: \ port group id
+    ...    - cmd: \ \ \ startTransmit;stopTransmit;startCapture;stopCapture
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Cmd To Portgroup    ${chasId}    ${groupId}    ${cmd}
+    [Return]    ${rc}

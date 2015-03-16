@@ -173,6 +173,31 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -976
             }
         }
+        "create_portgroup_id" {
+            if {[catch {set ret [CreatePortgroupId $cmdstr]} result]} {
+                set ret -975
+            }
+        }
+        "add_port_to_portgroup" {
+            if {[catch {set ret [AddPortToPortgroup $cmdstr]} result]} {
+                set ret -974
+            }
+        }
+        "del_port_to_portgroup" {
+            if {[catch {set ret [DelPortToPortgroup $cmdstr]} result]} {
+                set ret -973
+            }
+        }
+        "destroy_portgroup_id" {
+            if {[catch {set ret [DestroyPortgroupId $cmdstr]} result]} {
+                set ret -972
+            }
+        }
+        "set_cmd_to_portgroup" {
+            if {[catch {set ret [SetCmdToPortgroup $cmdstr]} result]} {
+                set ret -971
+            }
+        }
         default {
             set ret -900
         }
@@ -1305,7 +1330,7 @@ proc SetPortFiltersEnable {cmdstr} {
 }
 
 #get capture packet timestamp
-#err code : 2800-2899
+#err code : 3000-3099
 proc GetCapturePacketTimestamp {cmdstr} {
     set cmdlist [split $cmdstr]
     set cmdlen [llength $cmdlist]
@@ -1323,14 +1348,14 @@ proc GetCapturePacketTimestamp {cmdstr} {
     set fromPacket [lindex $cmdlist 3]
     set toPacket [lindex $cmdlist 4]
     if {$fromPacket < 1} {
-        return -2803
+        return -3003
     }
     if {$fromPacket > $toPacket} {
-        return -2802
+        return -3002
     }
     set capres [capture get $chasId $port $card]
     if {$capres != 0} {
-        return -2801
+        return -3001
     }
     set capnum [capture cget -nPackets]
     if {$capnum == 0} {
@@ -1344,7 +1369,7 @@ proc GetCapturePacketTimestamp {cmdstr} {
     }
     set capres [captureBuffer get $chasId $port $card $fromPacket $toPacket]
     if {$capres != 0} {
-        return -2804
+        return -3004
     }
     set ret ""
     for {set i $fromPacket} {$i <= $toPacket} {incr i} {
@@ -1356,6 +1381,106 @@ proc GetCapturePacketTimestamp {cmdstr} {
     }
     set retstr [join $ret "$"]
     return $retstr
+}
+
+#create_portgroup_id
+#err code : 3100-3199
+proc CreatePortgroupId {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 2} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set goupid [lindex $cmdlist 1]
+    set ret [portGroup create $goupid]
+    return $ret
+}
+
+#add_port_to_portgroup
+#err code : 3200-3299
+proc AddPortToPortgroup {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 4} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set card [lindex $cmdlist 1]
+    set port [lindex $cmdlist 2]
+    set goupid [lindex $cmdlist 3]
+    set ret [portGroup add $goupid $chasId $card $port]
+    return $ret
+}
+
+#del_port_to_portgroup
+#err code : 3300-3399
+proc DelPortToPortgroup {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 4} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set card [lindex $cmdlist 1]
+    set port [lindex $cmdlist 2]
+    set goupid [lindex $cmdlist 3]
+    set ret [portGroup del $goupid $chasId $card $port]
+    return $ret
+}
+
+#destroy_portgroup_id
+#err code : 3100-3199
+proc DestroyPortgroupId {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 2} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set goupid [lindex $cmdlist 1]
+    set ret [portGroup destroy $goupid]
+    return $ret
+}
+
+#set_cmd_to_portgroup
+#err code : 3300-3399
+proc SetCmdToPortgroup {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen != 3} {
+        return -100
+    }
+    global ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0} {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set goupid [lindex $cmdlist 1]
+    set cmd [lindex $cmdlist 2]
+    set ret [portGroup setCommand $goupid $cmd]
+    return $ret
 }
 
 #connect to ixia

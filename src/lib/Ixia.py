@@ -1623,6 +1623,142 @@ class Ixia(object):
         else:
             return None
 
+    def create_portgroup_id(self,chasId,groupID):
+        '''
+        Creates a port group and assigns it the ID groupID. Specific errors are:
+        - The groupID port group already exists
+
+        args:
+        - chasId:     normally should be 1
+        - groupID:    port group id
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'create_portgroup_id %s %s\n' % (chasId,groupID)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def add_port_to_portgroup(self,chasId,card,port,groupID):
+        '''
+        Adds this port to a group with ID groupID. Specific errors are:
+        - No connection to a chassis
+        - The groupID port group does not exist
+
+        args:
+        - chasId:     normally should be 1
+        - card:       ixia card
+        - port:       ixia port
+        - groupID:    port group id
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'add_port_to_portgroup %s %s %s %s\n' % (chasId,card,port,groupID)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def del_port_to_portgroup(self,chasId,card,port,groupID):
+        '''
+        Deletes this port from the group with ID groupID. Specific errors are:
+        - No connection to a chassis
+        - The groupID port group does not exist
+
+        args:
+        - chasId:     normally should be 1
+        - card:       ixia card
+        - port:       ixia port
+        - groupID:    port group id
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'del_port_to_portgroup %s %s %s %s\n' % (chasId,card,port,groupID)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def destroy_portgroup_id(self,chasId,groupID):
+        '''
+        Destroys the port group with ID groupID. Specific errors are:
+        - The groupID port group already exists
+
+        args:
+        - chasId:     normally should be 1
+        - groupID:    port group id
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'destroy_portgroup_id %s %s\n' % (chasId,groupID)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
+    def set_cmd_to_portgroup(self,chasId,groupID,command):
+        '''
+        Performs the action or command cmd specified on all ports in the group with groupID
+
+        args:
+        - chasId:     normally should be 1
+        - groupID:    port group id
+        - command:    startTransmit;stopTransmit;startCapture;stopCapture
+
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'set_cmd_to_portgroup %s %s %s\n' % (chasId,groupID,command)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
     def _reset_port_filters_config(self):
         '''
         '''
