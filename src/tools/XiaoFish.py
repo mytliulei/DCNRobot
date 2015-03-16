@@ -13,6 +13,9 @@ import threading
 import select
 import time
 import traceback
+import re,binascii
+import socket
+import struct
 from cPickle import dumps
 
 import daemonocle
@@ -785,8 +788,8 @@ class XFSend(threading.Thread):
                 count = None
             else:
                 count = mode[pindex][3]
-                inter = mode[pindex][0]
-                preturnId = mode[pindex][4]
+            inter = mode[pindex][0]
+            preturnId = mode[pindex][4]
 
         s.close()
         #if verbose:
@@ -1413,7 +1416,296 @@ class DsendService(rpyc.Service):
             ret = 'Please input correct function name!'
         return dumps(str(ret))
 
+    def SetStream(self,port,args):
+        '''
+        '''
+        lastStreamFlag=1             ;#是否最后一条流:Y=1,N=0
+        ctrlStreamFlag=0             ;#报文结束标志位:Y=0,N=1
+        rate=100                     ;#报文发送速率
+        streamMode='percent'         ;#报文速率配置模式:(pps/bps/percent)
+        streamSize=256               ;#报文长度
+        bpsRate=64000                ;#发送速率换算成bps
+        ppsRate=10                   ;#发送速率换算成pps
+        mode=0                       ;#报文发送模式: (0:PC控制速率;1:交换机控制速率)
+        count=0                      ;#发送指定数量报文后停止
+        sendStop=0                   ;#报文发送完毕
+        countContinue=1              ;#发送指定数量报文后继续
+        res=''                       ;#存放返回值
+        slowStop=0                   ;#PC控制速率，停止流量状态位
+        streamLen=64
+        load=''
+        autoFlag=0
+        countStop=0
+        #deal with args:
+        streamValue=None
+        incrList=[]
+        rawstream=''
+        incrMaxNum=1                 ;#某写字段递增报文,最大递增个数
+        for name,value in args:
+            if name == "stream":
+                streamValueTemp=str(value)
+                payloadTemp = re.search("/\"payloadflag(.*)payloadflag\"",streamValueTemp)
+                replaceString = ''
+                if payloadTemp is not None:
+                    for i in range (0,len(payloadTemp.group(1))/2):
+                        replaceString += binascii.a2b_hex(payloadTemp.group(1)[i*2:i*2+2])
+                streamValueTemp = re.sub("/\"payloadflag(.*)payloadflag\"","",streamValueTemp)
+                rawstream += 'stream ' + streamValueTemp + ' '
+            elif str(name).find('incr') >= 0:
+                exec(name+' = '+value)
+                rawstream += name + ' ' + value + ' '
+                incrList.append([name,value])
+                clearvalue = value.replace('\'','')
+                thisnum = clearvalue.split(',')[1]
+                tempMax = int(thisnum) * int(incrMaxNum)
+                incrMaxNum = tempMax / calcGCD(int(thisnum),int(incrMaxNum))
+            elif name == "rate":
+                rate = value
+            elif name == "mode":
+                mode = value
+            elif name == "streamMode":
+                streamMode = value
+            elif name == "streamSize":
+                streamSize = value
+            elif name == "lastStreamFlag":
+                lastStreamFlag = value
+            elif name == "count":
+                count = value
+            elif name == "countContinue":
+                countContinue = value
+            else:
+                pass
+        #递增字段赋值
+        for k in incrList:
+            basicAndNum = k[1].replace('\'','')
+            basicAndNum = basicAndNum.split(',')
+            basic = basicAndNum[0]
+            num = basicAndNum[1]
+            ipv4Network = 'classD'
+            ipv6Network = 128
+            step = 1
+            if len(basicAndNum) == 3:
+                ipv4Network = ipv6Network = basicAndNum[2]
+            elif len(basicAndNum) == 4:
+                ipv4Network = ipv6Network = basicAndNum[2]
+                step = basicAndNum[3]
+            if k[0].find('Mac') >= 0:
+                resList = setIncrMacList(basic,num,incrMaxNum)
+            elif k[0].find('Ipv6') >= 0:
+                #print basic,num,self.incrMaxNum,ipv6Network,step
+                resList= setIncrIpv6List(basic,num,incrMaxNum,ipv6Network,step)
+            elif k[0].find('Ip') >= 0:
+                resList = setIncrIpList(basic,num,incrMaxNum,ipv4Network,step)
+            elif k[0].find('Num') >= 0:
+                resList = setIncrNumList(basic,num,incrMaxNum)
+            else:
+                pass
+            exec(k[0]+'='+'resList')
+        #compute bps/pps
+        streamValue=eval(streamValueTemp)
+        streamLen=len(streamValue)
+        if (str(streamSize) == 'auto') | (str(streamSize) == 'Auto'):
+            streamSize = 64
+            autoFlag=1
+        if str(streamMode) == 'bps':
+            bpsRate = int(rate)
+            ppsRate = int(bpsRate)/int(streamSize )/8
+        elif str(streamMode) == 'pps':
+            ppsRate = int(rate)
+            bpsRate = int(ppsRate)*int(streamSize )*8
+        elif str(streamMode) == 'percent':
+            ppsRate = 1000000*lineSpeed*int(round(rate))/100/(int(streamSize)+12+8)/8
+            bpsRate = int(ppsRate)*int(streamSize )*8
+        else:
+            return 'Please input correct streamMode!'
+        #速率分类处理
+        if str(streamMode) == 'bps':
+            mode = 0
+            rate=int(round(bpsRate/1000))
+        elif ( str(streamMode) == 'pps' ) and ( int(mode) == 2):
+            mode = 2
+        elif (ppsRate <= 10) or (rate == 998.5):
+            mode = 1
+            #print '1',self.ppsRate,self.rate
+        elif str(streamMode) == 'percent':
+            mode = 0
+            if int(rate) > 100:
+                return 'Can not set rate:'+str(rate)+' percent line speed!'
+            elif int(rate) == 100:
+                sw_op.nobandcontrol(tn,port[5][1])
+                rate = -1
+            else:
+                rate = int(round(bpsRate/1000))
+        elif ( ppsRate > 10) & (bpsRate % 64000 == 0) & (rate != 998.5):
+            mode = 0
+            rate = int(round(bpsRate/1000))
+        elif ( ppsRate > 10) & (autoFlag == 1) & (rate != 998.5):
+            mode = 0
+            lenStep=len(str(ppsRate))
+            bpsRate=(10**int(lenStep))*80.0*8
+            cellSize=bpsRate/ppsRate/8
+            autoSize=[]
+            betterSize=cellSize
+            betterSizeId=0
+            betterNearSize=1
+            for i in range(0,9):
+                thisSize=cellSize*(i+1)
+                if thisSize > 1514:
+                    break
+                elif thisSize < streamLen:
+                    continue
+                if bpsRate*(i+1) > (lineSpeed*1000000):
+                    break
+                autoSize.append(thisSize)
+                nearSize=abs(round(thisSize)-thisSize)
+                if nearSize < betterNearSize:
+                    betterNearSize = nearSize
+                    betterSizeId = i
+            if autoSize==[]:
+                return 'Error:Can not set the stream,please reduce the rate and try again!'
+            streamSize=int(round(autoSize[betterSizeId]))
+            bpsRate=bpsRate*(betterSizeId+1)
+            load=''
+            rate = int(round(bpsRate/1000))
+        else:
+            return 'Error:Can not set the stream,set streamSize=Auto and try again!!'
+        #快/慢(广播/PC)发包模式选择
+        if (mode == 1) or (mode == 2):
+            sw_op.shutdown(tn,port[4][1])
+        elif mode == 0:
+            if rate != -1:
+                sw_op.bandcontrol(tn,port[5][1],str(rate),'transmit')
+        #发指定数目报文配置
+        countList=[count]
+        continueCountList=getCountList(incrMaxNum,countContinue)
+        if (count >= 1) & (incrMaxNum>1):
+            countList=getCountList(incrMaxNum,count)
+        streamValue=eval(streamValueTemp)
+        streamValue=streamValue/load
+        for incrCount in range(0,int(incrMaxNum)):
+            streamValue=eval(streamValueTemp)
+            streamValue=streamValue/load
+            #将流加入流列表
+            if lastStreamFlag == 0:
+                ctrlStreamFlag = 1
+            else:
+                ctrlStreamFlag = 0
+        #  print '-----',self.rate
+            if (count >= 1) and (rate <= 10) or (rate == 998.5) or (mode == 2):
+                stream.append([streamValue,countList[incrCount],rate])
+            elif (count >= 1) and (rate > 10) and (rate != 998.5):
+                res='The rate is too high to stop!'
+                return res
+            elif ( countContinue > 1 ):
+                for continueCount in range(0,continueCountList[incrCount]):
+                    stream.append([streamValue,1,rate])
+            else:
+                stream.append([streamValue,1,rate])
+        #print self.stream
+        return 0
 
+
+def calcGCD(intA,intB):
+    if int(intB) == 0:
+        return intA
+    else:
+        return calcGCD(intB,intA % intB)
+
+def setIncrMacList(value,num,maxnum):
+    num=int(num)
+    maxnum=int(maxnum)
+    valueTemp=value
+    valueList=[]
+    for i in range(1,int(maxnum)+1):
+        valueList.append(value)
+        valueInt=int(value.replace(':',''),16)
+        valueInt+=1
+        value=hex(valueInt)
+        value=str(value).replace('0x','')
+        value=value.replace('L','')
+        for k in range(0,(12-len(value))):
+            value='0'+str(value)
+        value=value[0:2]+':'+value[2:4]+':'+value[4:6]+':'+value[6:8]+':'+value[8:10]+':'+value[10:12]
+        if i%num == 0:
+            value=valueTemp
+    return valueList
+
+def setIncrIpList(value,num,maxnum,mode='classD',step=1):
+    num=int(num)
+    maxnum=int(maxnum)
+    step=int(step)
+    valueTemp=value
+    valueList=[]
+    if mode=='classD':
+        mode=0
+    elif mode=='classC':
+        mode=1
+    elif mode=='classB':
+        mode=2
+    elif mode=='classA':
+        mode=3
+    for i in range(1,int(maxnum)+1):
+        valueList.append(value)
+        valueInt=socket.ntohl(struct.unpack("I",socket.inet_aton(value))[0])
+        valueInt+=(256**mode)*step
+        value=socket.inet_ntoa(struct.pack('I',socket.htonl(valueInt)))
+        if i%num == 0:
+            value=valueTemp
+    return valueList
+
+def setIncrIpv6List(ipv6addr,num,maxnum,network=128,step=1):
+    sep=":"
+    maxnum=int(maxnum)
+    step=int(step)
+    network=int(network)
+    num=int(num)-1
+    a=ipv6addr.split(sep)
+    num1=len(a)
+    num2=a.count("")
+    num3=8 - num1 + num2
+    if num2==1:
+        index=a.index("")
+        i=1
+        while i < num3 + 1:
+            a.insert(index+i,"0")
+            i += 1
+        del a[index]
+    ipv6list=[sep.join(a)]
+    temp1=sep.join(a)
+    duan=network/16 - 1
+    tmp=temp2=int(a[duan],16)
+    j=1
+    while j < maxnum:
+        tmp += step
+        a[duan]="%X" % tmp
+        ipv6list.append(sep.join(a))
+        if (j%num == 0) & (maxnum-j>1):
+            tmp=temp2
+            ipv6list.append(temp1)
+            maxnum=maxnum-1
+        j+=1
+    return ipv6list
+
+def setIncrNumList(value,num,maxnum):
+    value=int(value)
+    num=int(num)
+    maxnum=int(maxnum)
+    valueTemp=value
+    valueList=[]
+    for i in range(1,int(maxnum)+1):
+        valueList.append(value)
+        value+=1
+        if i%num == 0:
+            value=valueTemp
+    return valueList
+
+def getCountList(num,count):
+    countList=[]
+    for i in range(0,num):
+        countList.append(count/num)
+    for k in range(0,count%num):
+        countList[k] += 1
+    return countList
 
 def usage():
     print("usage")
