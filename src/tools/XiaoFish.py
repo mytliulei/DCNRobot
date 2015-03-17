@@ -18,10 +18,11 @@ import socket
 import struct
 from cPickle import dumps
 
+from scapy.all import *
 import daemonocle
 import robotremoteserver
 import rpyc
-from scapy.all import *
+
 
 
 __version__ = '0.1'
@@ -1287,7 +1288,8 @@ class XFServer(object):
     def runRpycServer(self):
         '''
         '''
-        self.rpyc_handler = rpyc.utils.server.ThreadedServer(DsendService,hostname=self.host,port=self.bindport,auto_register=False)
+        from rpyc.utils.server import ThreadedServer
+        self.rpyc_handler = ThreadedServer(DsendService,hostname=self.host,port=self.bindport,auto_register=False)
         self.rpyc_handler.start()
 
     def runServer(self):
@@ -1298,6 +1300,7 @@ class XFServer(object):
             self.runRobotServer()
         elif self.server_mode == '2':
             DsendService.xf = self.xf
+            DsendService.init_ctrlStreamFlag(len(self.tester_portList))
             self.runRpycServer()
         else:
             pass
@@ -1307,26 +1310,36 @@ class DsendService(rpyc.Service):
     '''
     '''
     xf = None
+    xf_ctrlStreamFlag = {}
+
+    @classmethod
+    def init_ctrlStreamFlag(cls,portnum):
+        '''
+        '''
+        for i in range(portnum):
+            pindex = str(i+1)
+            cls.xf_ctrlStreamFlag[pindex] = 0
+
 
     def exposed_getRate(self,port,stat_type):
         '''
         '''
         if stat_type == 'packetSendRate':
-            ret = self.xf.get_statics(port,'txpps')
+            ret = DsendService.xf.get_statics(port,'txpps')
         elif stat_type == 'byteSendRate':
-            ret = self.xf.get_statics(port,'txBps')
+            ret = DsendService.xf.get_statics(port,'txBps')
         elif stat_type== 'packetReceiveRate':
-            ret = self.xf.get_statics(port,'rxpps')
+            ret = DsendService.xf.get_statics(port,'rxpps')
         elif stat_type == 'byteReceiveRate':
-            ret = self.xf.get_statics(port,'rxBps')
+            ret = DsendService.xf.get_statics(port,'rxBps')
         elif stat_type == 'packetSendNum':
-            ret = self.xf.get_statics(port,'txpackets')
+            ret = DsendService.xf.get_statics(port,'txpackets')
         elif stat_type == 'byteSendNum':
-            ret = self.xf.get_statics(port,'txbytes')
+            ret = DsendService.xf.get_statics(port,'txbytes')
         elif stat_type== 'packetReceiveNum':
-            ret = self.xf.get_statics(port,'rxpackets')
+            ret = DsendService.xf.get_statics(port,'rxpackets')
         elif stat_type == 'byteReceiveNum':
-            ret = self.xf.get_statics(port,'rxbytes')
+            ret = DsendService.xf.get_statics(port,'rxbytes')
         elif stat_type == 'debug':
             ret = None
         else:
@@ -1337,67 +1350,67 @@ class DsendService(rpyc.Service):
         '''
         '''
         if proc == "startCapture":
-            ret = self.xf.capture_packet(port)
+            ret = DsendService.xf.capture_packet(port)
         elif proc == "stopCapture":
-            ret = self.xf.stop_capture(port)
+            ret = DsendService.xf.stop_capture(port)
         elif proc == "getPcapFname":
             ret = "xfserver"
         elif proc == "getPcapFile":
-            ret = self.xf.get_capture_packet_hexstr(port)
+            ret = DsendService.xf.get_capture_packet_hexstr(port)
         elif proc == "restartServer":
             #do not restart,only return 0
             ret = 0
         elif proc == "getCaptureBuffer":
             args = str(args)
-            num = self.xf.get_capture_packet_num(port)
+            num = DsendService.xf.get_capture_packet_num(port)
             if num == 0:
                 return dumps([])
             #capture args
             if args == "all":
-                hstrList = self.xf.get_capture_packet_hexstr(port)
+                hstrList = DsendService.xf.get_capture_packet_hexstr(port)
             elif args == "count":
                 hstrList = str(num)
             elif args.find('detail') >= 0:
                 inum=args.replace('detail','')
-                hstrList = self.xf.get_capture_packet_hexstr(port,inum)
+                hstrList = DsendService.xf.get_capture_packet_hexstr(port,inum)
             elif args.find('pak') > 0:
                 requireNumber=args.replace('pak','')
                 if num >= int(requireNumber):
                     num = int(requireNumber)
-                bufferItem = self.xf.get_capture_packet_hexstr(port)
+                bufferItem = DsendService.xf.get_capture_packet_hexstr(port)
                 hstrList = bufferItem[:num]
             elif args.find('pak') == 0:
                 requireNumber=args.replace('pak','')
                 if num >= int(requireNumber):
                     num = int(requireNumber)
-                bufferItem = self.xf.get_capture_packet_hexstr(port)
+                bufferItem = DsendService.xf.get_capture_packet_hexstr(port)
                 hstrList = bufferItem[-num:]
             else:
                 requireNumber = int(args) - 1
-                hstrList = self.xf.get_capture_packet_hexstr(port,requireNumber)
+                hstrList = DsendService.xf.get_capture_packet_hexstr(port,requireNumber)
             return dumps(hstrList)
         elif proc == "getPortStatus":
             ret = "NULL"
         elif proc == "setStream":
             pass
         elif proc == "startTransmit":
-            ret = self.xf.send_stream(port)
+            ret = DsendService.xf.send_stream(port)
         elif proc == "stopTransmit":
-            ret = self.xf.stop_stream(port)
+            ret = DsendService.xf.stop_stream(port)
         elif proc == "clearStatistic":
-            ret = self.xf.clear_statics(port)
+            ret = DsendService.xf.clear_statics(port)
         elif proc == "resetPortState":
             ret = 0
         elif proc == "getPortState":
             ret = 0
         elif proc == "getSendState":
-            ret = self.xf.get_send_stream_status(port)
+            ret = DsendService.xf.get_send_stream_status(port)
             if ret == 1:
                 pass
             else:
                 ret = 0
         elif proc == "getStream":
-            ret = self.xf.get_stream(port)
+            ret = DsendService.xf.get_stream(port)
         elif proc == "getPortDetail":
             # ret1 = self.xf.get_stream(port)
             # retx2 = self.xf.get_send_stream_status(port)
@@ -1411,36 +1424,33 @@ class DsendService(rpyc.Service):
             # retList = []
             ret = 0
         elif proc == "quit":
-            ret = self.xf.stop_stream(port)
+            ret = DsendService.xf.stop_stream(port)
         else:
             ret = 'Please input correct function name!'
         return dumps(str(ret))
 
-    def SetStream(self,port,args):
+    def set_stream(self,port,args):
         '''
         '''
-        lastStreamFlag=1             ;#是否最后一条流:Y=1,N=0
-        ctrlStreamFlag=0             ;#报文结束标志位:Y=0,N=1
-        rate=100                     ;#报文发送速率
-        streamMode='percent'         ;#报文速率配置模式:(pps/bps/percent)
-        streamSize=256               ;#报文长度
-        bpsRate=64000                ;#发送速率换算成bps
-        ppsRate=10                   ;#发送速率换算成pps
-        mode=0                       ;#报文发送模式: (0:PC控制速率;1:交换机控制速率)
-        count=0                      ;#发送指定数量报文后停止
-        sendStop=0                   ;#报文发送完毕
-        countContinue=1              ;#发送指定数量报文后继续
-        res=''                       ;#存放返回值
-        slowStop=0                   ;#PC控制速率，停止流量状态位
-        streamLen=64
-        load=''
-        autoFlag=0
-        countStop=0
+        if port not in DsendService.xf_ctrlStreamFlag.keys():
+            return "port %s not exists" % port
+        sindex = DsendService.xf_ctrlStreamFlag[port]
+        if sindex == 0:
+            DsendService.xf.clear_stream(port)
+        sindex += 1
+        lastStreamFlag = 1             ;#是否最后一条流:Y=1,N=0
+        rate = 100                     ;#报文发送速率
+        streamMode = 'percent'         ;#报文速率配置模式:(pps/bps/percent)
+        streamSize = 256               ;#报文长度
+        ppsRate = 10                   ;#发送速率换算成pps
+        mode = 0                       ;#报文发送模式: (0:PC控制速率;1:交换机控制速率)
+        count = 0                      ;#发送指定数量报文后停止
+        countContinue = 0              ;#发送指定数量报文后继续
+        load = ''
         #deal with args:
-        streamValue=None
-        incrList=[]
-        rawstream=''
-        incrMaxNum=1                 ;#某写字段递增报文,最大递增个数
+        streamValue = None
+        incrList = []
+        incrMaxNum = 1                 ;#某写字段递增报文,最大递增个数
         for name,value in args:
             if name == "stream":
                 streamValueTemp=str(value)
@@ -1450,10 +1460,10 @@ class DsendService(rpyc.Service):
                     for i in range (0,len(payloadTemp.group(1))/2):
                         replaceString += binascii.a2b_hex(payloadTemp.group(1)[i*2:i*2+2])
                 streamValueTemp = re.sub("/\"payloadflag(.*)payloadflag\"","",streamValueTemp)
-                rawstream += 'stream ' + streamValueTemp + ' '
+                #rawstream += 'stream ' + streamValueTemp + ' '
             elif str(name).find('incr') >= 0:
                 exec(name+' = '+value)
-                rawstream += name + ' ' + value + ' '
+                #rawstream += name + ' ' + value + ' '
                 incrList.append([name,value])
                 clearvalue = value.replace('\'','')
                 thisnum = clearvalue.split(',')[1]
@@ -1475,7 +1485,18 @@ class DsendService(rpyc.Service):
                 countContinue = value
             else:
                 pass
-        #递增字段赋值
+        #compute pps
+        if (str(streamSize) == 'auto') | (str(streamSize) == 'Auto'):
+            streamSize = 64
+        if str(streamMode) == 'bps':
+            ppsRate = int(rate)/int(streamSize)/8
+        elif str(streamMode) == 'pps':
+            ppsRate = int(rate)
+        elif str(streamMode) == 'percent':
+            return "not support line speed percent mode"
+        else:
+            return 'Please input correct streamMode!'
+        #compute incr field
         for k in incrList:
             basicAndNum = k[1].replace('\'','')
             basicAndNum = basicAndNum.split(',')
@@ -1501,107 +1522,46 @@ class DsendService(rpyc.Service):
             else:
                 pass
             exec(k[0]+'='+'resList')
-        #compute bps/pps
-        streamValue=eval(streamValueTemp)
-        streamLen=len(streamValue)
-        if (str(streamSize) == 'auto') | (str(streamSize) == 'Auto'):
-            streamSize = 64
-            autoFlag=1
-        if str(streamMode) == 'bps':
-            bpsRate = int(rate)
-            ppsRate = int(bpsRate)/int(streamSize )/8
-        elif str(streamMode) == 'pps':
-            ppsRate = int(rate)
-            bpsRate = int(ppsRate)*int(streamSize )*8
-        elif str(streamMode) == 'percent':
-            ppsRate = 1000000*lineSpeed*int(round(rate))/100/(int(streamSize)+12+8)/8
-            bpsRate = int(ppsRate)*int(streamSize )*8
-        else:
-            return 'Please input correct streamMode!'
-        #速率分类处理
-        if str(streamMode) == 'bps':
-            mode = 0
-            rate=int(round(bpsRate/1000))
-        elif ( str(streamMode) == 'pps' ) and ( int(mode) == 2):
-            mode = 2
-        elif (ppsRate <= 10) or (rate == 998.5):
-            mode = 1
-            #print '1',self.ppsRate,self.rate
-        elif str(streamMode) == 'percent':
-            mode = 0
-            if int(rate) > 100:
-                return 'Can not set rate:'+str(rate)+' percent line speed!'
-            elif int(rate) == 100:
-                sw_op.nobandcontrol(tn,port[5][1])
-                rate = -1
-            else:
-                rate = int(round(bpsRate/1000))
-        elif ( ppsRate > 10) & (bpsRate % 64000 == 0) & (rate != 998.5):
-            mode = 0
-            rate = int(round(bpsRate/1000))
-        elif ( ppsRate > 10) & (autoFlag == 1) & (rate != 998.5):
-            mode = 0
-            lenStep=len(str(ppsRate))
-            bpsRate=(10**int(lenStep))*80.0*8
-            cellSize=bpsRate/ppsRate/8
-            autoSize=[]
-            betterSize=cellSize
-            betterSizeId=0
-            betterNearSize=1
-            for i in range(0,9):
-                thisSize=cellSize*(i+1)
-                if thisSize > 1514:
-                    break
-                elif thisSize < streamLen:
-                    continue
-                if bpsRate*(i+1) > (lineSpeed*1000000):
-                    break
-                autoSize.append(thisSize)
-                nearSize=abs(round(thisSize)-thisSize)
-                if nearSize < betterNearSize:
-                    betterNearSize = nearSize
-                    betterSizeId = i
-            if autoSize==[]:
-                return 'Error:Can not set the stream,please reduce the rate and try again!'
-            streamSize=int(round(autoSize[betterSizeId]))
-            bpsRate=bpsRate*(betterSizeId+1)
-            load=''
-            rate = int(round(bpsRate/1000))
-        else:
-            return 'Error:Can not set the stream,set streamSize=Auto and try again!!'
-        #快/慢(广播/PC)发包模式选择
-        if (mode == 1) or (mode == 2):
-            sw_op.shutdown(tn,port[4][1])
-        elif mode == 0:
-            if rate != -1:
-                sw_op.bandcontrol(tn,port[5][1],str(rate),'transmit')
-        #发指定数目报文配置
-        countList=[count]
-        continueCountList=getCountList(incrMaxNum,countContinue)
-        if (count >= 1) & (incrMaxNum>1):
-            countList=getCountList(incrMaxNum,count)
-        streamValue=eval(streamValueTemp)
-        streamValue=streamValue/load
+        #config stream
+        stream = []
+        countList = [count]
+        if countContinue > 0:
+            continueCountList = getCountList(incrMaxNum,countContinue)
+        if (count >= 1) and (incrMaxNum>1):
+            countList = getCountList(incrMaxNum,count)
         for incrCount in range(0,int(incrMaxNum)):
-            streamValue=eval(streamValueTemp)
-            streamValue=streamValue/load
-            #将流加入流列表
+            streamValue = eval(streamValueTemp)
+            streamValue = streamValue/load
+            stream.append(streamValue)
+            if count > 0:
+                xf_count = countList[incrCount]
+            elif countContinue > 0:
+                xf_count = continueCountList[incrCount]
+            else:
+                xf_count = 1
+        xf_rate = ppsRate
+        if count == 0 and countContinue == 0:
+            xf_mode = 0
+        elif count == 0 and countContinue > 0:
             if lastStreamFlag == 0:
-                ctrlStreamFlag = 1
+                xf_mode = 2
             else:
-                ctrlStreamFlag = 0
-        #  print '-----',self.rate
-            if (count >= 1) and (rate <= 10) or (rate == 998.5) or (mode == 2):
-                stream.append([streamValue,countList[incrCount],rate])
-            elif (count >= 1) and (rate > 10) and (rate != 998.5):
-                res='The rate is too high to stop!'
-                return res
-            elif ( countContinue > 1 ):
-                for continueCount in range(0,continueCountList[incrCount]):
-                    stream.append([streamValue,1,rate])
+                xf_mode = 3
+        else:
+            if lastStreamFlag == 0:
+                xf_mode = 2
             else:
-                stream.append([streamValue,1,rate])
-        #print self.stream
+                xf_mode = 1
+        DsendService.xf.set_stream_from_scapy(port,stream,str(sindex))
+        if xf_mode == 3:
+            DsendService.xf.set_stream_control(port,str(sindex),xf_rate,1,0,xf_count,1)
+        else:
+            DsendService.xf.set_stream_control(port,str(sindex),xf_rate,1,0,xf_count,1)
+        #set ctrlStreamFlag
+        if lastStreamFlag == 0:
+            DsendService.xf_ctrlStreamFlag[port] = sindex
+        else:
+            DsendService.xf_ctrlStreamFlag[port] = 0
         return 0
 
 
@@ -1725,13 +1685,13 @@ if __name__ == '__main__':
     opts,args = getopt.getopt(sys.argv[1:],'hp:m:i:t:o',['help','port=','iface=','mode=','action=','host='])
     for opt,arg in opts:
         if opt in ("-h","--help"):
-            usage
+            usage()
             sys.exit(1)
         elif opt in ("-p","--port"):
             try:
                 bindport = int(arg)
             except Exception:
-                usage
+                usage()
                 sys.exit(1)
         elif opt in ("-m","--mode"):
             server_mode = arg
