@@ -154,6 +154,26 @@ class XiaoFish(object):
         self._packetLenDict[ifNum] = len(self._packetDict[ifNum])
         return 0
 
+    def set_stream_from_dsend(self,ifNum,packetList,streamId):
+        ''''''
+        if type(packetList) is not list:
+            raise AssertionError("parameter packetStrList is not list")
+            return -2
+        if not self.ifList:
+            raise AssertionError("Not attach any iface in XiaoFish RobotRemoteServer")
+            return -1
+        ifNum = str(ifNum)
+        if ifNum not in self._ifDict.keys():
+            raise AssertionError("iface num %s not in iface List" % ifNum)
+            return -1
+        streamId = str(streamId)
+        if ifNum not in self._packetDict.keys():
+            self._packetDict[ifNum] = {}
+        self._packetDict[ifNum][streamId] = packetList
+        #self._packetDict[ifNum] = packetList
+        self._packetLenDict[ifNum] = len(self._packetDict[ifNum])
+        return 0
+
     @staticmethod
     def _verify_raw(rawstr):
         ''''''
@@ -1392,7 +1412,7 @@ class DsendService(rpyc.Service):
         elif proc == "getPortStatus":
             ret = "NULL"
         elif proc == "setStream":
-            pass
+            ret = self.set_stream(port,args)
         elif proc == "startTransmit":
             ret = DsendService.xf.send_stream(port)
         elif proc == "stopTransmit":
@@ -1400,7 +1420,14 @@ class DsendService(rpyc.Service):
         elif proc == "clearStatistic":
             ret = DsendService.xf.clear_statics(port)
         elif proc == "resetPortState":
-            ret = 0
+            ret1 = DsendService.xf.stop_capture(port)
+            ret2 = DsendService.xf.stop_stream(port)
+            ret3 = DsendService.xf.clear_stream(port)
+            ret4 = DsendService.xf.clear_statics(port)
+            if ret1 == 0 and ret2 == 0 and ret3 == 0 and ret4 == 0:
+                ret = 0
+            else:
+                ret = -1
         elif proc == "getPortState":
             ret = 0
         elif proc == "getSendState":
@@ -1454,6 +1481,8 @@ class DsendService(rpyc.Service):
         for name,value in args:
             if name == "stream":
                 streamValueTemp=str(value)
+                dot1q_re = re.compile("/Dot1Q\\(vlan=%s,type=0xffff\\)" % port)
+                streamValueTemp = dot1q_re.sub("",streamValueTemp,1)
                 payloadTemp = re.search("/\"payloadflag(.*)payloadflag\"",streamValueTemp)
                 replaceString = ''
                 if payloadTemp is not None:
@@ -1552,7 +1581,7 @@ class DsendService(rpyc.Service):
                 xf_mode = 2
             else:
                 xf_mode = 1
-        DsendService.xf.set_stream_from_scapy(port,stream,str(sindex))
+        DsendService.xf.set_stream_from_dsend(port,stream,str(sindex))
         if xf_mode == 3:
             DsendService.xf.set_stream_control(port,str(sindex),xf_rate,1,0,xf_count,1)
         else:
