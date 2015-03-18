@@ -1499,11 +1499,11 @@ class DsendService(rpyc.Service):
             elif name == "streamSize":
                 streamSize = value
             elif name == "lastStreamFlag":
-                lastStreamFlag = value
+                lastStreamFlag = int(value)
             elif name == "count":
-                count = value
+                count = int(value)
             elif name == "countContinue":
-                countContinue = value
+                countContinue = int(value)
             else:
                 pass
         #compute pps
@@ -1543,6 +1543,12 @@ class DsendService(rpyc.Service):
             else:
                 pass
             exec(k[0]+'='+'resList')
+        #add payload according streamsize
+        streamValue = eval(streamValueTemp)
+        streamLen=len(streamValue)
+        load = replaceString
+        for p in range(0,int(streamSize)-streamLen-len(replaceString)):
+            load +='\x00'
         #config stream
         stream = []
         countList = [count]
@@ -1562,7 +1568,10 @@ class DsendService(rpyc.Service):
                 xf_count = 1
         xf_rate = ppsRate
         if count == 0 and countContinue == 0:
-            xf_mode = 0
+            if lastStreamFlag == 0:
+                xf_mode = 2
+            else:
+                xf_mode = 0
         elif count == 0 and countContinue > 0:
             if lastStreamFlag == 0:
                 xf_mode = 2
