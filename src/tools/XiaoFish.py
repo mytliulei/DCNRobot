@@ -331,8 +331,7 @@ class XiaoFish(object):
 
     def get_stream(self,ifNum,streamId=0,num=0):
         ''''''
-        if type(num) is str:
-            num = int(num)
+        num = int(num)
         ifNum = str(ifNum)
         streamId = str(streamId)
         if ifNum not in self._packetDict.keys():
@@ -340,9 +339,11 @@ class XiaoFish(object):
         packetList = []
         if streamId == '0':
             for i in range(self._packetLenDict[ifNum]):
-                istr += 1
-                istr = str(istr)
-                rtstr = (str(ipstr) for ipstr in self._packetDict[ifNum][istr])
+                istr = str(i+1)
+                if len(self._packetDict[ifNum][istr]) == 1:
+                    rtstr = str(self._packetDict[ifNum][istr])
+                else:
+                    rtstr = [str(ipstr) for ipstr in self._packetDict[ifNum][istr]]
                 packetList.append(rtstr)
             return packetList
         else:
@@ -361,12 +362,11 @@ class XiaoFish(object):
                     pass
             except Exception,ex:
                 packetList = []
-        return (str(rtp) for rtp in packetList)
+        return str(packetList)
 
     def get_stream_packet_size(self,ifNum,streamId=0,num=0):
         ''''''
-        if type(num) is str:
-            num = int(num)
+        num = int(num)
         ifNum = str(ifNum)
         streamId = str(streamId)
         if ifNum not in self._packetDict.keys():
@@ -484,11 +484,7 @@ class XiaoFish(object):
 
     def capture_packet(self,ifNum,filter=None,timeout=None,count=0):
         ''''''
-        if type(filter) is str and filter == '':
-            filter = None
-        if type(timeout) is str and timeout == '':
-            timeout = None
-        if type(timeout) is str:
+        if timeout:
             timeout = float(timeout)
         if ifNum not in self._ifDict.keys():
             return -2
@@ -610,16 +606,14 @@ class XiaoFish(object):
             example:
             - get_statics('1',['rxpps','txpps']) 
         '''
-        if type(stats) is str and stats == '':
-            stats = None
         if ifNum not in self._ifDict.keys():
             raise AssertionError("get_statics fail: %s not in ifList" % ifNum)
             return -2
         #iface = self._ifDict[ifNum]
         strflag = False
-        if type(stats) is str:
+        if stats and type(stats) is not list:
             strflag = True
-            stats = list(stats)
+            stats = [stats]
         if stats:
             stats = ['xf'+istats for istats in stats]
         get_stats = stats or ['xfrxpackets','xfrxbytes','xfrxpps','xfrxBps',
@@ -632,9 +626,10 @@ class XiaoFish(object):
         for istats in get_stats:
             if hasattr(self._ifstatsThreadDict[ifNum],istats):
                 stats_num = getattr(self._ifstatsThreadDict[ifNum],istats)
+                return stats_num
                 ret_stats.append(stats_num)
         if strflag:
-            return(ret_stats[0])
+            return ret_stats[0]
         return ret_stats
 
     def clear_statics(self,ifNum):
@@ -1406,7 +1401,7 @@ class DsendService(rpyc.Service):
                 bufferItem = DsendService.xf.get_capture_packet_hexstr(port)
                 hstrList = bufferItem[-num:]
             else:
-                requireNumber = int(args) - 1
+                requireNumber = int(args)
                 hstrList = DsendService.xf.get_capture_packet_hexstr(port,requireNumber)
             return dumps(hstrList)
         elif proc == "getPortStatus":
@@ -1424,10 +1419,7 @@ class DsendService(rpyc.Service):
             ret2 = DsendService.xf.stop_stream(port)
             ret3 = DsendService.xf.clear_stream(port)
             ret4 = DsendService.xf.clear_statics(port)
-            if ret1 == 0 and ret2 == 0 and ret3 == 0 and ret4 == 0:
-                ret = 0
-            else:
-                ret = -1
+            ret = 0
         elif proc == "getPortState":
             ret = 0
         elif proc == "getSendState":
@@ -1481,7 +1473,7 @@ class DsendService(rpyc.Service):
         for name,value in args:
             if name == "stream":
                 streamValueTemp=str(value)
-                dot1q_re = re.compile("/Dot1Q\\(vlan=%s,type=0xffff\\)" % port)
+                dot1q_re = re.compile("/Dot3Tag\\(vlan=%s,[^)]*\\)" % port)
                 streamValueTemp = dot1q_re.sub("",streamValueTemp,1)
                 payloadTemp = re.search("/\"payloadflag(.*)payloadflag\"",streamValueTemp)
                 replaceString = ''
@@ -1524,7 +1516,7 @@ class DsendService(rpyc.Service):
         elif str(streamMode) == 'percent':
             return "not support line speed percent mode"
         else:
-            return 'Please input correct streamMode!'
+            return 'streamMode is %s,Please input correct streamMode' % streamMode
         #compute incr field
         for k in incrList:
             basicAndNum = k[1].replace('\'','')
@@ -1583,15 +1575,15 @@ class DsendService(rpyc.Service):
                 xf_mode = 1
         DsendService.xf.set_stream_from_dsend(port,stream,str(sindex))
         if xf_mode == 3:
-            DsendService.xf.set_stream_control(port,str(sindex),xf_rate,1,0,xf_count,1)
+            DsendService.xf.set_stream_control(port,str(sindex),xf_rate,1,xf_mode,xf_count,1)
         else:
-            DsendService.xf.set_stream_control(port,str(sindex),xf_rate,1,0,xf_count,1)
+            DsendService.xf.set_stream_control(port,str(sindex),xf_rate,1,xf_mode,xf_count,1)
         #set ctrlStreamFlag
         if lastStreamFlag == 0:
             DsendService.xf_ctrlStreamFlag[port] = sindex
         else:
             DsendService.xf_ctrlStreamFlag[port] = 0
-        return 0
+        return xf_mode
 
 
 def calcGCD(intA,intB):
