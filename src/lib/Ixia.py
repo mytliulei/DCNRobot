@@ -1390,7 +1390,7 @@ class Ixia(object):
             raise AssertionError('mask1 format error')
         if pattern2 and (len(pattern2.split()) > 16 or len(pattern2.split()) < 1):
             raise AssertionError('pattern2 format error')
-        if (pattern1 and mask1) and (len(pattern2.split()) != len(mask2.split())):
+        if (pattern2 and mask2) and (len(pattern2.split()) != len(mask2.split())):
             raise AssertionError('mask2 format error')
         if offset1:
             self._port_filters['patten1_mode'] = 'matchUser'
