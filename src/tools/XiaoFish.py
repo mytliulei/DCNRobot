@@ -1470,6 +1470,7 @@ class DsendService(rpyc.Service):
         streamValue = None
         incrList = []
         incrMaxNum = 1                 ;#某写字段递增报文,最大递增个数
+        incrCount = 0
         for name,value in args:
             if name == "stream":
                 streamValueTemp=str(value)
@@ -1547,7 +1548,7 @@ class DsendService(rpyc.Service):
         streamValue = eval(streamValueTemp)
         streamLen=len(streamValue)
         load = replaceString
-        for p in range(0,int(streamSize)-streamLen-len(replaceString)):
+        for p in range(0,int(streamSize)-streamLen-len(replaceString) - 4):
             load +='\x00'
         #config stream
         stream = []
