@@ -1705,15 +1705,16 @@ def usage():
 if __name__ == '__main__':
     if os.geteuid() != 0:
         print('should be run as root,please check')
-        sys.exit(1)
+        sys.exit(2)
     #get argv
     import getopt
     bindport = 11918
     server_mode = "1"
-    test_port = "veth0,veth1"
+    test_port = None
     action = "start"
     host = '0.0.0.0'
-    opts,args = getopt.getopt(sys.argv[1:],'hp:m:i:t:o',['help','port=','iface=','mode=','action=','host='])
+    xfdetach = False
+    opts,args = getopt.getopt(sys.argv[1:],'hdp:m:i:t:o:',['help','detach','port=','iface=','mode=','action=','host='])
     for opt,arg in opts:
         if opt in ("-h","--help"):
             usage()
@@ -1732,12 +1733,17 @@ if __name__ == '__main__':
             action = arg
         elif opt in ("-o","--host"):
             host = arg
+        elif opt in ("-d","--detach"):
+            xfdetach = True
         else:
             pass
     #xf server instance
+    if not test_port:
+        usage()
+        sys.exit(3)
     s = XFServer(bindport,server_mode,test_port,host)
     #detach the xiaofish
     daemon = daemonocle.Daemon(
-        worker=s.runServer,pidfile='/tmp/daemonocle_xiaofish.pid',
+        worker=s.runServer,detach=xfdetach,pidfile='/tmp/daemonocle_xiaofish.pid',
         )
     daemon.do_action(action)
