@@ -566,14 +566,14 @@ class XiaoFish(object):
         if num == 0:
             cap_hexstr = []
             for icap in self._capThreadDict[ifNum].xfcappacket:
-                cap_hexstr.append(hexstr(str(icap),0,1))
+                cap_hexstr.append(hexstr(str(icap),0,1).upper())
             return cap_hexstr
         else:
             if num <= self._capThreadDict[ifNum].xfcapnum:
                 cp = self._capThreadDict[ifNum].xfcappacket[num-1]
             else:
                 cp = self._capThreadDict[ifNum].xfcappacket[-1]
-            return hexstr(str(cp),0,1)
+            return [hexstr(str(cp),0,1).upper()]
 
     def get_capture_status(self,ifNum):
         '''return status
@@ -1403,13 +1403,19 @@ class DsendService(rpyc.Service):
                 if num >= int(requireNumber):
                     num = int(requireNumber)
                 bufferItem = DsendService.xf.get_capture_packet_hexstr(port)
-                hstrList = bufferItem[:num]
+                try:
+                    hstrList = bufferItem[:num]
+                except TypeError:
+                    hstrList = []
             elif args.find('pak') == 0:
                 requireNumber=args.replace('pak','')
                 if num >= int(requireNumber):
                     num = int(requireNumber)
                 bufferItem = DsendService.xf.get_capture_packet_hexstr(port)
-                hstrList = bufferItem[-num:]
+                try:
+                    hstrList = bufferItem[-num:]
+                except TypeError:
+                    hstrList = []
             else:
                 requireNumber = int(args)
                 hstrList = DsendService.xf.get_capture_packet_hexstr(port,requireNumber)
