@@ -1,4 +1,11 @@
 *** Settings ***
+Documentation     *使用指导*
+...               ---
+...               Step1 修改拓扑（ _topo_setup.txt_ 中变量），具体拓扑要求请参考方案
+...
+...               Step2 修改测试配置（ _test_setup.txt_ 中的变量）
+...               ---
+...               如果没有生成图表（chart）文件，请检查是否安装了Python的pygal模块
 Suite Setup       init-suite
 Suite Teardown    unInit-suite
 Resource          resource.txt
@@ -22,9 +29,9 @@ ${igmp_report_rate_for_case_tableUpdate_tp2}    ${30}    # Case02：IgmpSnooping
     \    Append To List    ${memFreeBytesList}    ${initMemFreeBytes}
     \    Append To List    ${memUsagePercentList}    ${initMemUsagePercent}
     \    #step 2
-    \    #配置    #设置snooping vlan允许创建的最大组数量为本次测试的组播组数量+1
+    \    #配置    #设置snooping vlan允许创建的最大组数量为本次测试的组播组数量+1,Tp2以指定速率发送所有组播数据流量(Max个组播组)
     \    #预期    tp1及tp3收不到组播流量
-    \    Exec Cmd List In ConfigMode    Tp2以指定速率发送所有组播数据流量(Max个组播组)    ip igmp snooping vlan ${snoopingVlan} limit group ${${groupNum}+1}    #设置snooping vlan的group数量为本次测试组播组数量+1
+    \    Exec Cmd List In ConfigMode    ${s1}    ip igmp snooping vlan ${snoopingVlan} limit group ${${groupNum}+1}    #设置snooping vlan的group数量为本次测试组播组数量+1
     \    set Tp2 MC Source
     \    Ixiasend.Start Transmit    @{tp2}
     \    ${res1}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
@@ -55,30 +62,41 @@ ${igmp_report_rate_for_case_tableUpdate_tp2}    ${30}    # Case02：IgmpSnooping
     \    @{memFreeBytesList}=    Create list
     \    @{memUsagePercentList}=    Create list
     \    #step 1
+    \    #配置    记录初始状态下,S1的CPU使用率,内存使用率,cpu收包
+    \    #预期    记录所有数据
     \    ${initCpuUsage}=    get Cpu Usage    ${s1}    last=3
     \    ${initMemFreeBytes}    ${initMemUsagePercent}=    get Mem Usage    ${s1}
     \    Append To List    ${cpuUsageList}    ${initCpuUsage}    #记录初次结果
     \    Append To List    ${memFreeBytesList}    ${initMemFreeBytes}    #记录初次结果
     \    Append To List    ${memUsagePercentList}    ${initMemUsagePercent}    #记录初次结果
     \    #step 2
+    \    #配置    设置snooping vlan允许创建的最大组数量为本次测试的组播组数量+1Tp2创建两条流,先以30pps（默认，通过\${igmp_report_rate_for_case_tableUpdate_tp2}设置）发送点播join报文(点播本次测试组播组数量+1),触发S1生成所有组播组的二层组播表项,然后以指定速率(GroupSourceRate)发送所有组播数据流量(Max个组播组)
+    \    #预期    tp1及tp3收不到组播流量
     \    Exec Cmd List In ConfigMode    ${s1}    ip igmp snooping vlan ${snoopingVlan} limit group ${${groupNum}+1}    #放开snooping vlan的group数量限制
-    \    set Tp2 MC Source and Report
+    \    set Tp2 MC Source and Report    #配置tp2组播源及点播流量
     \    Ixiasend.Start Transmit    @{tp2}
     \    sleep    ${${groupNum}/${igmp_report_rate_for_case_tableUpdate_tp2}+1}    #等待igmp snooping表项创建
-    \    pause for debug
-    \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp3}    0    pps
-    \    should be true    ${res}
+    \    pause for debug    Pause at Step2：Tp2发送组播源及点播流量。可以检查TP2流量设置及设备生成的IGMP Snooping表项。
+    \    ${res1}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
+    \    ${res2}=    CheckIxiaSendReceive    @{tp2}    @{tp3}    0    pps
+    \    should be true    ${res1}
+    \    should be true    ${res2}
     \    #step 3
+    \    #配置    Tp3以指定速率发送join与leave报文(先发join,递增到本次测试的组播组数量为止.然后发送leave,递增到本次测试的组播组数量为止)(tp3发送join时,二层组播表项增加出端口s1p3,tp3发送leave时,表项删除出端口s1p3)每过指定的间隔时间(监控间隔Interval)检测一次设备CPU使用率,内存使用率,持续Test Duration(缺省30s)
+    \    #预期    记录所有数据 (二层组播表项更新下的性能)
     \    set Tp3 Igmp Report And Leave
     \    Ixiasend.Start Transmit    @{tp3}
-    \    pause for debug
+    \    pause for debug    Pause at Step3：Tp3发送点播流量。可以检查TP3流量设置及设备的IGMP Snooping表项变化情况。
     \    get and record Cpu Mem every interval
-    \    #step 4
+    \    #step 4-7
     \    7.1.2 - test Igmp Join Delay
     \    Ixiasend.Stop Transmit    @{tp1}
     \    Ixiasend.Stop Transmit    @{tp2}
     \    Ixiasend.Stop Transmit    @{tp3}
-    export result
+    \    #step8
+    \    #配置    增加组播组总数量(INCR_STEP),重复上述所有测试,直到达到Max组播数量
+    \    #预期
+    export result    #输出结果
     [Teardown]    unInit
 
 *** Keywords ***
@@ -139,12 +157,15 @@ ${igmp_report_rate_for_case_tableUpdate_tp2}    ${30}    # Case02：IgmpSnooping
 
 7.1.2 - test Igmp Join Delay
     @{delay_value_list}=    Create list
-    7.1.2 - set Tp2 MC Source for Delay Test
+    7.1.2 - set Tp2 MC Source for Delay Test    #Tp2停止发送流量,修改第二条流为只发送第N+1个组播组的组播数据
     : FOR    ${count}    IN RANGE    1    ${testTrial}+1
+    \    #step4
+    \    #配置    #tp2开始抓包 tp1发送igmp report报文,点播最后1个组播组
+    \    #预期    #tp1收到组播流量
     \    Ixiasend.Stop Transmit    @{tp2}
-    \    Ixiasend.Start Transmit    @{tp2}    #触发report报文重新发送
+    \    Ixiasend.Start Transmit    @{tp2}    #触发report报文重新发送，保证进行时延测试的组播组表项已经被创建
     \    sleep    ${${groupNum}/${igmp_report_rate_for_case_tableUpdate_tp2}+1}    #等待igmp snooping表项创建
-    \    Pause For Debug
+    \    Pause For Debug    Pause At Step4: TP2发送流量
     \    #tp1发送report后，应该收到组播流量
     \    set Tp1 Igmp Report
     \    Ixiasend.Start Capture    @{tp2}
@@ -152,24 +173,31 @@ ${igmp_report_rate_for_case_tableUpdate_tp2}    ${30}    # Case02：IgmpSnooping
     \    Ixiasend.Wait For Transmit Done    @{tp1}
     \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    1    pps
     \    Should Be True    ${res}
-    \    #通过抓包获取时间戳
+    \    #step5
+    \    #配置    tp2停止抓包
+    \    #预期    通过tp2的抓包数据,获取join报文的接收时间(t1),第一个组播数据报文的接收时间(t2),join时延为t2-t1,记录本次延时时间
     \    Ixiasend.Stop Capture    @{tp2}
     \    Ixiasend.Get Capture Packet    @{tp2}    from=1    to=10
     \    Ixiasend.Get Capture Packet Timestamp    @{tp2}    from=1    to=10
     \    ${igmp_report_num}    ${igmp_report_timestamp_list}=    Ixiasend.Get Filter Capture Packet Timestamp    @{tp2}    igmp
     \    ${mc_num}    ${mc_timestamp_list}=    Ixiasend.Get Filter Capture Packet Timestamp    @{tp2}    not igmp
     \    Run Keyword And Continue On Failure    Run Keyword If    ${igmp_report_num}==${0}    Fail    没有捕获IGMP报文
-    \    Run Keyword And Continue On Failure    Run Keyword If    ${mc_num}==${0}    Fail    p    没有捕获组播数据报文
+    \    Run Keyword And Continue On Failure    Run Keyword If    ${mc_num}==${0}    Fail    没有捕获组播数据报文
     \    ${delay}=    Run Keyword If    ${igmp_report_num} !=${0} and ${mc_num} !=${0}    Evaluate    (${mc_timestamp_list[0]}-${igmp_report_timestamp_list[0]})/1000000.0    #ixia抓到的报文时间戳单位为ns，因此相减后需要除以100000
     \    append to list    ${delay_value_list}    ${delay}
-    \    #step4
+    \    #step6
+    \    #配置    tp1发送leave报文 Tp2清理抓包数据
+    \    #预期    tp1收不到组播流量
     \    set Tp1 Igmp Leave
     \    Ixiasend.Start Transmit    @{tp1}
     \    Ixiasend.Wait For Transmit Done    @{tp1}
     \    Ixiasend.Clear Capture Packet    @{tp2}
     \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
     \    Should Be True    ${res}
-    recordResult
+    \    #step7
+    \    #配置    重复前3个步骤
+    \    #预期    记录多次join延时时间 (二层表项更新下的join时延)
+    recordResult    #将多次测试结果记录到测试报告中
 
 cleanup dut
     Exec Cmd List In ConfigMode    ${s1}    no vlan ${snoopingVlan}
@@ -219,34 +247,39 @@ export result
     \    log    <embed type="image/svg+xml" src="testReport_${TEST_NAME}_MemUsagePercent_${time}_${groupNum}Groups.svg" \ width=800 height=600/>    HTML
 
 get and record Cpu Mem every interval
-    @{x_labels}=    Create List    Init Usage
+    @{x_labels}=    Create List    Init Usage    #创建图表x坐标标签，添加“Init usage”元素对应step1中获取的cpu及内存使用率
+    #获取cpu使用率及内存使用率
     : FOR    ${timeCount}    IN RANGE    0    ${TEST_DURATION}+${INTERVAL}    ${INTERVAL}
+    \    ${tempTime1}=    Get Time    epoch
     \    ${cpuUsage}=    get Cpu Usage    ${s1}    last=1
     \    ${memFreeBytes}    ${memUsagePercent}=    get Mem Usage    ${s1}
+    \    ${tempTime2}=    Get Time    epoch
+    \    ${actionTime}=    Set Variable    ${${tempTime2}-${tempTime1}}    #计算获取cpu使用率和内存使用率耗费的时间
     \    Append To List    ${cpuUsageList}    ${cpuUsage}
     \    Append To List    ${memFreeBytesList}    ${memFreeBytes}
     \    Append To List    ${memUsagePercentList}    ${memUsagePercent}
-    \    Append To List    ${x_labels}    ${timeCount}s
+    \    Append To List    ${x_labels}    ${timeCount}(+${actionTime})s    #向x坐标标签添加元素，对应每次获取cpu和内存使用率的时间
     \    sleep    ${INTERVAL}
     #生成CPU使用率图表
     ${chartCpuPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_CpuUsage_${time}_${groupNum}Groups.svg    #获取CPU使用率图表文件路径
-    ${chart_title}=    Set Variable    每${INTERVAL}S的CPU使用率变化情况 For ${groupNum} Groups
-    ${y_title}=    Set Variable    使用百分比%
-    ${cpuUsageChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_labels=${x_labels},range=(0,100),js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal
-    Call Method    ${cpuUsageChart}    add    CPU使用率    ${cpuUsageList}
-    Call Method    ${cpuUsageChart}    render_to_file    ${chartCpuPath}
+    ${chart_title}=    Set Variable    每${INTERVAL}S的CPU使用率变化情况 For ${groupNum} Groups    #图表标题
+    ${y_title}=    Set Variable    使用百分比%    #图表y轴标题
+    ${x_title}=    Set Variable    x轴: 时间(s)，注意横坐标中括号(+time)表示第x秒时从dut收集cpu及内存使用率（即show命令）所耗费的时间.    #图表x轴标题
+    ${cpuUsageChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_title=u'${x_title}',x_labels=${x_labels},range=(0,100),js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal    #创建图表文件
+    Call Method    ${cpuUsageChart}    add    CPU使用率    ${cpuUsageList}    #添加图表数据
+    Call Method    ${cpuUsageChart}    render_to_file    ${chartCpuPath}    #生成图表
     #生成内存空闲字节图表
     ${chartMemFreePath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_MemFree_${time}_${groupNum}Groups.svg    #获取内存空闲字节图表文件路径
     ${chart_title}=    Set Variable    每${INTERVAL}S的内存空闲字节变化情况 For ${groupNum} Groups
     ${y_title}=    Set Variable    bytes
-    ${memFreeBytesChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_labels=${x_labels},js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal
+    ${memFreeBytesChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_title=u'${x_title}',x_labels=${x_labels},js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal
     Call Method    ${memFreeBytesChart}    add    内存空闲字节    ${memFreeBytesList}
     Call Method    ${memFreeBytesChart}    render_to_file    ${chartMemFreePath}
     #生成内存使用率图表
     ${chartMemUsagePercentPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_MemUsagePercent_${time}_${groupNum}Groups.svg    #获取内存使用百分比图表文件路径
     ${chart_title}=    Set Variable    每${INTERVAL}S的内存使用率变化情况 For ${groupNum} Groups
     ${y_title}=    Set Variable    使用百分比%
-    ${memUsagePercentChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_labels=${x_labels},range=(0,100),js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal
+    ${memUsagePercentChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_title=u'${x_title}',x_labels=${x_labels},range=(0,100),js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal
     Call Method    ${memUsagePercentChart}    add    内存空闲字节    ${memUsagePercentList}
     Call Method    ${memUsagePercentChart}    render_to_file    ${chartMemUsagePercentPath}
 
@@ -258,6 +291,25 @@ init
     create report file    #创建报告文件
 
 recordResult
+    [Documentation]    *记录示例*
+    ...
+    ...    100 Groups Test Result:
+    ...
+    ...    Count \ \ \ \ Join Delay(ms) Result
+    ...
+    ...    ----------------------------------------------------------------------------------------------------
+    ...
+    ...    1 \ \ \ \ \ \ \ \ 1.0983ms
+    ...
+    ...    2 \ \ \ \ \ \ \ \ 1.25024ms
+    ...
+    ...    3 \ \ \ \ \ \ \ \ 1.1405ms
+    ...
+    ...
+    ...    ----------------------------------------------------------------------------------------------------
+    ...
+    ...    100Groups Test End!
+    #记录结果
     append to file    ${reportPath}    ${groupNum} Groups Test Result: \r\n
     ${thead}=    Evaluate    "Count".ljust(10)+"Join Delay(ms)".ljust(15)+"Result"+"\\r\\n"
     append to file    ${reportPath}    ${thead}
@@ -344,7 +396,7 @@ set Tp3 Igmp Report And Leave
 
 setup dut
     #init
-    #S1上开启全局及指定vlan的Igmp snooping功能,开启immediately-leave;将S1P1-S1P3加入snooping vlan; S1上配置镜像,将s1p1的双方向流量镜像至s1p2
+    #S1上开启全局及指定vlan的Igmp snooping功能,开启immediately-leave;将S1P1-S1P3加入snooping vlan;S1上配置镜像,将s1p1的双方向流量镜像至s1p2；(下面将本次测试组播组数量简记为N)；
     Exec Cmd List In ConfigMode    ${s1}    vlan ${snoopingVlan}
     Exec Cmd List In ConfigMode    ${s1}    ip igmp snooping    ip igmp snooping vlan ${snoopingVlan}    ip igmp snooping vlan ${snoopingVlan} immediately-leave
     Exec Cmd List In ConfigMode    ${s1}    interface ${s1p1};${s1p2};${s1p3}    switchport access vlan ${snoopingVlan}

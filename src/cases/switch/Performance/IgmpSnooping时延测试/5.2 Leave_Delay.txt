@@ -1,4 +1,11 @@
 *** Settings ***
+Documentation     *使用指导*
+...               ---
+...               Step1 修改拓扑（ _topo_setup.txt_ 中变量），具体拓扑要求请参考方案
+...
+...               Step2 修改测试配置（ _test_setup.txt_ 中的变量）
+...               ---
+...               如果没有生成图表（chart）文件，请检查是否安装了Python的pygal模块
 Suite Setup       init-suite
 Suite Teardown    unInit-suite
 Resource          resource.txt
@@ -7,17 +14,23 @@ Resource          resource.txt
 5.2 Leave Delay
     [Setup]    init
     #step 1
+    #配置    Tp2以指定速率发送组播流量；s1上开启Igmp snooping功能,开启immediately-leave功能；s1上配置镜像,将s1p1的双方向流量镜像至s1p2
+    #预期
     setup dut
     set Tp2 MC_Source
     Ixiasend.Start Transmit    @{tp2}
-    #step2-4多次测试
     : FOR    ${loop}    IN RANGE    1    ${testTrial}+1
+    \    #step 2
+    \    #配置    Tp1点播该组播流量
+    \    #预期    tp1收到组播流量
     \    set Tp1 Igmp report
     \    Ixiasend.Start Transmit    @{tp1}
     \    Ixiasend.Wait For Transmit Done    @{tp1}
     \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    1    pps
     \    Should Be True    ${res}
-    \    #step 2
+    \    #step 3
+    \    #配置    Tp2设置抓包filter(triger为igmp leave报文),并开始抓包；Tp1发送指定version的igmp leave报文
+    \    #预期    tp1停止接收流量
     \    set Tp2 Capture Filter
     \    set Tp1 Igmp Leave
     \    Ixiasend.Clear Capture Packet    @{tp2}
@@ -26,16 +39,21 @@ Resource          resource.txt
     \    Ixiasend.Wait For Transmit Done    @{tp1}
     \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
     \    Should Be True    ${res}
-    \    #step 3
-    \    Ixiasend.Stop Capture    @{tp2}
+    \    #step 4
+    \    #配置    Tp2停止抓包
+    \    #预期    通过tp2的抓包数据,获取leave报文的接收时间(t1),最后一个组播数据报文的接收时间(t2),leave时延为t2-t1
     \    ${capture_num}=    Ixiasend.Get Capture Packet Num    @{tp2}
     \    ${igmp_report_num}    ${igmp_report_timestamp_list}=    get igmp timestamp
     \    ${mc_num}    ${mc_timestamp_list}=    get MC Timestamp
+    \    Pause For Debug    #增加抓包debug检查
     \    Run Keyword And Continue On Failure    Run Keyword If    ${igmp_report_num}==${0}    Fail    Trial:${loop} 没有捕获IGMP报文
     \    Run Keyword And Continue On Failure    Run Keyword If    ${mc_num}==${0}    Fail    Trial:${loop} 没有捕获组播数据报文
     \    ${delay}=    Run Keyword If    ${igmp_report_num} !=${0} and ${mc_num} !=${0}    Evaluate    (${mc_timestamp_list[${mc_num}-1]}-${igmp_report_timestamp_list[0]})/1000000.0    #ixia抓到的报文时间戳单位为ns，因此相减后需要除以100000
     \    recordResult
     \    checkResult
+    \    #step5
+    \    #配置    重复步骤2-4 2次
+    \    #预期
     exportResult
     [Teardown]    unInit
 

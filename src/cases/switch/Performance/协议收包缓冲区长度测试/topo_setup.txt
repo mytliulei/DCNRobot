@@ -1,7 +1,7 @@
 *** Variables ***
-@{tp1}            1    9    1
-${s1p1}           Ethernet14/0/1
-${tp1_ip}         172.16.1.252
+@{tp1}            1    2    9
+${s1p1}           Ethernet2/2/5
+${tp1_ip}         172.16.1.247
 ${s1}             s1
-${s1_ccm_ip}      172.16.11.120
-${s1_ccm_port}    10001
+${s1_ccm_ip}      172.16.10.8
+${s1_ccm_port}    10004

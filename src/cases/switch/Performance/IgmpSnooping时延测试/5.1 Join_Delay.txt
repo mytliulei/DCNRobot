@@ -1,4 +1,11 @@
 *** Settings ***
+Documentation     *使用指导*
+...               ---
+...               Step1 修改拓扑（ _topo_setup.txt_ 中变量），具体拓扑要求请参考方案
+...
+...               Step2 修改测试配置（ _test_setup.txt_ 中的变量）
+...               ---
+...               如果没有生成图表（chart）文件，请检查是否安装了Python的pygal模块
 Suite Setup       init-suite
 Suite Teardown    unInit-suite
 Resource          resource.txt
@@ -7,14 +14,17 @@ Resource          resource.txt
 5.1 Join Delay
     [Setup]    init
     #step 1
+    #配置    s1上将s1p1的双方向流量镜像至s1p2；s1上开启Igmp snooping功能,开启immediately-leave功能；tp2以指定速率发送组播流量
+    #预期    tp1没有收到流量
     setup dut
     set Tp2 MC_Source
     Ixiasend.Start Transmit    @{tp2}
     ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
     Should Be True    ${res}
-    #step2-4多次测试
     : FOR    ${loop}    IN RANGE    1    ${testTrial}+1
     \    #step 2
+    \    #配置    tp2开始抓包；tp1发送指定version的igmp点播报文
+    \    #预期    tp1收到组播流量
     \    set Tp1 Igmp Report
     \    Ixiasend.Clear Capture Packet    @{tp2}
     \    Ixiasend.Start Capture    @{tp2}
@@ -23,6 +33,8 @@ Resource          resource.txt
     \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    1    pps
     \    Should Be True    ${res}
     \    #step 3
+    \    #配置    tp2停止抓包
+    \    #预期    通过tp2的抓包数据,获取点播报文的接收时间(t1),获取第一个组播数据报文的接收时间(t2),点播时延为t2-t1
     \    Ixiasend.Stop Capture    @{tp2}
     \    Ixiasend.Get Capture Packet    @{tp2}    from=1    to=10
     \    Ixiasend.Get Capture Packet Timestamp    @{tp2}    from=1    to=10
@@ -32,6 +44,8 @@ Resource          resource.txt
     \    Run Keyword And Continue On Failure    Run Keyword If    ${mc_num}==${0}    Fail    Trial:${loop} 没有捕获组播数据报文
     \    ${delay}=    Run Keyword If    ${igmp_report_num} !=${0} and ${mc_num} !=${0}    Evaluate    (${mc_timestamp_list[0]}-${igmp_report_timestamp_list[0]})/1000000.0    #ixia抓到的报文时间戳单位为ns，因此相减后需要除以100000
     \    #step4
+    \    #配置    tp1发送leave报文；tp2清理抓包数据；
+    \    #预期    tp1没有收到流量
     \    set Tp1 Igmp Leave
     \    Ixiasend.Start Transmit    @{tp1}
     \    Ixiasend.Wait For Transmit Done    @{tp1}
@@ -39,6 +53,9 @@ Resource          resource.txt
     \    Should Be True    ${res}
     \    recordResult
     \    checkResult
+    \    #step5
+    \    #配置    重复步骤2-4 2次
+    \    #预期
     exportResult
     [Teardown]    unInit
 

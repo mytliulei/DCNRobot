@@ -1,16 +1,18 @@
 *** Settings ***
 Documentation     *使用指导*
 ...               ---
-...               修改拓扑参数请设置 _topo_setup.txt_
+...               Step1 修改拓扑（ _topo_setup.txt_ 中变量），具体拓扑要求请参考方案
 ...
-...               修改测试参数请设置 _test_setup.txt_ 中的变量
+...               Step2 修改测试配置（ _test_setup.txt_ 中的变量）
 ...
-...               修改自定义报文时需包含以下内容：
-...               - _\${frameTypeManual}_ (test_setup.txt)参数，指定协议报文类型，要求是show cpu-rx protocol中支持的协议类型，并且大小写敏感。
-...               - 用例 _自定义报文线速处理能力_ 中关键字 _setup dut_ 中设备接收协议报文所需要的配置，以及放开总限速与协议限速的配置。
-...               - 用例 _自定义报文线速处理能力_ 中关键字 _set stream packet_ 中对测试仪发送流量的配置
-...               - 用例 _自定义报文线速处理能力_ 中关键字 _Get TP Receive Packet_ 中测试仪对抓包内容的过滤条件。缺省使用 _\${frameTypeManual}_ (test_setup.txt) 的值来作为识别条件,但不是全部协议报文都支持,因此需要自行修改。
-...
+...               Step3 修改自定义报文的内容：
+...               - _\${frameTypeManual}_ \ (test_setup.txt)参数，指定协议报文类型，要求是show cpu-rx protocol中支持的协议类型，并且大小写敏感。
+...               - _\${channelProtocol}_ \ (test_setup.txt)参数，对应自定义协议报文的板间协议类型，例如：RDP-ARP，RDP-DHCP...etc;要求与show cpu-rx-stat control-chan protocol命令支持的通道name一致。
+...               - 用例 _自定义报文线速接收能力_ 中关键字 _setup dut_ 中设备接收协议报文所需要的配置，以及放开总限速与协议限速的配置。
+...               - 用例 _自定义报文线速接收能力_ 中关键字 _set stream packet_ 中对测试仪发送协议流量的配置
+...               - 用例 _自定义报文线速接收能力_ 中关键字 _Get TP Receive Packet_ 中测试仪对抓包内容的过滤条件。该条件用于判断抓包内容中哪些是设备对协议报文的响应报文，缺省使用 _ether src ${SW_VLAN_MAC} (即源mac为dut vlan mac的报文)_ 来作为识别条件,但不是全部协议报文都支持,因此需要自行修改。若设备对该自定义报文不会做出响应，则无需修改；
+...               - 用例 _自定义报文线速接收能力_ 中关键字 _clean up dut_ 中设备恢复配置时，需要删除的接收协议报文配置，以及总限速与协议限速配置。
+...               ---
 ...               如果没有生成图表（chart）文件，请检查是否安装了Python的pygal模块
 Suite Setup       init-suite
 Suite Teardown    unInit-suite
@@ -21,9 +23,14 @@ Resource          resource.txt
     [Setup]    init
     set stream packet
     : FOR    ${loop}    IN RANGE    1    ${testTrial}+1
+    \    #step1
+    \    #配置    清理交换机上协议报文接收统计计数
+    \    #预期    所有协议收包统计计数归0
     \    Ixiasend.Clear Statics    @{tp1}
     \    clear cpu-rx-stat protocol    ${s1}    ${frameTypeManual}
-    \    #TP1开启抓包功能    通过TP1以线速打入指定数量(Burst Number)个Arp request报文
+    \    #step2
+    \    #配置    TP1开启抓包功能；通过TP1以线速打入指定数量(Burst Number)个协议报文
+    \    #预期    记录设备上接收到的协议报文个数；记录TP1接收到的协议响应报文个数；接收数量应大于所设置的通过条件
     \    Ixiasend.Start Capture    @{tp1}
     \    Ixiasend.Start Transmit    @{tp1}
     \    Ixiasend.Wait For Transmit Done    @{tp1}
@@ -59,10 +66,13 @@ Create Report File
     Append To File    ${reportPath}    Software Version: \r\n${SW_VERSION}\r\n
     ${dots}=    Evaluate    "\\r\\n"+'.'*100+"\\r\\n"
     Append To File    ${reportPath}    ${dots} \r\n
-    Append To File    ${reportPath}    Dut指定协议默认限速值为: ${protocolLimitRate} \r\n 测试通过条件: \r\n
-    Run Keyword If    ${passCondition} in [1,3]    Append To File    ${reportPath}    Pass Criteria: Rx packet>=${${protocolLimitRate}*${checkCriteria1}}[线速打入${frameTypeManual}报文,设备应处理协议默认限速70%以上的报文] \r\n
-    Run Keyword If    ${passCondition} in [2,3]    Append To File    ${reportPath}    Pass Criteria: Rx packet>=${checkCriteria1}} [线速打入${frameTypeManual}报文,设备应处理指定数量以上的报文] \r\n
-    Run Keyword If    ${passCondition} not in [1,2,3]    Append To File    ${reportPath}    warning: no specified! \r\n !!配置测试通过条件请修改\${passCondition}变量!! \r\n
+    Append To File    ${reportPath}    测试配置(Test Configuration): \r\n\r\n
+    Append To File    ${reportPath}    突发速率:线速 \r\n
+    Append To File    ${reportPath}    突发${frameTypeManual}报文数量：${burstNum}\r\n
+    Append To File    ${reportPath}     测试通过条件: \r\n
+    Run Keyword If    ${passCondition} in [1,3]    Append To File    ${reportPath}    ${SPACE*2}Pass Criteria: Rx packet>=${${protocolLimitRate}*${checkCriteria1}}[线速打入${frameTypeManual}报文,设备应处理协议默认限速70%以上的报文] \r\n
+    Run Keyword If    ${passCondition} in [2,3]    Append To File    ${reportPath}    ${SPACE*2}Pass Criteria: Rx packet>=${checkCriteria1}} [线速打入${frameTypeManual}报文,设备应处理指定数量以上的报文] \r\n
+    Run Keyword If    ${passCondition} not in [1,2,3]    Append To File    ${reportPath}    ${SPACE*2}warning: no specified! \r\n !!配置测试通过条件请修改\${passCondition}变量!! \r\n
     Append To File    ${reportPath}    \r\n Test Result：\r\n
     ${thead}=    Evaluate    "Trial:".ljust(10)+"Burst Num(Pkts):".ljust(20)+"TP Tx(Pkts):".ljust(20)+"TP Rx(Pkts):".ljust(20)+"DUT Rx(Pkts):".ljust(20)+"Result:".ljust(10)+"\\r\\n"
     Append To File    ${reportPath}    ${thead}
@@ -72,11 +82,13 @@ Create Report File
 Get Dut Receive Packet
     ${ret}=    Exec Cmd    ${s1}    ${CMD}
     ${dut_rx}=    Tools.Get Value From String    ${ret}    (?sm)Type.*?^\\w+\\s+\\d+\\s+(\\d+)    #获取TotPkts计数
+    ${dut_rx}=    Run Keyword If    ${dut_rx}==${None}    Tools.Get Value From String    ${ret}    (?sm)Type.*?^\\w+\\s+\\d+.*?(\\d+)
+    ...    ELSE    Set Variable    ${dut_rx}    #如果获取TotPkts计数失败，则获取RxPkts计数
     [Return]    ${dut_rx}
 
 Get TP Receive Packet
-    #如果是自定义报文请自行修改过滤方式
-    ${rx_num}    ${rx_packets}=    Ixiasend.Filter Capture Packet    @{tp1}    ${frameTypeManual}
+    #如果是自定义报文请自行修改过滤方式,缺省通过交换机源mac来过滤响应报文
+    ${rx_num}    ${rx_packets}=    Ixiasend.Filter Capture Packet    @{tp1}    ether src ${SW_VLAN_MAC}
     [Return]    ${rx_num}
 
 checkResult
@@ -97,8 +109,13 @@ checkResult
     ...    Fail \r\n
 
 clean up dut
+    #恢复协议限速及总限速
+    Exec Cmd List In ConfigMode    ${s1}    no cpu-rx-ratelimit protocol ${frameTypeManual}    no cpu-rx-ratelimit total
+    Exec Cmd List In ConfigMode    ${s1}    no cpu-rx-ratelimit control-chan protocol ${channelProtocol}    no cpu-rx-ratelimit control-chan total
+    #协议相关配置
+    Exec Cmd List In ConfigMode    ${s1}    no service dhcp
+    Exec Cmd List In ConfigMode    ${s1}    no ip dhcp pool test    no ip dhcp excluded-address 10.1.1.1
     Exec Cmd List In ConfigMode    ${s1}    no interface vlan 1
-    Exec Cmd List In ConfigMode    ${s1}    no cpu-rx-ratelimit protocol arp    no cpu-rx-ratelimit total
 
 clean up testPort
     Ixiasend.Set Port Mode Default    @{tp1}
@@ -112,12 +129,14 @@ get burstNum
     Return From Keyword if    ${burstNum}!=${-1}
     ${ret}=    Exec Cmd slowly    ${s1}    show cpu-rx protocol all | include TOTAL
     ${totalLimitRate}=    Tools.Get Value From String    ${ret}    TOTAL.*?(\\d+)
+    Run Keyword If    ${totalLimitRate}==${None}    log    获取设备total限速值失败，burstNum设置为2000    WARN
+    ${totalLimitRate}=    Set Variable If    ${totalLimitRate}==${None}    ${2000}    ${totalLimitRate}
     Set Test Variable    ${burstNum}    ${totalLimitRate}
 
 get protocolCMD
-    ${ret}=    exec cmd    ${s1}    show slot
-    ${isVSF}=    Tools.Is Match From String    ${ret}    member    #判断是否堆叠
-    ${isSlot}=    Tools.Is Match From String    ${ret}    slot    #判断是否机架设备
+    ${ret}=    Exec Cmd slowly    ${s1}    show slot | \ include member|slot|Member|Slot
+    ${isVSF}=    Tools.Is Match From String    ${ret}    (?i)member    #判断是否堆叠
+    ${isSlot}=    Tools.Is Match From String    ${ret}    (?i)slot    #判断是否机架设备
     ${portNum}=    Tools.Get Value From String    ${s1p1}    .*?(\\d+.*)    #获取端口号
     @{portSplit}=    Split String    ${portNum}    /    #拆分端口号
     ${memberSlot}=    Run Keyword If    ${isVSF} and ${isSlot}    Set Variable    member ${portSplit[0]} slot ${portSplit[1]}    ELSE IF    ${isVSF}
@@ -158,17 +177,21 @@ recordResult
 set stream packet
     #请自行修改报文配置
     Ixiasend.Build Ether    dst=FF:FF:FF:FF:FF:FF    src=00:00:10:01:01:02    typeid=0x800
-    Ixiasend.Build Payload    4500014800000000401179A600000000FFFFFFFF004400430134E4FB010106000000000000000000000000000000000000000000000000000000100101020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+    Ixiasend.Build Payload    4500012100000000401179CD00000000FFFFFFFF00440043010D9839010106006A219C5300000000000000000000000000000000000000000000100101020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000063825363350101370401033A3B3D0701000010010102FF0000000000000000000000000000000000000000000000000000000000000000000000000000000000
     Ixiasend.Build Packet    length=${frameSize}
     Ixiasend.Set Stream Packet By Datapattern    @{tp1}    streamId=1
     Ixiasend.Set Stream Control    @{tp1}    streamId=1    streamRate=${streamRate}    streamRateMode=${streamRateMode}    streamMode=${IXIA_StreamMode_stop}    numPackets=${burstNum}
 
 setup dut
-    #协议相关配置
+    #协议相关配置    这里以DHCP为例子
     Exec Cmd List In ConfigMode    ${s1}    interface vlan 1    ip address 10.1.1.1 255.255.255.0
     Exec Cmd List In ConfigMode    ${s1}    service dhcp
+    Exec Cmd List In ConfigMode    ${s1}    ip dhcp pool test     network-address 10.0.0.0 255.0.0.0
+    Exec Cmd List In ConfigMode    ${s1}    ip dhcp excluded-address 10.1.1.1
     #放开协议限速及总限速
     Exec Cmd List In ConfigMode    ${s1}    cpu-rx-ratelimit total 0    cpu-rx-ratelimit protocol ${frameTypeManual} 2000
+    Exec Cmd List In ConfigMode    ${s1}    cpu-rx-ratelimit control-chan total 0    #放开板间协议总限速
+    Exec Cmd List In ConfigMode    ${s1}    cpu-rx-ratelimit control-chan protocol ${channelProtocol} 2500    #放开板间协议限速
     #清除相关计数统计
     Exec Cmd List    ${s1}    clear cpu-rx-stat protocol all
     #debug
@@ -183,8 +206,10 @@ setup var
     get protocolLimitRate    #获取协议默认限速值
     ${SW_VERSION}=    Show Version    ${s1}    #获取版本信息
     ${SW_DEVICE_ID}=    Get Device ID    ${s1}    #获取设备device type
+    ${SW_VLAN_MAC}=    Get Vlan Mac    ${s1}
     Set Test Variable    ${SW_VERSION}
     Set Test Variable    ${SW_DEVICE_ID}
+    Set Test Variable    ${SW_VLAN_MAC}
     ${time}=    Get Time    epoch
     ${reportPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_${time}.txt    #获取测试报告文件路径
     ${chartPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_${time}.svg    #获取测试报告图表文件路径
