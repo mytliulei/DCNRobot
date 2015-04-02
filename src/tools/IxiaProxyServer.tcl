@@ -667,7 +667,8 @@ proc GetCapturePacket {cmdstr} {
         return -1104
     }
     set ret ""
-    for {set i $fromPacket} {$i <= $toPacket} {incr i} {
+    set plen [expr $toPacket - $fromPacket + 1]
+    for {set i 1} {$i <= $plen} {incr i} {
         set ires [captureBuffer getframe $i]
         if {$ires == 0} {
             set data [captureBuffer cget -frame]
@@ -1377,7 +1378,8 @@ proc GetCapturePacketTimestamp {cmdstr} {
         return -3004
     }
     set ret ""
-    for {set i $fromPacket} {$i <= $toPacket} {incr i} {
+    set plen [expr $toPacket - $fromPacket + 1]
+    for {set i 1} {$i <= $plen} {incr i} {
         set ires [captureBuffer getframe $i]
         if {$ires == 0} {
             set data [captureBuffer cget -timestamp]

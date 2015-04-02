@@ -1,0 +1,462 @@
+*** Settings ***
+Documentation     *使用指导*
+...               ---
+...               Step1 修改拓扑（ _topo_setup.txt_ 中变量），具体拓扑要求请参考方案
+...
+...               Step2 修改测试配置（ _test_setup.txt_ 中的变量）
+...
+...               ---
+...               注：如果没有生成图表（chart）文件，请检查是否安装了Python的pygal模块
+Suite Setup       init-suite
+Suite Teardown    uninit-suite
+Resource          resource.txt
+
+*** Variables ***
+${igmp_report_rate_for_case_tableUpdate_tp2}    ${30}    # Case02：IgmpSnooping表项持续更新，设置Tp2发送igmp report报文的速率
+
+*** Test Cases ***
+7.2.1-表项持续添加删除下的Leave Delay测试
+    [Setup]    init
+    : FOR    ${groupNum}    IN    @{group_num_list}
+    \    @{cpuUsageList}=    Create list
+    \    @{memFreeBytesList}=    Create list
+    \    @{memUsagePercentList}=    Create list
+    \    #step 1
+    \    #配置    记录初始状态下,S1的CPU使用率,内存使用率,cpu收包
+    \    #预期    记录所有数据
+    \    ${initCpuUsage}=    get Cpu Usage    ${s1}    last=3
+    \    ${initMemFreeBytes}    ${initMemUsagePercent}=    get Mem Usage    ${s1}
+    \    Append To List    ${cpuUsageList}    ${initCpuUsage}
+    \    Append To List    ${memFreeBytesList}    ${initMemFreeBytes}
+    \    Append To List    ${memUsagePercentList}    ${initMemUsagePercent}
+    \    #step 2
+    \    #配置    #设置snooping vlan允许创建的最大组数量为N+1；Tp2以指定速率发送所有组播数据流量(N个组播组)；
+    \    #预期    tp1及tp3收不到组播流量
+    \    Exec Cmd List In ConfigMode    ${s1}    ip igmp snooping vlan ${snoopingVlan} limit group ${${groupNum}+1}    #放开snooping vlan的group数量限制
+    \    set Tp2 MC Source
+    \    Ixiasend.Start Transmit    @{tp2}
+    \    ${res1}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
+    \    ${res2}=    CheckIxiaSendReceive    @{tp2}    @{tp3}    0    pps
+    \    should be true    ${res1}
+    \    should be true    ${res2}
+    \    #step 3
+    \    #配置    Tp3以指定速率发送join与leave报文(先发join,递增到本次测试的组播组数量为止.然后发送leave,递增到本次测试的组播组数量为止) (tp3发送join时,二层组播表项添加,tp3发送leave时,表项删除) 每过指定的间隔时间(监控间隔Interval)检测一次设备CPU使用率,内存使用率,持续Test Duration(缺省30s)
+    \    #预期    记录所有数据 (二层组播表项添加/删除下的性能)
+    \    set Tp3 Igmp Report And Leave
+    \    Ixiasend.Start Transmit    @{tp3}
+    \    get and record Cpu Mem every interval
+    \    #step 4-7
+    \    7.2.1 - test Igmp Leave Delay
+    \    Ixiasend.Stop Transmit    @{tp1}
+    \    Ixiasend.Stop Transmit    @{tp2}
+    \    Ixiasend.Stop Transmit    @{tp3}
+    \    #step8
+    \    #配置    增加组播组总数量(INCR_STEP),重复上述所有测试,直到达到Max组播数量
+    \    #预期
+    export result    #输出结果
+    [Teardown]    unInit
+
+7.2.2-表项持续更新下的Leave Delay测试
+    [Setup]    init
+    : FOR    ${groupNum}    IN    @{group_num_list}
+    \    @{cpuUsageList}=    Create list
+    \    @{memFreeBytesList}=    Create list
+    \    @{memUsagePercentList}=    Create list
+    \    #step 1
+    \    #配置    记录初始状态下,S1的CPU使用率,内存使用率,cpu收包
+    \    #预期    记录所有数据
+    \    ${initCpuUsage}=    get Cpu Usage    ${s1}    last=3
+    \    ${initMemFreeBytes}    ${initMemUsagePercent}=    get Mem Usage    ${s1}
+    \    Append To List    ${cpuUsageList}    ${initCpuUsage}
+    \    Append To List    ${memFreeBytesList}    ${initMemFreeBytes}
+    \    Append To List    ${memUsagePercentList}    ${initMemUsagePercent}
+    \    #step 2
+    \    #配置    #设置snooping vlan允许创建的最大组数量为N+1；Tp2创建两条流,先以30pps发送点播join报文(点播N+1个组)；触发S1生成所有组播组的二层组播表项,然后以指定速率(GroupSourceRate)发送所有组播数据流量(N个组播组)
+    \    #预期    tp1及tp3收不到组播流量
+    \    Exec Cmd List In ConfigMode    ${s1}    ip igmp snooping vlan ${snoopingVlan} limit group ${${groupNum}+1}    #放开snooping vlan的group数量限制
+    \    set Tp2 MC Source and Report
+    \    Ixiasend.Start Transmit    @{tp2}
+    \    sleep    ${${groupNum}/${igmp_report_rate_for_case_tableUpdate_tp2}+1}    #等待igmp snooping表项创建
+    \    ${res1}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
+    \    ${res2}=    CheckIxiaSendReceive    @{tp2}    @{tp3}    0    pps
+    \    should be true    ${res1}
+    \    should be true    ${res2}
+    \    #step 3
+    \    #配置    Tp3以指定速率发送join与leave报文(先发join,递增N次.然后发送leave,递增N次)(tp3发送join时,二层组播表项增加出端口s1p3,tp3发送leave时,表项删除出端口s1p3)每过指定的间隔时间(监控间隔Interval)检测一次设备CPU使用率,内存使用率,持续Test Duration(缺省30s)
+    \    #预期    记录所有数据 (二层组播表项更新下的性能)
+    \    set Tp3 Igmp Report And Leave
+    \    Ixiasend.Start Transmit    @{tp3}
+    \    get and record Cpu Mem every interval
+    \    #step 4-7
+    \    7.2.2 - test Igmp Leave Delay
+    \    Ixiasend.Stop Transmit    @{tp1}
+    \    Ixiasend.Stop Transmit    @{tp2}
+    \    Ixiasend.Stop Transmit    @{tp3}
+    \    #step8
+    \    #配置    增加组播组总数量(INCR_STEP),重复上述所有测试,直到达到Max组播数量
+    \    #预期
+    export result    #输出结果
+    [Teardown]    unInit
+
+*** Keywords ***
+7.2.1 - set Tp2 MC Source for Delay Test
+    Ixiasend.Build Ether    dst=${MC_MAC_FOR_DELAY_TEST}    src=00:00:00:22:22:22
+    Ixiasend.Build Ip    src=10.1.1.2    dst=${MC_GROUP_FOR_DELAY_TEST}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp2}    streamId=1
+    Ixiasend.Set Stream Control    @{tp2}    streamId=1    streamRate=${groupSourceRate}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+7.2.1 - test Igmp Leave Delay
+    Ixiasend.Stop Transmit    @{tp1}
+    Ixiasend.Stop Transmit    @{tp2}
+    Ixiasend.Stop Transmit    @{tp3}
+    7.2.1 - set Tp2 MC Source for Delay Test    #Tp2停止发送流量,修改流量为只发送第N+1个组播组的组播数据
+    #测试点播时延
+    @{delay_value_list}=    Create list
+    set Tp2 Capture Filter For Leave Delay Test    #设置TP2的capture过滤条件
+    : FOR    ${count}    IN RANGE    1    ${testTrial}+1
+    \    #step4
+    \    #配置    tp1发送igmp report报文,点播第N+1个组播组
+    \    #预期    tp1收到组播流量
+    \    set Tp1 Igmp Report
+    \    Ixiasend.Start Transmit    @{tp3}    #恢复背景点播流量
+    \    Ixiasend.Start Transmit    @{tp2}
+    \    Ixiasend.Start Transmit    @{tp1}
+    \    Ixiasend.Wait For Transmit Done    @{tp1}
+    \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    1    pps
+    \    Pause For Debug    Pause At Step4: Tp1发送点播流量
+    \    Should Be True    ${res}
+    \    #step5
+    \    #配置    Tp2设置filter(triger为igmp leave报文),清理capture缓存后开始抓包；tp1发送指定version的igmp leave报文
+    \    #预期    tp1停止接收流量
+    \    set Tp1 Igmp Leave
+    \    Ixiasend.Clear Capture Packet    @{tp2}
+    \    Ixiasend.Start Capture    @{tp2}
+    \    Ixiasend.Start Transmit    @{tp1}
+    \    Ixiasend.Wait For Transmit Done    @{tp1}
+    \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
+    \    Should Be True    ${res}
+    \    #step6
+    \    #配置    Tp2停止抓包
+    \    #预期    通过tp2的抓包数据,获取leave报文的接收时间(t1),最后一个组播数据报文的接收时间(t2),leave时延为t2-t1,记录本次延时时间
+    \    Ixiasend.Stop Capture    @{tp2}
+    \    ${igmp_leave_num}    ${igmp_leave_timestamp_list}=    get igmp leave timestamp
+    \    ${mc_num}    ${mc_timestamp_list}=    get MC Timestamp
+    \    Run Keyword And Continue On Failure    Run Keyword If    ${igmp_leave_num}==${0}    Fail    没有捕获IGMP Leave报文
+    \    Run Keyword And Continue On Failure    Run Keyword If    ${mc_num}==${0}    Fail    没有捕获组播数据报文
+    \    ${delay}=    Run Keyword If    ${igmp_leave_num} !=${0} and ${mc_num} !=${0}    Evaluate    (${mc_timestamp_list[${mc_num}-1]}-${igmp_leave_timestamp_list[0]})/1000000.0    #ixia抓到的报文时间戳单位为ns，因此相减后需要除以100000
+    \    Append To List    ${delay_value_list}    ${delay}
+    \    Ixiasend.Stop Transmit    @{tp1}
+    \    Ixiasend.Stop Transmit    @{tp2}
+    \    Ixiasend.Stop Transmit    @{tp3}
+    \    #step7
+    \    #配置    重复前3个步骤
+    \    #预期    记录2次leave延时时间；(二层表项更新下的leave时延)
+    recordResult    #将多次测试结果记录到测试报告中
+
+7.2.2 - set Tp2 MC Source for Delay Test
+    Ixiasend.Build Ether    dst=${MC_MAC_FOR_DELAY_TEST}    src=00:00:00:22:22:22
+    Ixiasend.Build Ip    src=10.1.1.2    dst=${MC_GROUP_FOR_DELAY_TEST}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp2}    streamId=2
+    Ixiasend.Set Stream Control    @{tp2}    streamId=2    streamRate=${groupSourceRate}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+7.2.2 - test Igmp Leave Delay
+    Ixiasend.Stop Transmit    @{tp1}
+    Ixiasend.Stop Transmit    @{tp2}
+    Ixiasend.Stop Transmit    @{tp3}
+    7.2.2 - set Tp2 MC Source for Delay Test    #Tp2停止发送流量,修改第二条流为只发送第N+1个组播组的组播数据
+    set Tp2 Capture Filter For Leave Delay Test    #Tp2设置filter(triger为igmp leave报文)
+    #测试点播时延
+    @{delay_value_list}=    Create list
+    : FOR    ${count}    IN RANGE    1    ${testTrial}+1
+    \    #step4
+    \    #配置    Tp2停止发送流量,修改第二条流为只发送第N+1个组播组的组播数据；tp1发送igmp report报文,点播第N+1个组播组
+    \    #预期    tp1收到组播流量
+    \    set Tp1 Igmp Report
+    \    Ixiasend.Start Transmit    @{tp3}    #恢复点播背景流量
+    \    Ixiasend.Start Transmit    @{tp2}
+    \    sleep    ${${groupNum}/${igmp_report_rate_for_case_tableUpdate_tp2}+1}    #等待igmp snooping表项创建
+    \    Ixiasend.Start Transmit    @{tp1}
+    \    Ixiasend.Wait For Transmit Done    @{tp1}
+    \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    1
+    \    Pause For Debug    Pause At Step4: Tp1发送点播流量
+    \    Should Be True    ${res}
+    \    #step5
+    \    #配置    Tp2设置filter(triger为igmp leave报文),开始抓包；tp1发送指定version的igmp leave报文
+    \    #预期    tp1停止接收流量
+    \    set Tp1 Igmp Leave
+    \    Ixiasend.Clear Capture Packet    @{tp2}
+    \    Ixiasend.Start Capture    @{tp2}
+    \    Ixiasend.Start Transmit    @{tp1}
+    \    Ixiasend.Wait For Transmit Done    @{tp1}
+    \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
+    \    Should Be True    ${res}
+    \    #step6
+    \    #配置    Tp2停止抓包
+    \    #预期    通过tp2的抓包数据,获取leave报文的接收时间(t1),最后一个组播数据报文的接收时间(t2),leave时延为t2-t1,记录本次延时时间
+    \    Ixiasend.Stop Capture    @{tp2}
+    \    ${igmp_leave_num}    ${igmp_leave_timestamp_list}=    get igmp leave timestamp
+    \    ${mc_num}    ${mc_timestamp_list}=    get MC Timestamp
+    \    Run Keyword And Continue On Failure    Run Keyword If    ${igmp_leave_num}==${0}    Fail    没有捕获IGMP Leave报文
+    \    Run Keyword And Continue On Failure    Run Keyword If    ${mc_num}==${0}    Fail    没有捕获组播数据报文
+    \    ${delay}=    Run Keyword If    ${igmp_leave_num} !=${0} and ${mc_num} !=${0}    Evaluate    (${mc_timestamp_list[${mc_num}-1]}-${igmp_leave_timestamp_list[0]})/1000000.0    #ixia抓到的报文时间戳单位为ns，因此相减后需要除以100000
+    \    Append To List    ${delay_value_list}    ${delay}
+    \    Ixiasend.Stop Transmit    @{tp1}
+    \    Ixiasend.Stop Transmit    @{tp2}
+    \    Ixiasend.Stop Transmit    @{tp3}
+    \    #step7
+    \    #配置    重复前3个步骤
+    \    #预期    记录2次leave延时时间；(二层表项更新下的leave时延)
+    recordResult    #将多次测试结果记录到测试报告中
+
+cleanup dut
+    Exec Cmd List In ConfigMode    ${s1}    no vlan ${snoopingVlan}
+    Exec Cmd List In ConfigMode    ${s1}    no ip igmp snooping vlan ${snoopingVlan} limit    no ip igmp snooping vlan ${snoopingVlan}    no ip igmp snooping
+    Exec Cmd List In ConfigMode    ${s1}    no monitor session 1 source interface ${s1p1}    no monitor session 1 destination interface ${s1p2}
+
+cleanup testPort
+    Ixiasend.Stop Transmit    @{tp1}
+    Ixiasend.Stop Transmit    @{tp2}
+    Ixiasend.Stop Transmit    @{tp3}
+    Ixiasend.Set Port Mode Default    @{tp1}
+    Ixiasend.Set Port Mode Default    @{tp2}
+    Ixiasend.Set Port Mode Default    @{tp3}
+
+create report file
+    #获取测试报告文件路径
+    ${reportPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_${time}.txt
+    Set Test Variable    ${reportPath}
+    #初始化报告内容
+    Append To File    ${reportPath}    \r\n \r\n Test Suite: ${SUITE_NAME} \r\n Test Case: ${TEST_NAME} \r\n
+    ${timestamp}=    Get Time    \    ${time}
+    Append To File    ${reportPath}    Excution Time: ${timestamp}\r\n
+    ${user}=    Evaluate    getpass.getuser()    getpass
+    Append To File    ${reportPath}    Excution User: ${user}\r\n
+    Append To File    ${reportPath}    Device Type: ${SW1_DEVICE_ID}\r\n
+    Append To File    ${reportPath}    Software Version: \r\n${SW1_VERSION}\r\n
+    ${dots}=    Evaluate    "\\r\\n"+'.'*100+"\\r\\n"
+    Append To File    ${reportPath}    ${dots} \r\n
+    Append To File    ${reportPath}    测试配置(Configuration): \r\n
+    ${text}=    Evaluate    "组播组数量:".decode("utf-8")+"${group_num_list}"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${text}=    Evaluate    "组播源发送速率:".decode("utf-8")+"${groupSourceRate}pps"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${text}=    Evaluate    "点播速率:".decode("utf-8")+"${IGMPPKT_RATE} pps"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${text}=    Evaluate    "测试时长:".decode("utf-8")+"${TEST_DURATION} secs"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${text}=    Evaluate    "Igmp Version:"+"${igmpVersion}"
+    Append To File    ${reportPath}    ${text} \r\n
+    Append To File    ${reportPath}    ${dots} \r\n
+
+export result
+    Log File    ${reportPath}
+    : FOR    ${groupNum}    IN    @{group_num_list}
+    \    log    <embed type="image/svg+xml" src="testReport_${TEST_NAME}_CpuUsage_${time}_${groupNum}Groups.svg" \ width=800 height=600/>    HTML
+    \    log    <embed type="image/svg+xml" src="testReport_${TEST_NAME}_MemFree_${time}_${groupNum}Groups.svg" \ width=800 height=600/>    HTML
+    \    log    <embed type="image/svg+xml" src="testReport_${TEST_NAME}_MemUsagePercent_${time}_${groupNum}Groups.svg" \ width=800 height=600/>    HTML
+
+get MC Timestamp
+    #获取取最后10个mc报文的时间戳
+    ${capture_num}=    Ixiasend.Get Capture Packet Num    @{tp2}
+    ${from}=    Set Variable If    ${capture_num}> ${10}    ${${capture_num}-10}    1
+    ixiasend.Get capture packet    @{tp2}    from=${from}    to=${capture_num}
+    Ixiasend.Get Capture Packet Timestamp    @{tp2}    from=${from}    to=${capture_num}
+    ${mc_num}    ${mc_timestamp_list}=    Ixiasend.Get Filter Capture Packet Timestamp    @{tp2}    not igmp
+    [Return]    ${mc_num}    ${mc_timestamp_list}
+
+get and record Cpu Mem every interval
+    @{x_labels}=    Create List    Init Usage    #创建图表x坐标标签，添加“Init usage”元素对应step1中获取的cpu及内存使用率
+    : FOR    ${timeCount}    IN RANGE    0    ${TEST_DURATION}+${INTERVAL}    ${INTERVAL}
+    \    ${tempTime1}=    Get Time    epoch
+    \    ${cpuUsage}=    get Cpu Usage    ${s1}    last=1
+    \    ${memFreeBytes}    ${memUsagePercent}=    get Mem Usage    ${s1}
+    \    ${tempTime2}=    Get Time    epoch
+    \    ${actionTime}=    Set Variable    ${${tempTime2}-${tempTime1}}    #计算获取cpu使用率和内存使用率耗费的时间
+    \    Append To List    ${cpuUsageList}    ${cpuUsage}
+    \    Append To List    ${memFreeBytesList}    ${memFreeBytes}
+    \    Append To List    ${memUsagePercentList}    ${memUsagePercent}
+    \    Append To List    ${x_labels}    ${timeCount}(+${actionTime})s    #向x坐标标签添加元素，对应每次获取cpu和内存使用率的时间
+    \    sleep    ${INTERVAL}
+    #生成CPU使用率图表
+    ${chartCpuPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_CpuUsage_${time}_${groupNum}Groups.svg    #获取CPU使用率图表文件路径
+    ${chart_title}=    Set Variable    每${INTERVAL}S的CPU使用率变化情况 For ${groupNum} Groups    #图表标题
+    ${y_title}=    Set Variable    使用百分比%    #图表y轴标题
+    ${x_title}=    Set Variable    x轴: 时间(s)，注意横坐标中括号(+time)表示第x秒时从dut收集cpu及内存使用率（即show命令）所耗费的时间.    #图表x轴标题
+    ${cpuUsageChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_title=u'${x_title}',x_labels=${x_labels},range=(0,100),js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal    #创建图表文件
+    Call Method    ${cpuUsageChart}    add    CPU使用率    ${cpuUsageList}    #添加图表数据
+    Call Method    ${cpuUsageChart}    render_to_file    ${chartCpuPath}    #生成图表
+    #生成内存空闲字节图表
+    ${chartMemFreePath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_MemFree_${time}_${groupNum}Groups.svg    #获取内存空闲字节图表文件路径
+    ${chart_title}=    Set Variable    每${INTERVAL}S的内存空闲字节变化情况 For ${groupNum} Groups
+    ${y_title}=    Set Variable    bytes
+    ${memFreeBytesChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_title=u'${x_title}',x_labels=${x_labels},js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal
+    Call Method    ${memFreeBytesChart}    add    内存空闲字节    ${memFreeBytesList}
+    Call Method    ${memFreeBytesChart}    render_to_file    ${chartMemFreePath}
+    #生成内存使用率图表
+    ${chartMemUsagePercentPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_MemUsagePercent_${time}_${groupNum}Groups.svg    #获取内存使用百分比图表文件路径
+    ${chart_title}=    Set Variable    每${INTERVAL}S的内存使用率变化情况 For ${groupNum} Groups
+    ${y_title}=    Set Variable    使用百分比%
+    ${memUsagePercentChart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${chart_title}',y_title=u'${y_title}',x_title=u'${x_title}',x_labels=${x_labels},range=(0,100),js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal
+    Call Method    ${memUsagePercentChart}    add    内存空闲字节    ${memUsagePercentList}
+    Call Method    ${memUsagePercentChart}    render_to_file    ${chartMemUsagePercentPath}
+
+get igmp leave timestamp
+    ixiasend.Get capture packet    @{tp2}    from=1    to=10
+    Ixiasend.Get Capture Packet Timestamp    @{tp2}    from=1    to=10
+    ${igmp_leave_num}    ${igmp_leave_timestamp_list}=    Ixiasend.Get Filter Capture Packet Timestamp    @{tp2}    igmp
+    [Return]    ${igmp_leave_num}    ${igmp_leave_timestamp_list}
+
+init
+    tools.Comment    !!Start!! Test-Case: ${TEST_NAME}
+    setup var    #初始化必要的变量
+    setup testPort    #初始化测试端口
+    setup dut    #初始化设备配置
+    create report file    #创建报告文件
+
+recordResult
+    [Documentation]    *记录示例*
+    ...
+    ...    100 Groups Test Result:
+    ...
+    ...    Count \ \ \ \ Leave Delay(ms) Result
+    ...
+    ...    ----------------------------------------------------------------------------------------------------
+    ...
+    ...    1 \ \ \ \ \ \ \ \ 1.0983ms
+    ...
+    ...    2 \ \ \ \ \ \ \ \ 1.25024ms
+    ...
+    ...    3 \ \ \ \ \ \ \ \ 1.1405ms
+    ...
+    ...
+    ...    ----------------------------------------------------------------------------------------------------
+    ...
+    ...    100Groups Test End!
+    append to file    ${reportPath}    ${groupNum} Groups Test Result: \r\n
+    ${thead}=    Evaluate    "Count".ljust(10)+"Leave Delay(ms)".ljust(20)+"Result"+"\\r\\n"
+    append to file    ${reportPath}    ${thead}
+    ${sep}=    Evaluate    "-"*100+"\\r\\n"
+    append to file    ${reportPath}    ${sep}
+    ${tempCount}=    Set Variable    ${1}
+    : FOR    ${value}    IN    @{delay_value_list}
+    \    ${text}=    Evaluate    "${tempCount}".ljust(10)+"${value}ms".ljust(20)
+    \    append to file    ${reportPath}    ${text}\r\n
+    \    ${tempCount}=    Set Variable    ${${tempCount}+1}
+    append to file    ${reportPath}    ${sep}
+    append to file    ${reportPath}    ${groupNum} Groups Test End!\r\n \r\n
+
+set Tp1 Igmp Leave
+    Ixiasend.Stop Transmit    @{tp1}
+    Ixiasend.Build Ether    dst=${MC_MAC_FOR_DELAY_TEST}    src=00:00:00:11:11:11
+    Ixiasend.Build Ip    src=10.1.1.1    dst=${MC_GROUP_FOR_DELAY_TEST}    ttl=1
+    Ixiasend.Build Igmpv1v2    version=${0x17}    group=${MC_GROUP_FOR_DELAY_TEST}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp1}    streamId=1
+    Ixiasend.Set Stream Control    @{tp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}
+
+set Tp1 Igmp Report
+    Ixiasend.Stop Transmit    @{tp1}
+    #配置report报文
+    Ixiasend.Build Ether    dst=${MC_MAC_FOR_DELAY_TEST}    src=00:00:00:11:11:11
+    Ixiasend.Build Ip    src=10.1.1.3    dst=${MC_GROUP_FOR_DELAY_TEST}    ttl=1
+    Ixiasend.Build Igmpv1v2    version=${0x16}    group=${MC_GROUP_FOR_DELAY_TEST}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp1}    streamId=1
+    Ixiasend.Set Stream Control    @{tp1}    streamId=1    streamRate=${1}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_stop}    numPackets=${5}
+
+set Tp2 Capture Filter For Leave Delay Test
+    Ixiasend.Set Port Filters Sa    sa1=00 00 00 11 11 11    #tp1发送的leave报文源mac为00-00-00-11-11-11，因此以此为抓包trigger条件
+    Ixiasend.Set Port Filters Pattern Custom    offset1=34    pattern1=17    mask1=00    offset2=00    pattern2=00    mask2=00
+    ...    #匹配igmp leave标识（该偏移只针对untag报文）
+    Ixiasend.Set Port Filters CaptureTrigger    sa=1    pattern=1
+    Ixiasend.Set Port Filters Enable    @{tp2}
+
+set Tp2 MC Source
+    ${ethDict}=    Make Kwargs    daRepeatCounter=0    numDA=${groupNum}
+    Ixiasend.Build Ether    dst=${MC_MAC}    src=00:00:00:22:22:22    kwargs=${ethDict}
+    ${ipDict}=    Make Kwargs    destIpAddrMode=1    destIpAddrRepeatCount=${groupNum}
+    Ixiasend.Build Ip    src=10.1.1.2    dst=${GROUP}    kwargs=${ipDict}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp2}    streamId=1
+    Ixiasend.Set Stream Control    @{tp2}    streamId=1    streamRate=${groupSourceRate}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+set Tp2 MC Source and Report
+    #配置组播点播流量
+    ${ethDict}=    Make Kwargs    daRepeatCounter=0    numDA=${${groupNum}+1}
+    Ixiasend.Build Ether    dst=${MC_MAC}    src=00:00:00:22:22:22    kwargs=${ethDict}
+    ${ipDict}=    Make Kwargs    destIpAddrMode=1    destIpAddrRepeatCount=${${groupNum}+1}
+    Ixiasend.Build Ip    src=10.1.1.2    dst=${GROUP}    kwargs=${ipDict}    ttl=1
+    ${igmpDict}=    Make Kwargs    mode=1    repeatCount=${${groupNum}+1}
+    Ixiasend.Build Igmpv1v2    version=${0x16}    group=${GROUP}    kwargs=${igmpDict}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp2}    streamId=1
+    Ixiasend.Set Stream Control    @{tp2}    streamId=1    streamRate=${igmp_report_rate_for_case_tableUpdate_tp2}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_next}    numPackets=${${groupNum}+1}
+    #配置组播数据流量
+    ${ethDict}=    Make Kwargs    daRepeatCounter=0    numDA=${groupNum}
+    Ixiasend.Build Ether    dst=${MC_MAC}    src=00:00:00:22:22:22    kwargs=${ethDict}
+    ${ipDict}=    Make Kwargs    destIpAddrMode=1    destIpAddrRepeatCount=${groupNum}
+    Ixiasend.Build Ip    src=10.1.1.2    dst=${GROUP}    kwargs=${ipDict}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp2}    streamId=2
+    Ixiasend.Set Stream Control    @{tp2}    streamId=2    streamRate=${groupSourceRate}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+set Tp3 Igmp Report And Leave
+    Ixiasend.Stop Transmit    @{tp3}
+    #配置report报文
+    ${ethDict}=    Make Kwargs    daRepeatCounter=0    numDA=${groupNum}
+    Ixiasend.Build Ether    dst=${MC_MAC}    src=00:00:00:33:33:33    kwargs=${ethDict}
+    ${ipDict}=    Make Kwargs    destIpAddrMode=1    destIpAddrRepeatCount=${groupNum}
+    Ixiasend.Build Ip    src=10.1.1.3    dst=${GROUP}    kwargs=${ipDict}    ttl=1
+    ${igmpDict}=    Make Kwargs    mode=1    repeatCount=${groupNum}
+    Ixiasend.Build Igmpv1v2    version=${0x16}    group=${GROUP}    kwargs=${igmpDict}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp3}    streamId=1
+    Ixiasend.Set Stream Control    @{tp3}    streamId=1    streamRate=${IGMPPKT_RATE}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Next}    numPackets=${groupNum}
+    #配置leave报文
+    ${ethDict}=    Make Kwargs    daRepeatCounter=0    numDA=${groupNum}
+    Ixiasend.Build Ether    dst=${MC_MAC}    src=00:00:00:33:33:33    kwargs=${ethDict}
+    ${ipDict}=    Make Kwargs    destIpAddrMode=1    destIpAddrRepeatCount=${groupNum}
+    Ixiasend.Build Ip    src=10.1.1.3    dst=${GROUP}    kwargs=${ipDict}    ttl=1
+    ${igmpDict}=    Make Kwargs    mode=1    repeatCount=${groupNum}
+    Ixiasend.Build Igmpv1v2    version=${0x17}    group=${GROUP}    kwargs=${igmpDict}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp3}    streamId=2
+    Ixiasend.Set Stream Control    @{tp3}    streamId=2    streamRate=${IGMPPKT_RATE}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Return}    numPackets=${groupNum}
+
+setup dut
+    #Init
+    #S1上开启全局及指定vlan的Igmp snooping功能,开启immediately-leave;将S1P1-S1P3加入snooping vlan;S1上配置镜像,将s1p1的双方向流量镜像至s1p2;(下面将本次测试组播组数量简记为N);
+    Exec Cmd List In ConfigMode    ${s1}    vlan ${snoopingVlan}
+    Exec Cmd List In ConfigMode    ${s1}    ip igmp snooping    ip igmp snooping vlan ${snoopingVlan}    ip igmp snooping vlan ${snoopingVlan} immediately-leave
+    Exec Cmd List In ConfigMode    ${s1}    interface ${s1p1};${s1p2};${s1p3}    switchport access vlan ${snoopingVlan}
+    Exec Cmd List In ConfigMode    ${s1}    monitor session 1 source interface ${s1p1}    monitor session 1 destination interface ${s1p2}
+
+setup testPort
+    Ixiasend.Set Port Mode Default    @{tp1}
+    Ixiasend.Set Port Mode Default    @{tp2}
+    Ixiasend.Set Port Mode Default    @{tp3}
+
+setup var
+    ${SW1_VERSION}=    Show Version    ${s1}    #获取版本信息
+    ${SW1_DEVICE_ID}=    Get Device ID    ${s1}    #获取设备device type
+    ${MC_MAC}=    Convert IPMC to Mac    ${GROUP}    :
+    ${MC_MAC_FOR_DELAY_TEST}    Incr Mac    ${MC_MAC}    ${MIN_GROUP_NUM}
+    ${MC_GROUP_FOR_DELAY_TEST}    Incr IP    ${GROUP}    ${MIN_GROUP_NUM}
+    ${time}=    Get Time    epoch
+    #确定需要测试的组播组数
+    @{group_num_list}=    Run Keyword If    ${INCR_STEP}==${0}    Create List    ${MIN_GROUP_NUM}    ELSE    Evaluate
+    ...    range(${MIN_GROUP_NUM},${MAX_GROUP_NUM}+${INCR_STEP},${INCR_STEP})
+    Set Test Variable    ${SW1_VERSION}
+    Set Test Variable    ${SW1_DEVICE_ID}
+    Set Test Variable    ${MC_MAC}
+    Set Test Variable    ${MC_MAC_FOR_DELAY_TEST}
+    Set Test Variable    ${MC_GROUP_FOR_DELAY_TEST}
+    Set Test Variable    ${time}
+    Set Test Variable    ${group_num_list}
+
+unInit
+    cleanup dut
+    cleanup testPort
+    tools.Comment    !!END!! Test-Case: ${TEST_NAME}

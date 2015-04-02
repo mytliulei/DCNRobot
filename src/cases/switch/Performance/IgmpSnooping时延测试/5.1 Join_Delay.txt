@@ -1,0 +1,168 @@
+*** Settings ***
+Documentation     *使用指导*
+...               ---
+...               Step1 修改拓扑（ _topo_setup.txt_ 中变量），具体拓扑要求请参考方案
+...
+...               Step2 修改测试配置（ _test_setup.txt_ 中的变量）
+...               ---
+...               如果没有生成图表（chart）文件，请检查是否安装了Python的pygal模块
+Suite Setup       init-suite
+Suite Teardown    unInit-suite
+Resource          resource.txt
+
+*** Test Cases ***
+5.1 Join Delay
+    [Setup]    init
+    #step 1
+    #配置    s1上将s1p1的双方向流量镜像至s1p2；s1上开启Igmp snooping功能,开启immediately-leave功能；tp2以指定速率发送组播流量
+    #预期    tp1没有收到流量
+    setup dut
+    set Tp2 MC_Source
+    Ixiasend.Start Transmit    @{tp2}
+    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
+    Should Be True    ${res}
+    : FOR    ${loop}    IN RANGE    1    ${testTrial}+1
+    \    #step 2
+    \    #配置    tp2开始抓包；tp1发送指定version的igmp点播报文
+    \    #预期    tp1收到组播流量
+    \    set Tp1 Igmp Report
+    \    Ixiasend.Clear Capture Packet    @{tp2}
+    \    Ixiasend.Start Capture    @{tp2}
+    \    Ixiasend.Start Transmit    @{tp1}
+    \    Ixiasend.Wait For Transmit Done    @{tp1}
+    \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    1    pps
+    \    Should Be True    ${res}
+    \    #step 3
+    \    #配置    tp2停止抓包
+    \    #预期    通过tp2的抓包数据,获取点播报文的接收时间(t1),获取第一个组播数据报文的接收时间(t2),点播时延为t2-t1
+    \    Ixiasend.Stop Capture    @{tp2}
+    \    Ixiasend.Get Capture Packet    @{tp2}    from=1    to=10
+    \    Ixiasend.Get Capture Packet Timestamp    @{tp2}    from=1    to=10
+    \    ${igmp_report_num}    ${igmp_report_timestamp_list}=    Ixiasend.Get Filter Capture Packet Timestamp    @{tp2}    igmp
+    \    ${mc_num}    ${mc_timestamp_list}=    Ixiasend.Get Filter Capture Packet Timestamp    @{tp2}    not igmp
+    \    Run Keyword And Continue On Failure    Run Keyword If    ${igmp_report_num}==${0}    Fail    Trial:${loop} 没有捕获IGMP报文
+    \    Run Keyword And Continue On Failure    Run Keyword If    ${mc_num}==${0}    Fail    Trial:${loop} 没有捕获组播数据报文
+    \    ${delay}=    Run Keyword If    ${igmp_report_num} !=${0} and ${mc_num} !=${0}    Evaluate    (${mc_timestamp_list[0]}-${igmp_report_timestamp_list[0]})/1000000.0    #ixia抓到的报文时间戳单位为ns，因此相减后需要除以100000
+    \    #step4
+    \    #配置    tp1发送leave报文；tp2清理抓包数据；
+    \    #预期    tp1没有收到流量
+    \    set Tp1 Igmp Leave
+    \    Ixiasend.Start Transmit    @{tp1}
+    \    Ixiasend.Wait For Transmit Done    @{tp1}
+    \    ${res}=    CheckIxiaSendReceive    @{tp2}    @{tp1}    0    pps
+    \    Should Be True    ${res}
+    \    recordResult
+    \    checkResult
+    \    #step5
+    \    #配置    重复步骤2-4 2次
+    \    #预期
+    exportResult
+    [Teardown]    unInit
+
+*** Keywords ***
+Create Report File
+    Append To File    ${reportPath}    \r\n \r\n Test Suite: ${SUITE_NAME} \r\n Test Case: ${TEST_NAME} \r\n
+    ${datetime}=    Get Time    \    ${time}
+    Append To File    ${reportPath}    Excution Time: ${datetime}\r\n
+    ${user}=    Evaluate    getpass.getuser()    getpass
+    Append To File    ${reportPath}    Excution User: ${user}\r\n
+    Append To File    ${reportPath}    Device Type: ${SW_DEVICE_ID}\r\n
+    Append To File    ${reportPath}    Software Version: \r\n${SW_VERSION}\r\n
+    ${dots}=    Evaluate    "\\r\\n"+'.'*100+"\\r\\n"
+    Append To File    ${reportPath}    ${dots} \r\n
+    Append To File    ${reportPath}    点播组为: ${GROUP} \r\n 测试通过条件: \r\n
+    Append To File    ${reportPath}    Pass Criteria: Join Delay<=${passCondition}[点播join时延应该在指定ms内] \r\n
+    Append To File    ${reportPath}    \r\n Test Result：\r\n
+    ${thead}=    Evaluate    "Trial:".ljust(10)+"IGMP TStamp(ns):".ljust(20)+"First MC TStamp(ns):".ljust(20)+"Join Delay(ms):".ljust(20)+"Result:".ljust(10)+"\\r\\n"
+    Append To File    ${reportPath}    ${thead}
+    ${line}=    Evaluate    '-'*100+"\\r\\n"
+    Append To File    ${reportPath}    ${line}
+
+checkResult
+    #检查条件
+    ${checkRes}=    Run Keyword If    ${delay}!=${None}    Set Variable If    ${delay} <= ${passCondition}    ${True}    ${False}
+    ...    ELSE    Set variable    ${False}
+    #输出结果并记录
+    Run Keyword And Continue On Failure    Should Be True    ${checkRes}
+    Run Keyword If    ${checkRes}    Append To File    ${reportPath}    Pass \r\n    ELSE    Append To File
+    ...    ${reportPath}    Fail \r\n
+
+clean up dut
+    Exec Cmd List In ConfigMode    ${s1}    no monitor session 1 source interface ${s1p1}    no monitor session 1 destination interface ${s1p2}
+    Exec Cmd List In ConfigMode    ${s1}    no ip igmp snooping vlan ${snoopingVlan}    no ip igmp snooping
+    Exec Cmd List In ConfigMode    ${s1}    no vlan ${snoopingVlan}
+
+clean up testPort
+    Ixiasend.Stop Transmit    @{tp1}
+    Ixiasend.Stop Transmit    @{tp2}
+    Ixiasend.Set Port Mode Default    @{tp1}
+    Ixiasend.Set Port Mode Default    @{tp2}
+
+exportResult
+    log file    ${reportPath}
+
+init
+    tools.Comment    !!Start!! Test-Case: ${TEST_NAME}
+    setup var    #初始化必要的变量
+    setup testPort    #初始化测试端口
+    Create Report File    #创建report文件
+
+recordResult
+    #save as file    保存到文件
+    ${line}=    Run Keyword IF    ${igmp_report_num} !=${0} and ${mc_num} !=${0}    Evaluate    "${loop}".ljust(10)+"${igmp_report_timestamp_list[0]}".ljust(20)+"${mc_timestamp_list[0]}".ljust(20)+"${delay}".ljust(20)    ELSE    Evaluate
+    ...    "${loop}".ljust(10)+"N/A".ljust(20)+"N/A".ljust(20)+"${delay}".ljust(20)    #记录本次测试结果
+    Append To File    ${reportPath}    ${line}
+
+set Tp1 Igmp Leave
+    Ixiasend.Stop Transmit    @{tp1}
+    Ixiasend.Build Ether    dst=${MC_MAC}    src=00:00:00:11:11:11
+    Ixiasend.Build Ip    src=10.1.1.1    dst=${GROUP}    ttl=1
+    #编辑IGMP报文时，IP protocol不需要填写！
+    Ixiasend.Build Igmpv1v2    version=${0x17}    group=${GROUP}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp1}    streamId=1
+    Ixiasend.Set Stream Control    @{tp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}
+
+set Tp1 Igmp Report
+    Ixiasend.Stop Transmit    @{tp1}
+    Ixiasend.Build Ether    dst=${MC_MAC}    src=00:00:00:11:11:11
+    Ixiasend.Build Ip    src=10.1.1.1    dst=${GROUP}    ttl=1
+    #编辑IGMP报文时，IP protocol不需要填写！
+    Ixiasend.Build Igmpv1v2    version=${0x16}    group=${GROUP}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp1}    streamId=1
+    Ixiasend.Set Stream Control    @{tp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Stop}    numPackets=${5}
+
+set Tp2 MC_Source
+    Ixiasend.Build Ether    dst=${MC_MAC}    src=00:00:00:22:22:22
+    Ixiasend.Build Ip    src=10.1.1.2    dst=${GROUP}
+    Ixiasend.Build Packet    length=64
+    Ixiasend.Set Stream Packet By Api    @{tp2}    streamId=1
+    Ixiasend.Set Stream Control    @{tp2}    streamId=1    streamRate=${groupSourceRate}    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_Continue}
+
+setup dut
+    Exec Cmd List In ConfigMode    ${s1}    monitor session 1 source interface ${s1p1}    monitor session 1 destination interface ${s1p2}
+    Exec Cmd List In ConfigMode    ${s1}    vlan ${snoopingVlan}
+    Exec Cmd List In ConfigMode    ${s1}    ip igmp snooping    ip igmp snooping vlan ${snoopingVlan}    ip igmp snooping vlan ${snoopingVlan} immediately-leave
+    Exec Cmd List In ConfigMode    ${s1}    interface ${s1p1};${s1p2}    switchport access vlan ${snoopingVlan}
+
+setup testPort
+    Ixiasend.Set Port Mode Default    @{tp1}
+    Ixiasend.Set Port Mode Default    @{tp2}
+
+setup var
+    ${SW_VERSION}=    Show Version    ${s1}    #获取版本信息
+    ${SW_DEVICE_ID}=    Get Device ID    ${s1}    #获取设备device type
+    Set Test Variable    ${SW_VERSION}
+    Set Test Variable    ${SW_DEVICE_ID}
+    ${MC_MAC}=    Convert IPMC to Mac    ${GROUP}    :
+    Set Test Variable    ${MC_MAC}
+    ${time}=    Get Time    epoch
+    ${reportPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_${time}.txt    #获取测试报告文件路径
+    Set Test Variable    ${reportPath}
+    Set Test Variable    ${time}
+
+unInit
+    clean up dut
+    clean up testPort
+    tools.Comment    !!END!! Test-Case: ${TEST_NAME}
