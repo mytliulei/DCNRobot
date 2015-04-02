@@ -198,6 +198,11 @@ proc evalIxiaCmd {cmdstr chan} {
                 set ret -971
             }
         }
+        "set_port_transmit_mode" {
+            if {[catch {set ret [SetPortTransmitMode $cmdstr]} result]} {
+                set ret -970
+            }
+        }
         default {
             set ret -900
         }
@@ -1482,6 +1487,41 @@ proc SetCmdToPortgroup {cmdstr} {
     set goupid [lindex $cmdlist 1]
     set cmd [lindex $cmdlist 2]
     set ret [portGroup setCommand $goupid $cmd]
+    return $ret
+}
+
+#set_port_transmit_mode
+#err code : 3400-3499
+proc SetPortTransmitMode {cmdstr} {
+    set cmdlist [split $cmdstr]
+    set cmdlen [llength $cmdlist]
+    if {$cmdlen <= 3} {
+        return -100
+    }
+    global ixia_ip
+    ixDisconnectFromChassis $ixia_ip
+    if {[ConnectToIxia $ixia_ip] != 0 } {
+        return -400
+    }
+    set chasId [GetIxiaChassID $ixia_ip]
+    set x [lindex $cmdlist 0]
+    set port [lindex $cmdlist 1]
+    set card [lindex $cmdlist 2]
+    set mode [lindex $cmdlist 3]
+    set portlist [list [list $chasId $port $card]]
+    #port setDefault
+    if {$mode == 0} {
+        set ret [port config -transmitMode 0]
+    } elseif {$mode == 4} {
+        set ret [port config -transmitMode 4]
+    } elseif {$mode == 7} {
+        set ret [port config -transmitMode 7]
+    } else {
+        set ret [port config -transmitMode 0]
+    }
+    port set $chasId $port $card
+    #ixWriteConfigToHardware portlist
+    ixWritePortsToHardware portlist
     return $ret
 }
 

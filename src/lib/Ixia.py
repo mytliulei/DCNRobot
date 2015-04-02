@@ -1220,6 +1220,36 @@ class Ixia(object):
         self._flush_proxy_server()
         return ret.strip()
 
+    def set_port_transmit_mode(self,chasId,card,port,mode):
+        '''
+        set port transmit mode
+
+        note: this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
+
+        args:
+        - chasId: normally should be 1
+        - card:   ixia card
+        - port:   ixia port
+        - mode:   0: Packets Streams;
+                  4: AdvancedScheduler;
+                  7: Echo
+        return:
+        - 0: ok
+        - non zero: error code
+        '''
+        cmd = 'set_port_transmit_mode %s %s %s %s\n' % (chasId,card,port,mode)
+        try:
+            self._ixia_client_handle.sendall(cmd)
+        except Exception,ex:
+            self._close_ixia_client()
+            raise AssertionError('client write cmd to proxy server error: %s' % ex)
+        readret = self._read_ret_select()
+        if not readret[0]:
+            raise AssertionError('ixia proxy server error: %s' % readret[1])
+        ret = readret[1]
+        self._flush_proxy_server()
+        return ret.strip()
+
     def set_port_ignorelink(self,chasId,card,port,flag):
         '''
         set port ignore link
@@ -1384,13 +1414,13 @@ class Ixia(object):
                 offset2 = int(offset2,16)
             else:
                 offset2 = int(offset2)
-        if len(pattern1.split()) > 16 or len(pattern1.split()) < 1:
+        if pattern1 and (len(pattern1.split()) > 16 or len(pattern1.split()) < 1):
             raise AssertionError('pattern1 format error')
-        if len(pattern1.split()) != len(mask1.split()):
+        if (pattern1 and mask1) and (len(pattern1.split()) != len(mask1.split())):
             raise AssertionError('mask1 format error')
-        if len(pattern2.split()) > 16 or len(pattern2.split()) < 1:
+        if pattern2 and (len(pattern2.split()) > 16 or len(pattern2.split()) < 1):
             raise AssertionError('pattern2 format error')
-        if len(pattern2.split()) != len(mask2.split()):
+        if (pattern2 and mask2) and (len(pattern2.split()) != len(mask2.split())):
             raise AssertionError('mask2 format error')
         if offset1:
             self._port_filters['patten1_mode'] = 'matchUser'

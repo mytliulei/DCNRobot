@@ -1349,3 +1349,23 @@ Set Cmd To Portgroup
     ...    - non zero: error code
     ${rc}=    Ixia.Set Cmd To Portgroup    ${chasId}    ${groupId}    ${cmd}
     [Return]    ${rc}
+
+Set Port Transmit Mode
+    [Arguments]    ${chasId}    ${port}    ${card}    ${mode}
+    [Documentation]    set port transmit mode
+    ...
+    ...    note: this keyword will cause the port updown and use set port config default to clear this config in the end of testcase
+    ...
+    ...    args:
+    ...    - chasId: normally should be 1
+    ...    - card: \ \ ixia card
+    ...    - port: \ \ ixia port
+    ...    - flag: \ \ 0: Packets Streams;
+    ...    \ \ \ \ \ \ \ \ \ \ 4: AdvancedScheduler;
+    ...    \ \ \ \ \ \ \ \ \ \ 7: Echo;
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Ixia.Set Port Transmit Mode    ${chasId}    ${port}    ${card}    ${mode}
+    [Return]    ${rc}
