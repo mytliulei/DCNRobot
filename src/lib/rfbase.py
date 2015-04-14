@@ -1443,7 +1443,7 @@ class PacketBase(object):
             return -1
         else:
             self._packetField.append(cmd)
-            return p
+            return repr(p)
 
     def _build_payload(self,length=128,pltype=0):
         '''
