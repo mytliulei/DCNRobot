@@ -364,6 +364,40 @@ class XiaoFish(object):
                 packetList = []
         return str(packetList)
 
+    def get_strem_hexstr(self,ifNum,streamId=0,num=0):
+        ''''''
+        num = int(num)
+        ifNum = str(ifNum)
+        streamId = str(streamId)
+        if ifNum not in self._packetDict.keys():
+            raise AssertionError("ifNum %s not in _packetDict" % ifNum)
+        packetList = []
+        if streamId == '0':
+            for i in range(self._packetLenDict[ifNum]):
+                istr = str(i+1)
+                if len(self._packetDict[ifNum][istr]) == 1:
+                    rtstr = [hexstr(str(ipstr),0,1) for ipstr in self._packetDict[ifNum][istr]]
+                else:
+                    rtstr = [hexstr(str(ipstr),0,1) for ipstr in self._packetDict[ifNum][istr]]
+                packetList.append(rtstr)
+        else:
+            if streamId not in self._packetDict[streamId].keys():
+                raise AssertionError("streamId %s not in _packetDict[%s]" % (streamId,ifNum))
+                return packetList
+            try:
+                if num > 0:
+                    if num <= len(self._packetDict[ifNum][streamId]):
+                        packetList.append(hexstr(str(self._packetDict[ifNum][streamId][num-1]),0,1))
+                    else:
+                        pass
+                elif num == 0:
+                    packetList = [hexstr(str(ipstr),0,1) for ipstr in self._packetDict[ifNum][streamId]]
+                else:
+                    pass
+            except Exception,ex:
+                packetList = []
+        return str(packetList)
+
     def get_stream_packet_size(self,ifNum,streamId=0,num=0):
         ''''''
         num = int(num)
@@ -1446,6 +1480,8 @@ class DsendService(rpyc.Service):
                 ret = 0
         elif proc == "getStream":
             ret = DsendService.xf.get_stream(port)
+        elif proc == "getStreamHexstr":
+            ret = DsendService.xf.get_strem_hexstr(port)
         elif proc == "getPortDetail":
             # ret1 = self.xf.get_stream(port)
             # retx2 = self.xf.get_send_stream_status(port)
@@ -1578,7 +1614,7 @@ class DsendService(rpyc.Service):
             countList = getCountList(incrMaxNum,count)
         for incrCount in range(0,int(incrMaxNum)):
             streamValue = eval(streamValueTemp)
-            streamValue = streamValue/load
+            #streamValue = streamValue/load
             stream.append(streamValue)
             if count > 0:
                 xf_count = countList[incrCount]
@@ -1603,18 +1639,19 @@ class DsendService(rpyc.Service):
             else:
                 xf_mode = 1
         c_stream = []
-        if DsendService.xf_tag_rem:
-            for istream in stream:
-                ipktstr = hexstr(str(istream),0,1)
-                cpktstr = ipktstr[:36]+ipktstr[48:]
-                cpktstr = ''.join(cpktstr.split())
-                cpkthexlist = [chr(int(cpktstr[i:i+2],16)) for i in range(0,len(cpktstr)-1,2)]
-                cpkthex = ''.join(cpkthexlist)
-                try:
-                    cpkt = Ether(cpkthex)
-                except Exception,ex:
-                    raise AssertionError("can not convert %s to Packet on iface %s" % (cpktstr,port))
-                c_stream.append(cpkt)
+        
+        for istream in stream:
+            ipktstr = hexstr(str(istream),0,1)
+            if DsendService.xf_tag_rem:
+                ipktstr = ipktstr[:36]+ipktstr[48:]
+            cpktstr = ''.join(ipktstr.split())
+            cpkthexlist = [chr(int(cpktstr[i:i+2],16)) for i in range(0,len(cpktstr)-1,2)]
+            cpkthex = ''.join(cpkthexlist) + load
+            try:
+                cpkt = Ether(cpkthex)
+            except Exception,ex:
+                raise AssertionError("can not convert %s to Packet on iface %s" % (cpktstr,port))
+            c_stream.append(cpkt)
         if c_stream:
             stream = c_stream
         DsendService.xf.set_stream_from_dsend(port,stream,str(sindex))
