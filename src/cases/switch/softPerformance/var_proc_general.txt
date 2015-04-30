@@ -91,4 +91,15 @@ Convert IPMC to Mac
 
 Pause For Debug
     [Arguments]    ${message}=${None}
-    Run Keyword If    ${DEBUG}==${True}    Dialogs.Pause Execution    ${message}
+    Run Keyword If    ${DEBUG}==${1}    Dialogs.Pause Execution    ${message}
+
+Update Dut Version to Testlink
+    [Arguments]    ${sw}
+    [Documentation]    args:
+    ...    - \ ${sw} 交换机alias
+    ...
+    ...    usage:
+    ...
+    ...    获取 ${sw}的show version信息后，通过log关键字加入特征字段“DUT_IMG_VERSION: ”触发监听器中的createBuild方法来向 *testlink* 上传DUT版本信息
+    ${version}=    Show Version    ${sw}
+    log    DUT_IMG_VERSION: ${version}

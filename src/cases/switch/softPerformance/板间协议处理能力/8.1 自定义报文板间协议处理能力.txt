@@ -56,7 +56,7 @@ Create Chart file
     ${title}=    Set Variable    Trial ${loop} 每${INTERVAL}s各板卡CPU使用率%变化 Devid:${SW_DEVICE_ID}    #图表标题
     ${y_title}=    Set Variable    使用百分比%    #y轴标题
     ${x_title}=    Set Variable    x轴: 时间(s)，注意横坐标中括号(+time)表示第x秒时从dut收集cpu使用率（即show cpu utilition）所耗费的时间.    #对x轴的说明
-    ${Chart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${title}',y_title=u'${y_title}',x_labels=${x_labels},x_title=u'${x_title}',range=(0,100),js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal    #创建图表对象
+    ${Chart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${title}',y_title=u'${y_title}',x_labels=${x_labels},x_title=u'${x_title}',range=(0,100),js=['${SVG_JQUERY_PATH}','${PYGAL_TOOLTIPS_PATH}'])    pygal    #创建图表对象
     Call Method    ${Chart}    add    AM-CPU-Usage    ${amCpuUsage}    #写入AM的CPU使用率数据
     ${port}=    Set Variable    ${1}
     : FOR    ${tempTp}    IN RANGE    0    ${tp_number}
@@ -102,7 +102,7 @@ Create Report File
     Run Keyword If    ${checkDutReceive}==${1} and \ ${passCondition}!=${0}    Append To File    ${reportPath}    ${SPACE*4}检查交换机平均收包速率\r\n    ELSE IF    ${checkTpReceive}==${1} and \ ${passCondition}!=${0}
     ...    Append To File    ${reportPath}    ${SPACE*4}检查所有测试仪端口(TesterPort)平均接收速率\r\n
     Run Keyword If    ${passCondition}!=${0}    Append To File    ${reportPath}    ${SPACE*4}平均每秒接收报文速率>=${passCondition}pkts \ \r\n
-    Run Keyword If    ${passCondition}==${0}    Append To File    ${reportPath}    ${SPACE*4}Warning: no specified! \r\n${SPACE*4}!!配置测试通过条件请修改\${passCondition}变量!! \r\n
+    Run Keyword If    ${passCondition}==${0}    Append To File    ${reportPath}    ${SPACE*4}Warning: no specified! \r\n${SPACE*4}!!仅记录结果，若需要配置测试通过条件可修改\${passCondition}变量!! \r\n
     Append To File    ${reportPath}    ${dots} \r\n
 
 Get Dut Receive Packet
@@ -112,9 +112,7 @@ Get Dut Receive Packet
     ...
     ...    CS16809(config)#show cpu-rx-stat control-chan protocol rdp-arp
     ...
-    ...    | Protocol | Ratelimit | Queue | Weight | rxTotPkts《=（软件收包总数） | RxDrop《=（软件丢包） | AllowPkts | DenyPkts | SkbThreshold | SkbDrop | \ \ \ \
-    ...    | RDP-ARP | 1000 | 15 | 51 | 77504《== \ | 0《== | 77504 | 45111 | 90 | 0 | \ \ \ \ \ \ \
-    ...    ---
+    ...    | Protocol | Ratelimit | Queue | Weight | rxTotPkts《=（软件收包总数） | RxDrop《=（软件丢包） | AllowPkts | DenyPkts | SkbThreshold | SkbDrop | \ \ \ \ | RDP-ARP | 1000 | 15 | 51 | 77504《== \ | 0《== | 77504 | 45111 | 90 | 0 | \ \ \ \ \ \ \ ---
     ...
     ...    *slot收包示例*
     ...
@@ -148,7 +146,7 @@ Get Dut Receive Packet
     ${ret}=    Exec Cmd    ${s1}    ${channelCMD}
     ${tempRxTotPkt}=    Tools.Get Value From String    ${ret}    \\w+\\s+\\d+\\s+\\d+\\s+\\d+\\s+(\\d+)    #获取rxTotPkts计数
     ${tempDropPkt}=    Tools.Get Value From String    ${ret}    \\w+\\s+\\d+\\s+\\d+\\s+\\d+\\s+\\d+\\s+(\\d+)    #获取RxDrop计数
-    Run Keyword If    ${tempRxTotPkt}==${None} or ${tempDropPkt}==${None}    log    获取Trial:${loop}s，AM的板间收包计数失败！！    WARN
+    Run Keyword If    (${tempRxTotPkt}==${None} or ${tempDropPkt}==${None}) and (${isSlot} or ${isVsf})    log    获取Trial:${loop}，Dut板间通道收包计数失败！！    WARN
     ${am_rx_total}=    Set Variable If    ${tempRxTotPkt}==${None} or ${tempDropPkt}==${None}    ${0}    ${${tempRxTotPkt}-${tempDropPkt}}
     Set Test Variable    ${am_rx_total}
     #获取单板协议收包计数
@@ -298,11 +296,7 @@ recordResult
     [Documentation]    Trial 1 \ Results :
     ...
     ...    | TestPort | Interface | Tp Tx | TP Rx | TP Avg Rx | Slot Rx | Slot Avg Rx |
-    ...    | TP1 | Ethernet2/5 | 75000 | 38822 | *1294* | 61321 | *2044* | \ \ \ \ \ \ \
-    ...    | TP2 | Ethernet7/1 | 75000 | 38756 | *1291* | 61087 | *2036* | \ \ \ \ \ \ \
-    ...    | Total | \ \ | 150000 | 77578 | *2585* | 122408 | *4080* | \ \ \ \ \ \ \
-    ...
-    ...    ********************************************************************************
+    ...    | TP1 | Ethernet2/5 | 75000 | 38822 | *1294* | 61321 | *2044* | \ \ \ \ \ \ \ | TP2 | Ethernet7/1 | 75000 | 38756 | *1291* | 61087 | *2036* | \ \ \ \ \ \ \ | Total | \ \ | 150000 | 77578 | *2585* | 122408 | *4080* | \ \ \ \ \ \ \ ********************************************************************************
     ...
     ...    ***Trial:1
     ...
@@ -419,7 +413,7 @@ setup var
     Set Test Variable    ${time}
 
 show for debug
-    Return From Keyword If    ${DEBUG} != ${True}
+    Return From Keyword If    ${DEBUG} != ${1}
     Exec Cmd    ${s1}    show cpu-rx protocol all
     Exec Cmd    ${s1}    show cpu-rx-stat control-chan protocol all
 

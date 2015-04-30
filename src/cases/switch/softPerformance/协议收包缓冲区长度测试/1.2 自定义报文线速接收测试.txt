@@ -49,7 +49,7 @@ Resource          resource.txt
 Create Chart File
     @{x_labels}=    Evaluate    ['Trial:'+str(i) for i in range(1,${testTrial}+1)]
     @{y_labels}=    Create List    ${${protocolLimitRate}*${checkCriteria1}}    ${checkCriteria2}    ${burstNum}
-    ${barChart}=    Evaluate    pygal.Bar(width=800,height=600,spacing=50,legend_at_bottom=True,title=u'${TEST_NAME} devid:${SW_DEVICE_ID}',x_labels=${x_labels},y_labels=${y_labels},range=(0,${burstNum}),js=[r'${EXECDIR}${/}resource${/}svg.jquery.js',r'${EXECDIR}${/}resource${/}pygal-tooltips.js'])    pygal
+    ${barChart}=    Evaluate    pygal.Bar(width=800,height=600,spacing=50,legend_at_bottom=True,title=u'${TEST_NAME} devid:${SW_DEVICE_ID}',x_labels=${x_labels},y_labels=${y_labels},range=(0,${burstNum}),js=['${SVG_JQUERY_PATH}','${PYGAL_TOOLTIPS_PATH}'])    pygal
     @{tp_rx_value_list}=    Create list
     @{dut_rx_value_list}=    Create list
     Set Test Variable    ${barChart}
@@ -66,13 +66,15 @@ Create Report File
     Append To File    ${reportPath}    Software Version: \r\n${SW_VERSION}\r\n
     ${dots}=    Evaluate    "\\r\\n"+'.'*100+"\\r\\n"
     Append To File    ${reportPath}    ${dots} \r\n
-    Append To File    ${reportPath}    测试配置(Test Configuration): \r\n\r\n
-    Append To File    ${reportPath}    突发速率:线速 \r\n
+    Append To File    ${reportPath}    测试配置(Test Configuration) \r\n\r\n
+    Run Keyword If    ${streamRateMode}==${Ixia_StreamRateMode_percent}    Append To File    ${reportPath}    突发速率:${streamRate}%线速 \r\n
+    Run Keyword If    ${streamRateMode}==${Ixia_StreamRateMode_pps}    Append To File    ${reportPath}    突发速率:${streamRate}pps \r\n
+    Run Keyword If    ${streamRateMode}==${Ixia_StreamRateMode_bps}    Append To File    ${reportPath}    突发速率:${streamRate}bps \r\n
     Append To File    ${reportPath}    突发${frameTypeManual}报文数量：${burstNum}\r\n
-    Append To File    ${reportPath}     测试通过条件: \r\n
+    Append To File    ${reportPath}    测试通过条件: \r\n
     Run Keyword If    ${passCondition} in [1,3]    Append To File    ${reportPath}    ${SPACE*2}Pass Criteria: Rx packet>=${${protocolLimitRate}*${checkCriteria1}}[线速打入${frameTypeManual}报文,设备应处理协议默认限速70%以上的报文] \r\n
     Run Keyword If    ${passCondition} in [2,3]    Append To File    ${reportPath}    ${SPACE*2}Pass Criteria: Rx packet>=${checkCriteria1}} [线速打入${frameTypeManual}报文,设备应处理指定数量以上的报文] \r\n
-    Run Keyword If    ${passCondition} not in [1,2,3]    Append To File    ${reportPath}    ${SPACE*2}warning: no specified! \r\n !!配置测试通过条件请修改\${passCondition}变量!! \r\n
+    Run Keyword If    ${passCondition} not in [1,2,3]    Append To File    ${reportPath}    ${SPACE*2}warning: no specified! \r\n !!仅记录结果，若需要配置测试通过条件可修改\${passCondition}变量!! \r\n
     Append To File    ${reportPath}    \r\n Test Result：\r\n
     ${thead}=    Evaluate    "Trial:".ljust(10)+"Burst Num(Pkts):".ljust(20)+"TP Tx(Pkts):".ljust(20)+"TP Rx(Pkts):".ljust(20)+"DUT Rx(Pkts):".ljust(20)+"Result:".ljust(10)+"\\r\\n"
     Append To File    ${reportPath}    ${thead}
@@ -82,8 +84,8 @@ Create Report File
 Get Dut Receive Packet
     ${ret}=    Exec Cmd    ${s1}    ${CMD}
     ${dut_rx}=    Tools.Get Value From String    ${ret}    (?sm)Type.*?^\\w+\\s+\\d+\\s+(\\d+)    #获取TotPkts计数
-    ${dut_rx}=    Run Keyword If    ${dut_rx}==${None}    Tools.Get Value From String    ${ret}    (?sm)Type.*?^\\w+\\s+\\d+.*?(\\d+)
-    ...    ELSE    Set Variable    ${dut_rx}    #如果获取TotPkts计数失败，则获取RxPkts计数
+    ${dut_rx}=    Run Keyword If    ${dut_rx}==${None}    Tools.Get Value From String    ${ret}    (?sm)Type.*?^\\w+\\s+\\d+.*?(\\d+)    ELSE
+    ...    Set Variable    ${dut_rx}    #如果获取TotPkts计数失败，则获取RxPkts计数
     [Return]    ${dut_rx}
 
 Get TP Receive Packet
@@ -186,7 +188,7 @@ setup dut
     #协议相关配置    这里以DHCP为例子
     Exec Cmd List In ConfigMode    ${s1}    interface vlan 1    ip address 10.1.1.1 255.255.255.0
     Exec Cmd List In ConfigMode    ${s1}    service dhcp
-    Exec Cmd List In ConfigMode    ${s1}    ip dhcp pool test     network-address 10.0.0.0 255.0.0.0
+    Exec Cmd List In ConfigMode    ${s1}    ip dhcp pool test    network-address 10.0.0.0 255.0.0.0
     Exec Cmd List In ConfigMode    ${s1}    ip dhcp excluded-address 10.1.1.1
     #放开协议限速及总限速
     Exec Cmd List In ConfigMode    ${s1}    cpu-rx-ratelimit total 0    cpu-rx-ratelimit protocol ${frameTypeManual} 2000
@@ -217,7 +219,7 @@ setup var
     Set Test Variable    ${chartPath}
 
 show for debug
-    Return From Keyword If    ${DEBUG} != ${True}
+    Return From Keyword If    ${DEBUG} != ${1}
     Exec Cmd    ${s1}    show cpu-rx protocol all
 
 unInit

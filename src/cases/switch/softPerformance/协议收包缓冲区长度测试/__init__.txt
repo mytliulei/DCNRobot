@@ -1,4 +1,4 @@
-﻿*** Settings ***
+*** Settings ***
 Documentation     | 测试项(Test Item) | 协议收包缓冲区长度测试 |
 ...               | 参考资料(Reference) | MT3837 BF70163 |
 ...               | 状态(Status) | Active/Mandatory |
