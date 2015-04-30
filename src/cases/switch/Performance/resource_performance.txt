@@ -1,8 +1,0 @@
-*** Settings ***
-Resource          ../../../resource/Switch.txt
-Resource          ../../../resource/ixiasend.txt
-Resource          var_proc_ixia.txt
-Resource          var_proc_function.txt
-Resource          var_proc_general.txt
-Library           OperatingSystem
-Library           Dialogs
