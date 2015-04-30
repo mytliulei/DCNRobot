@@ -1,0 +1,105 @@
+*** Settings ***
+Resource          ../../../resource/Switch.txt
+Resource          var_proc_function.txt
+Resource          ../../../resource/ixiasend.txt
+Library           ../../../lib/Tools.py
+Resource          var_proc_ixia.txt
+
+*** Keywords ***
+Log Console
+    [Arguments]    ${alias}    @{msg_list}
+    [Documentation]    在ccm console中记录信息
+    Enable Mode    ${alias}
+    Write Bare    \n################################################################################
+    : FOR    ${msg}    IN    @{msg_list}
+    \    Write Bare    \n \# ${msg}
+    Write Bare    \n################################################################################ \n
+    sleep    500ms
+    Read
+
+Log Step Start
+    [Arguments]    ${step}    @{messages}
+    [Documentation]    功能:在console和log中记录当前Step开始
+    ...
+    ...    args:
+    ...    - step #指定step
+    ...    - message #附加的输出信息,缺省会提示当前test suite和case
+    tools.Comment    !!Step-START!! Test-Suite: ${SUITE_NAME}    !!Step-START!! Test-Case: ${TEST_NAME}    !!Step-START!! ${step}    @{messages}
+
+Log Step End
+    [Arguments]    ${step}    @{messages}
+    [Documentation]    功能:在console和log中记录当前Step结束
+    ...
+    ...    args:
+    ...    - step #指定step
+    ...    - message #附加的输出信息,缺省会提示当前test suite和case
+    tools.Comment    !!Step-END!! Test-Suite: ${SUITE_NAME}    !!Step-END!! Test-Case: ${TEST_NAME}    !!Step-END!! ${step}    @{messages}
+
+Check More or Less
+    [Arguments]    ${num1}    ${num2}    ${tolerance}
+    ${low}=    Evaluate    ${num2}*(1-${tolerance})
+    ${up}=    Evaluate    ${num2}*(1+${tolerance})
+    Run Keyword If    ${num2}!=${0}    log    ${low}<${num1}<${up}    ELSE    log    ${0}<=${num1}<${tolerance}
+    ${res}=    Run Keyword If    ${num2}!=${0}    Evaluate    ${low}<${num1}<${up}    ELSE    Evaluate
+    ...    ${0}<=${num1}<${tolerance}
+    [Return]    ${res}
+
+convert mask to num
+    [Arguments]    ${mask}
+    ${a}    ${b}    ${c}    ${d}=    Split String    ${mask}    .
+    ${a}=    Convert To Binary    ${a}
+    ${b}=    Convert To Binary    ${b}
+    ${c}=    Convert To Binary    ${c}
+    ${d}=    Convert To Binary    ${d}
+    ${num}=    Evaluate    "${a}".count('1')+"${b}".count('1')+"${c}".count('1')+"${d}".count('1')    string
+    [Return]    ${num}
+
+Get Debug Output Until Regexp
+    [Arguments]    ${alias}    ${regexp}    ${timeout}=${None}
+    Telnet.Switch Connection    ${alias}
+    Run Keyword If    '${timeout}'!='${None}'    Telnet.Set Timeout    ${timeout}
+    @{ret}=    Telnet.Debug Read Until Regexp    ${regexp}
+    Run Keyword If    '${timeout}'!='${None}'    Telnet.Set Timeout    ${sw_timeout}
+    Log    ${ret}
+    [Return]    @{ret}
+
+Exec Cmd slowly
+    [Arguments]    ${alias}    ${cmd}
+    Telnet.Switch Connection    ${alias}
+    Telnet.Write bare    ${cmd}
+    Sleep    500ms
+    Telnet.Write    ${SPACE}
+    ${output}=    Telnet.Read Until Prompt
+    [Return]    ${output}
+
+Convert IPMC to Mac
+    [Arguments]    ${ip}    ${sep}=${EMPTY}
+    [Documentation]    args:
+    ...    - _ip_ 组播ip地址，本关键字不做组播地址合法性检查 \ \ \ - _sep_ mac地址分隔符，例如sep=-，返回的mac地址为01-00-5E-01-01-01
+    ...
+    ...    组播IP地址与MAC地址映射关系为：MAC地址的前25位为01-00-5e，而后23位对应IP地址的后23位
+    ...
+    ...    | IP | 1110yyyy.yxxxxxxx.xxxxxxx.xxxxxxxx |
+    ...    | MAC | 00000001.00000000.01011110.0xxxxxxx.xxxxxxx.xxxxxxxx |
+    ${a}    ${b}    ${c}    ${d}=    Split String    ${ip}    .
+    ${b}=    Evaluate    int(${b}) & ${127}    #将第二段IP与‘01111111’按位做与运算
+    ${b}=    Convert To Hex    ${b}    length=2    #转换为16进制
+    ${c}=    Convert To Hex    ${c}    length=2    #转换为16进制
+    ${d}=    Convert To Hex    ${d}    length=2    #转换为16进制
+    ${mac}=    Set Variable    01${sep}00${sep}5E${sep}${b}${sep}${c}${sep}${d}    #组合成mac地址
+    [Return]    ${mac}
+
+Pause For Debug
+    [Arguments]    ${message}=${None}
+    Run Keyword If    ${DEBUG}==${1}    Dialogs.Pause Execution    ${message}
+
+Update Dut Version to Testlink
+    [Arguments]    ${sw}
+    [Documentation]    args:
+    ...    - \ ${sw} 交换机alias
+    ...
+    ...    usage:
+    ...
+    ...    获取 ${sw}的show version信息后，通过log关键字加入特征字段“DUT_IMG_VERSION: ”触发监听器中的createBuild方法来向 *testlink* 上传DUT版本信息
+    ${version}=    Show Version    ${sw}
+    log    DUT_IMG_VERSION: ${version}

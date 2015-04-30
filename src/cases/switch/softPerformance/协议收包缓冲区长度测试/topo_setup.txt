@@ -1,0 +1,7 @@
+*** Variables ***
+@{tp1}            1    9    1
+${s1p1}           Ethernet1/0/1
+${tp1_ip}         172.16.1.252
+${s1}             s1
+${s1_ccm_ip}      172.16.11.120
+${s1_ccm_port}    10001

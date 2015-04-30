@@ -1,0 +1,437 @@
+*** Settings ***
+Documentation     *使用指导*
+...               ---
+...               Step1 修改拓扑（ _topo_setup.txt_ 中变量），具体拓扑要求请参考方案
+...
+...               Step2 修改测试配置（ _test_setup.txt_ 中的变量）
+...
+...               Step3 修改自定义报文的内容：
+...               - _\${frameTypeManual}_ \ (test_setup.txt)参数，指定协议报文类型，要求是show cpu-rx protocol中支持的协议类型，并且大小写敏感。
+...               - _\${channelProtocol}_ \ (test_setup.txt)参数，对应自定义协议报文的板间协议类型，例如：RDP-ARP，RDP-DHCP...etc;要求与show cpu-rx-stat control-chan protocol命令支持的通道name一致。
+...               - 用例 _自定义报文板间协议处理能力_ 中关键字 _setup dut_ 中设备接收协议报文所需要的配置（例如：测试DCHP报文，要开启Service DHCP功能），以及放开总限速与协议限速的配置。
+...               - 用例 _自定义报文板间协议处理能力_ 中关键字 _set stream packet_ 中对测试仪发送协议流量的配置（包括流量的报文大小，内容等）。
+...               - 用例 _自定义报文板间协议处理能力_ 中关键字 _Start Capture All_ 中测试仪对抓包内容的过滤条件。该条件用于设置抓包的filter，缺省使用 _dut vlan mac_ 来作为过滤条件,但不是全部协议报文都支持,因此需要自行修改。若设备不会对该自定义协议报文回复响应报文，则无需修改。
+...               - 用例 _自定义报文板间协议处理能力_ 中关键字 _clean up dut_ 中设备恢复配置时，需要删除的接收协议报文配置，以及总限速与协议限速配置。
+...               ---
+...               如果没有生成图表（chart）文件，请检查是否安装了Python的pygal模块
+Suite Setup       init-suite
+Suite Teardown    unInit-suite
+Resource          resource.txt
+
+*** Test Cases ***
+8.1 自定义报文板间协议处理能力
+    [Setup]    init
+    set stream packet
+    : FOR    ${loop}    IN RANGE    1    ${testTrial}+1
+    \    #step1
+    \    #配置    清理交换机上协议报文接收统计计数
+    \    #预期    所有协议收包统计计数归0
+    \    Tools.Comment    Trial:${loop} Test Begin!
+    \    clear tp statics
+    \    Exec Cmd List    ${s1}    clear counter
+    \    clear cpu-rx-stat protocol    ${s1}    ${frameTypeManual}
+    \    clear cpu-rx-stat control-chan protocol    ${s1}    ${channelProtocol}
+    \    #step2
+    \    #配置    所有TP开启抓包功能；每个测试端口(TP1~TPn)以指定速率(streamRate)打入指定协议报文一段时间(streamSendTime),报文大小为指定大小(Frame Size)
+    \    #预期    记录设备上接收到的协议报文个数；记录所有TP接收到的协议响应报文个数；
+    \    start capture all
+    \    start transmit all
+    \    get and record CPU usage every interval    #记录过程中CPU使用率    记录持续时间为流量发送时间+3个interval间隔
+    \    sleep    5s    wait for DUT response
+    \    stop capture all
+    \    Get Every TP Receive Packet    #记录各测试仪接收到的协议报文个数
+    \    Get Dut Receive Packet    #记录设备上接收到的协议报文个数
+    \    recordResult    #记录本次测试结果
+    \    tools.comment    Trial:${loop} Test End!
+    \    #step3
+    \    #配置    重复上述步骤,直至达到指定次数
+    exportResult
+    [Teardown]    unInit
+
+*** Keywords ***
+Create Chart file
+    #生成图表文件路径及文件名
+    ${chartPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_${time}_Trial${loop}.svg
+    #生成图表
+    ${title}=    Set Variable    Trial ${loop} 每${INTERVAL}s各板卡CPU使用率%变化 Devid:${SW_DEVICE_ID}    #图表标题
+    ${y_title}=    Set Variable    使用百分比%    #y轴标题
+    ${x_title}=    Set Variable    x轴: 时间(s)，注意横坐标中括号(+time)表示第x秒时从dut收集cpu使用率（即show cpu utilition）所耗费的时间.    #对x轴的说明
+    ${Chart}=    Evaluate    pygal.Line(width=800,height=600,legend_at_bottom=True,title=u'${title}',y_title=u'${y_title}',x_labels=${x_labels},x_title=u'${x_title}',range=(0,100),js=['${SVG_JQUERY_PATH}','${PYGAL_TOOLTIPS_PATH}'])    pygal    #创建图表对象
+    Call Method    ${Chart}    add    AM-CPU-Usage    ${amCpuUsage}    #写入AM的CPU使用率数据
+    ${port}=    Set Variable    ${1}
+    : FOR    ${tempTp}    IN RANGE    0    ${tp_number}
+    \    Exit For Loop If    not (${isVsf} or ${isSlot})    #盒式设备无需再记录线卡CPU使用率
+    \    Call Method    ${Chart}    add    TP${port}-${s1p${port}}-CPU-Usage    ${slotCpuUsage[${tempTp}]}    #写入slot的cpu使用率数据
+    \    ${port}=    Evaluate    ${port}+1
+    Call Method    ${Chart}    render_to_file    ${chartPath}
+
+Create Report File
+    #获取测试报告文件路径
+    ${reportPath}=    Set Variable    ${OUTPUTDIR}\\testReport_${TEST_NAME}_${time}.txt    #获取测试报告文件路径
+    Set Test Variable    ${reportPath}
+    #初始化文件头
+    ${text}=    Evaluate    "Test Suite:".ljust(20)+"${SUITE_NAME}".decode("utf-8")
+    Append To File    ${reportPath}    \r\n \r\n ${text} \r\n
+    ${text}=    Evaluate    "Test Case:".ljust(20)+"${TEST_NAME}".decode("utf-8")
+    Append To File    ${reportPath}    ${text} \r\n
+    ${time}=    Get Time
+    ${text}=    Evaluate    "Excution Time:".ljust(20)+"${time}"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${user}=    Evaluate    getpass.getuser()    getpass
+    ${text}=    Evaluate    "Excution User:".ljust(20)+"${user}"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${text}=    Evaluate    "Device Type:".ljust(20)+"${SW_DEVICE_ID}"
+    Append To File    ${reportPath}    ${text} \r\n
+    Append To File    ${reportPath}    Software Version: \r\n${SW_VERSION}\r\n
+    ${dots}=    Evaluate    "\\r\\n"+'.'*100+"\\r\\n"
+    Append To File    ${reportPath}    ${dots} \r\n
+    Append To File    ${reportPath}    测试配置(Configuration)\r\n \r\n
+    ${text}=    Evaluate    u"协议限速配置:".ljust(20)+"${frameTypeManual} ${maxProtocolLimitRate}"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${text}=    Evaluate    u"协议板间限速配置:".ljust(20)+"${channelProtocol} ${maxChannelLimitRate}"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${text}=    Evaluate    u"测试时长:".ljust(20)+"${streamSendTime} secs"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${text}=    Evaluate    u"端口数量及发包数:".ljust(20)+"${tp_number}(Ports)* ${burstNum}(Pkts)"
+    Append To File    ${reportPath}    ${text} \r\n
+    ${unit}=    Set Variable if    ${streamRateMode}==${IXIA_StreamRateMode_bps}    Byte Per Seconds.    ${streamRateMode}==${IXIA_StreamRateMode_pps}    Packets Per Seconds.    ${streamRateMode}==${IXIA_StreamRateMode_percent}
+    ...    % of Line Rate.
+    ${text}=    Evaluate    u"端口发包速率:".ljust(20)+"${streamRate} ${unit}"
+    Append To File    ${reportPath}    ${text} \r\n
+    Append To File    ${reportPath}    测试通过条件: \r\n
+    Run Keyword If    ${checkDutReceive}==${1} and \ ${passCondition}!=${0}    Append To File    ${reportPath}    ${SPACE*4}检查交换机平均收包速率\r\n    ELSE IF    ${checkTpReceive}==${1} and \ ${passCondition}!=${0}
+    ...    Append To File    ${reportPath}    ${SPACE*4}检查所有测试仪端口(TesterPort)平均接收速率\r\n
+    Run Keyword If    ${passCondition}!=${0}    Append To File    ${reportPath}    ${SPACE*4}平均每秒接收报文速率>=${passCondition}pkts \ \r\n
+    Run Keyword If    ${passCondition}==${0}    Append To File    ${reportPath}    ${SPACE*4}Warning: no specified! \r\n${SPACE*4}!!仅记录结果，若需要配置测试通过条件可修改\${passCondition}变量!! \r\n
+    Append To File    ${reportPath}    ${dots} \r\n
+
+Get Dut Receive Packet
+    [Documentation]    *板间协议收包计数示例*
+    ...
+    ...    AM收包总数= rxTotPkts - RxDrop
+    ...
+    ...    CS16809(config)#show cpu-rx-stat control-chan protocol rdp-arp
+    ...
+    ...    | Protocol | Ratelimit | Queue | Weight | rxTotPkts《=（软件收包总数） | RxDrop《=（软件丢包） | AllowPkts | DenyPkts | SkbThreshold | SkbDrop | \ \ \ \ | RDP-ARP | 1000 | 15 | 51 | 77504《== \ | 0《== | 77504 | 45111 | 90 | 0 | \ \ \ \ \ \ \ ---
+    ...
+    ...    *slot收包示例*
+    ...
+    ...    slot收包计数= AllowPkts or TotPkts
+    ...
+    ...    CS16809(config)#show cpu-rx protocol arp
+    ...
+    ...    --------------------------Slot : member 2, slot 2----------------------
+    ...    | Type | Rate-limit | AllowPkts | DenyPkts | RxPkts《== \ | CurState |
+    ...    | ARP | 400 | - | - | 61350《== | allowed |
+    ...
+    ...    CS16809(config)#show cpu-rx protocol dhcp
+    ...
+    ...    --------------------------Slot : member 2, slot 2----------------------
+    ...    | Type | Rate-limit | AllowPkts<== | DenyPkts | RxPkts | CurState |
+    ...    | DHCP | 200 | 100<== | 0 | 200 | allowed |
+    ...
+    ...
+    ...    DCRS-5960-52F-DC(config)#show cpu-rx protocol arp
+    ...
+    ...    --------------------------Slot : 1----------------------
+    ...    | Type | Rate-limit | TotPkts《== | DropPkts | DelayCount | CurState |
+    ...    | ARP | 400 | 54142《== | 0 | 5 | allowed |
+    ...
+    ...    S5750E-52P-SI(config)#show cpu-rx protocol arp
+    ...
+    ...    | Type | Rate-limit | TotPkts<== | CurState |
+    ...    | ARP | 400 | 38<== | allowed |
+    Tools.Comment    Trial:${loop} Stream Send Over! Check DUT Receive Packet!
+    #获取板间通道收包计数
+    ${ret}=    Exec Cmd    ${s1}    ${channelCMD}
+    ${tempRxTotPkt}=    Tools.Get Value From String    ${ret}    \\w+\\s+\\d+\\s+\\d+\\s+\\d+\\s+(\\d+)    #获取rxTotPkts计数
+    ${tempDropPkt}=    Tools.Get Value From String    ${ret}    \\w+\\s+\\d+\\s+\\d+\\s+\\d+\\s+\\d+\\s+(\\d+)    #获取RxDrop计数
+    Run Keyword If    (${tempRxTotPkt}==${None} or ${tempDropPkt}==${None}) and (${isSlot} or ${isVsf})    log    获取Trial:${loop}，Dut板间通道收包计数失败！！    WARN
+    ${am_rx_total}=    Set Variable If    ${tempRxTotPkt}==${None} or ${tempDropPkt}==${None}    ${0}    ${${tempRxTotPkt}-${tempDropPkt}}
+    Set Test Variable    ${am_rx_total}
+    #获取单板协议收包计数
+    : FOR    ${tempTp}    IN RANGE    1    ${tp_number}+1
+    \    ${ret}=    Exec Cmd    ${s1}    show cpu-rx protocol ${frameTypeManual} ${port_member_slot_list_with_slot[${${tempTp}-1}]}
+    \    ${tempSlot_rx}=    Tools.Get Value From String    ${ret}    (?m)^\\w+\\s+\\d+.*?(\\d+)
+    \    Run Keyword If    ${tempSlot_rx}==${None}    log    获取Trial:${loop}，${port_member_slot_list_with_slot[${tempTp}]的CPU使用率失败！！    WARN
+    \    Exec Cmd    ${s1}    show interface ${s1p${tempTp}}
+    \    Set Test Variable    ${s1p${tempTp}_rx}    ${tempSlot_rx}
+
+Get Every TP Receive Packet
+    #在robot中，变量嵌套（例如${arg${arg}}）不能放在行首
+    : FOR    ${tempTp}    IN RANGE    1    ${tp_number}+1
+    \    ${tempTp_tx}=    Ixiasend.Get Statics    @{tp${tempTp}}    txpackets    #记录TP发送的报文个数
+    \    ${tempTp_rx}=    Ixiasend.Get Capture Packet Num    @{tp${tempTp}}
+    \    Set Test Variable    ${tp${tempTp}_tx}    ${tempTp_tx}
+    \    Set Test Variable    ${tp${tempTp}_rx}    ${tempTp_rx}
+
+checkResult
+
+clean up dut
+    Exec Cmd List In ConfigMode    ${s1}    no interface vlan 1
+    Exec Cmd List In ConfigMode    ${s1}    no cpu-rx-ratelimit protocol ${frameTypeManual}    no cpu-rx-ratelimit total
+    Exec Cmd List In ConfigMode    ${s1}    no cpu-rx-ratelimit control-chan protocol ${channelProtocol}    no cpu-rx-ratelimit control-chan total
+
+clean up testPort
+    Ixiasend.Set Cmd To Portgroup    1    ${tp_portGroupID}    stopTransmit
+    : FOR    ${tempTp}    IN RANGE    1    ${tp_number}+1
+    \    Ixiasend.Set Port Mode Default    @{tp${tempTp}}
+    Ixiasend.Destroy Portgroup Id    1    ${tp_portGroupID}
+
+clear tp statics
+    : FOR    ${tempTp}    IN RANGE    1    ${tp_number}+1
+    \    Ixiasend.Clear Statics    @{tp${tempTp}}
+
+exportResult
+    : FOR    ${loop}    IN RANGE    1    ${testTrial}+1
+    \    log    <embed type="image/svg+xml" src="testReport_${TEST_NAME}_${time}_Trial${loop}.svg " \ width=800 height=600/>    HTML
+    log file    ${reportPath}
+
+get All Port Member Slot
+    @{port_member_slot_list_with_slot}=    Create list
+    @{port_member_slot_list_without_slot}=    Create list
+    : FOR    ${tempPort}    IN RANGE    1    ${tp_number}+1
+    \    ${portNum}=    Tools.Get Value From String    ${s1p${tempPort}}    .*?(\\d+.*)    #获取端口号
+    \    @{portSplit}=    Split String    ${portNum}    /    #拆分端口号
+    \    ${memberSlot_with_slot}=    Run Keyword If    ${isVSF} and ${isSlot}    Set Variable    member ${portSplit[0]} slot ${portSplit[1]}    ELSE IF
+    \    ...    ${isVSF}    Set Variable    member ${portSplit[0]}    ELSE IF    ${isSlot}
+    \    ...    Set Variable    slot ${portSplit[0]}    ELSE    Set Variable    ${EMPTY}
+    \    ...    #根据是否堆叠，机架确定执行的命令
+    \    ${memberSlot_without_slot}=    Run Keyword If    ${isVSF} and ${isSlot}    Set Variable    member ${portSplit[0]} ${portSplit[1]}    ELSE IF
+    \    ...    ${isVSF}    Set Variable    member ${portSplit[0]}    ELSE IF    ${isSlot}
+    \    ...    Set Variable    ${portSplit[0]}    ELSE    Set Variable    ${EMPTY}
+    \    ...    #根据是否堆叠，机架确定执行的命令
+    \    Append To List    ${port_member_slot_list_with_slot}    ${memberSlot_with_slot}
+    \    Append To List    ${port_member_slot_list_without_slot}    ${memberSlot_without_slot}
+    Set Test Variable    @{port_member_slot_list_with_slot}
+    Set Test Variable    @{port_member_slot_list_without_slot}
+
+get Max channelLimitRate
+    Exec Cmd List In ConfigMode    ${s1}
+    Telnet.Switch Connection    ${s1}
+    Telnet.Write bare    cpu-rx-ratelimit control-chan protocol ${channelProtocol} ?
+    ${output}=    Telnet.Read Until Prompt
+    read
+    ${maxChannelLimitRate}=    Tools.Get Value From String    ${output}    -(\\d+)>    #获取协议板间限速最大可配置值
+    Run Keyword If    ${maxChannelLimitRate}==${None}    log    获取设备板间协议限速最大可配置值失败！    WARN
+    ${maxChannelLimitRate}=    Set Variable If    ${maxProtocolLimitRate}==${None} and (${isVsf} or ${isSlot})    ${25000}    ${maxChannelLimitRate}
+    Set Test Variable    ${maxChannelLimitRate}
+
+get Max protocolLimitRate
+    Exec Cmd List In ConfigMode    ${s1}
+    Telnet.Switch Connection    ${s1}
+    Telnet.Write bare    cpu-rx-ratelimit protocol ${frameTypeManual} ?
+    ${output}=    Telnet.Read Until Prompt
+    read
+    ${maxProtocolLimitRate}=    Tools.Get Value From String    ${output}    -(\\d+)>    #获取协议限速最大值
+    Run Keyword If    ${maxProtocolLimitRate}==${None}    log    获取设备协议限速最大可配置值失败！    WARN
+    ${maxProtocolLimitRate}=    Set Variable If    ${maxProtocolLimitRate}==${None}    ${2000}    ${maxProtocolLimitRate}
+    Set Test Variable    ${maxProtocolLimitRate}
+
+get and record CPU usage every interval
+    #用于保存cpu使用率数据的list
+    @{amCpuUsage}=    Create List
+    @{slotCpuUsage}=    Create List
+    @{x_labels}    Create List
+    : FOR    ${temp}    IN RANGE    0    ${tp_number}
+    \    @{list}=    Create List
+    \    append to list    ${slotCpuUsage}    ${list}
+    #读取AM以及所有slot的cpu使用率
+    : FOR    ${temp}    IN RANGE    0    ${streamSendTime}+4*${INTERVAL}    ${INTERVAL}
+    \    ${tempTime1}=    Get Time    epoch
+    \    get every slot CPU usage
+    \    ${tempTime2}=    Get Time    epoch
+    \    ${actionTime}=    Set Variable    ${${tempTime2}-${tempTime1}}
+    \    Append To List    ${x_labels}    ${temp}(+${actionTime})s
+    \    sleep    ${INTERVAL}
+    Create Chart File
+
+get burstNum
+    ${burstNum}=    Run Keyword If    ${streamRateMode}==${IXIA_StreamRateMode_bps}    Evaluate    ${streamRate}/${frameSize}/8*${streamSendTime}    ELSE IF    ${streamRateMode}==${IXIA_StreamRateMode_pps}
+    ...    Evaluate    ${streamRate}*${streamSendTime}    #发送报文数=发送速率(bps)/包长/8*发送时长    #发送报文数=发送速率(pps)8*发送时长
+    ${lineSpeed}=    Get Statics    @{tp1}    lineSpeed    #获取测试仪端口速率,Mbps
+    ${burstNum}=    Run Keyword If    ${lineSpeed}==${None}    Evaluate    ${lineSpeed}*1000000/(${frameSize}+20)/8*${streamSendTime}    ELSE    Set Variable
+    ...    ${burstNum}
+    Set Test Variable    ${burstNum}
+
+get channel&protocol CMD
+    ${ret}=    exec cmd slowly    ${s1}    show slot | \ include member|slot|Member|Slot
+    ${isVSF}=    Tools.Is Match From String    ${ret}    (?i)member    #判断是否堆叠
+    ${isSlot}=    Tools.Is Match From String    ${ret}    (?i)slot    #判断是否机架设备
+    ${portNum}=    Tools.Get Value From String    ${s1p1}    .*?(\\d+.*)    #获取端口号
+    @{portSplit}=    Split String    ${portNum}    /    #拆分端口号
+    ${memberSlot}=    Run Keyword If    ${isVSF} and ${isSlot}    Set Variable    member ${portSplit[0]} slot ${portSplit[1]}    ELSE IF    ${isVSF}
+    ...    Set Variable    member ${portSplit[0]}    ELSE IF    ${isSlot}    Set Variable    slot ${portSplit[0]}
+    ...    ELSE    Set Variable    ${EMPTY}    #根据是否堆叠，机架确定执行的命令
+    ${protocolCMD}=    Evaluate    "show cpu-rx protocol ${frameTypeManual} " + "${memberSlot}"
+    Set Test Variable    ${protocolCMD}
+    Set Test Variable    ${channelCMD}    show cpu-rx-stat control-chan protocol ${channelProtocol}
+
+get every slot CPU usage
+    #获取AM的CPU使用率
+    ${ret}=    Exec Cmd    ${s1}    show \ cpu utilization
+    ${tempCpuUsage}=    Tools.Get Value From String    ${ret}    5 second.*?(\\d+)%
+    Run Keyword If    ${tempCpuUsage}==${None}    log    获取${temp}s，AM的CPU使用率失败！！    WARN    #获取CPU使用率失败则报错
+    ${tempCpuUsage}=    Set Variable If    ${tempCpuUsage}==${None}    ${0}    ${tempCpuUsage}
+    ${tempCpuUsage}=    Convert To Number    ${tempCpuUsage}
+    Append To List    ${amCpuUsage}    ${tempCpuUsage}
+    #获取各个测试端口所在线卡的CPU使用率
+    : FOR    ${tempTp}    IN RANGE    0    ${tp_number}
+    \    Exit For Loop If    not (${isVsf} or ${isSlot})    #盒式设备无需再读取线卡CPU使用率
+    \    ${ret}=    Exec Cmd    ${s1}    show cpu utilization ${port_member_slot_list_without_slot[${tempTp}]}
+    \    ${tempCpuUsage}=    Tools.Get Value From String    ${ret}    5 second.*?(\\d+)%
+    \    Run Keyword If    ${tempCpuUsage}==${None}    log    获取${temp}s，${port_member_slot_list_with_slot[${tempTp}]的CPU使用率失败！！    WARN    #获取CPU使用率失败则报错
+    \    ${tempCpuUsage}=    Set Variable If    ${tempCpuUsage}==${None}    ${0}    ${tempCpuUsage}
+    \    ${tempCpuUsage}=    Convert To Number    ${tempCpuUsage}
+    \    Append To List    ${slotCpuUsage[${tempTp}]}    ${tempCpuUsage}
+
+init
+    tools.Comment    !!Start!! Test-Case: ${TEST_NAME}
+    setup testPort    #初始化测试端口
+    setup var    #初始化必要的变量
+    setup dut    #初始化被测设备
+    Create Report File    #首次记录时先创建report文件
+
+recordResult
+    [Documentation]    Trial 1 \ Results :
+    ...
+    ...    | TestPort | Interface | Tp Tx | TP Rx | TP Avg Rx | Slot Rx | Slot Avg Rx |
+    ...    | TP1 | Ethernet2/5 | 75000 | 38822 | *1294* | 61321 | *2044* | \ \ \ \ \ \ \ | TP2 | Ethernet7/1 | 75000 | 38756 | *1291* | 61087 | *2036* | \ \ \ \ \ \ \ | Total | \ \ | 150000 | 77578 | *2585* | 122408 | *4080* | \ \ \ \ \ \ \ ********************************************************************************
+    ...
+    ...    ***Trial:1
+    ...
+    ...    ***All TP Total Rcv: \ \ \ \ 77578 Pkt \ \ \ \ \ Avg Rcv: \ \ \ \ \ \ 2585 p/s
+    ...
+    ...    ***All Slot Total Rcv: \ \ 122408 Pkt \ \ \ \ Avg Rcv: \ \ \ \ \ \ 4080 p/s
+    ...
+    ...    ***DUT or AM Total Rcv: \ 77503 Pkt \ \ \ \ \ Avg Rcv: \ \ \ \ \ \ 2583 p/s
+    ...
+    ...    ***do not specified pass condition***
+    ...
+    ...    ********************************************************************************
+    #save every port result    保存各个端口的测试结果
+    append to file    ${reportPath}    Trial ${loop} \ Results : \r\n
+    ${thead}=    Evaluate    "TestPort".ljust(10)+"Interface".ljust(20)+"Tp Tx".ljust(10)+"TP Rx".ljust(10)+"TP Avg Rx".ljust(15)+"Slot Rx".ljust(10)+"Slot Avg Rx".ljust(15)+"\\r\\n"
+    append to file    ${reportPath}    ${thead}
+    ${sep}=    Evaluate    "-"*100+"\\r\\n"
+    append to file    ${reportPath}    ${sep}
+    ${all_tp_tx_total}=    Set Variable    ${0}    #所有测试仪收包计数
+    ${all_tp_rx_total}=    Set Variable    ${0}    #所有测试仪发包计数
+    ${all_slot_rx_total}=    Set Variable    ${0}    #所有板卡收包计数
+    : FOR    ${tempTp}    IN RANGE    1    ${tp_number}+1
+    \    ${tempTp_avg}=    Evaluate    int(${tp${tempTp}_rx})/${streamSendTime}
+    \    ${tempSlot_avg}=    Evaluate    int(${s1p${tempTp}_rx})/${streamSendTime}
+    \    ${res}=    Evaluate    "TP${tempTp}".ljust(10)+"${s1p${tempTp}}".ljust(20)+"${tp${tempTp}_tx}".ljust(10)+"${tp${tempTp}_rx}".ljust(10)+"*${tempTp_avg}*".ljust(15)+"${s1p${tempTp}_rx}".ljust(10)+"*${tempSlot_avg}*".ljust(15)+"\\r\\n"    #记录测试仪及对应线卡的收包计数及平均速率
+    \    Append To File    ${reportPath}    ${res}    #将结果写到文件中
+    \    ${all_tp_tx_total}=    Evaluate    int(${tp${tempTp}_tx})+${all_tp_tx_total}    #加到tp收包计数中
+    \    ${all_tp_rx_total}=    Evaluate    int(${tp${tempTp}_rx})+${all_tp_rx_total}    #加到tp收包计数中
+    \    ${all_slot_rx_total}=    Evaluate    int(${s1p${tempTp}_rx})+${all_slot_rx_total}    #加到tp收包计数中
+    append to file    ${reportPath}    ${sep}
+    #save all slot result    保存所有板卡汇总结果
+    ${all_tp_rx_avg}=    Evaluate    ${all_tp_rx_total}/${streamSendTime}
+    ${all_slot_rx_avg}=    Evaluate    int(${all_slot_rx_total})/${streamSendTime}
+    ${text_for_total}=    Evaluate    "Total".ljust(10)+" ".ljust(20)+"${all_tp_tx_total}".ljust(10)+"${all_tp_rx_total}".ljust(10)+"*${all_tp_rx_avg}*".ljust(15)+"${all_slot_rx_total}".ljust(10)+"*${all_slot_rx_avg}*".ljust(15)+"\\r\\n\\r\\n"
+    append to file    ${reportPath}    ${text_for_total}
+    #save total result
+    ${am_rx_total}=    Set Variable If    not (${isVsf} or ${isSlot})    ${all_slot_rx_total}    ${am_rx_total}    #如果是盒式设备，则没有板间收包统计，AM收包统计=所有线卡收包统计
+    ${am_rx_avg}=    Evaluate    int(${am_rx_total})/${streamSendTime}
+    ${result_seperation}=    Evaluate    "*"*80+"\\r\\n"
+    append to file    ${reportPath}    ${result_seperation}
+    append to file    ${reportPath}    ***Trial:${loop}\r\n\r\n
+    ${text}=    Evaluate    "***All TP Total Rcv:".ljust(25)+"${all_tp_rx_total} Pkt".ljust(15)+"Avg Rcv:".ljust(15)+r"${all_tp_rx_avg} p/s"+"\\r\\n"    #记录本次测试所有测试仪的统计结果
+    append to file    ${reportPath}    ${text}
+    ${text}=    Evaluate    "***All Slot Total Rcv:".ljust(25)+"${all_slot_rx_total} Pkt".ljust(15)+"Avg Rcv:".ljust(15)+r"${all_slot_rx_avg} p/s"+"\\r\\n"    #记录本次测试所有线卡的统计结果
+    append to file    ${reportPath}    ${text}
+    ${text}=    Evaluate    "***DUT or AM Total Rcv:".ljust(25)+"${am_rx_total} Pkt".ljust(15)+"Avg Rcv:".ljust(15)+r"${am_rx_avg} p/s"+"\\r\\n\\r\\n"    #记录本次测试AM的统计结果
+    append to file    ${reportPath}    ${text}
+    #确定检查结果判断依据    #测试仪收包数量or交换机AM收包数量
+    ${check_num}=    Set Variable If    ${checkTpReceive}==${1}    ${all_tp_rx_avg}    ${checkDutReceive}==${1}    ${am_rx_avg}
+    #输出结果并记录
+    ${result}=    Set Variable If    ${check_num}>=${passCondition}    PASS    FAIL
+    Run Keyword And Continue On Failure    Should Be True    "${result}"=="PASS"
+    Run Keyword If    ${passCondition} ==${0}    Append To File    ${reportPath}    ***do not specified pass condition*** \r\n    ELSE IF    ${checkTpReceive}==${1}
+    ...    Append To File    ${reportPath}    *** Pass Criteria: All Tp Rx Avg Should >= ${passCondition}\r\n ***${result}\r\n    ELSE IF    ${checkDutReceive}==${1}    Append To File
+    ...    ${reportPath}    *** Pass Criteria: AM Rx Avg Should >= ${passCondition}\r\n ***${result}\r\n
+    append to file    ${reportPath}    ${result_seperation}\r\n
+    append to file    ${reportPath}    Trial ${loop} END. \r\n\r\n
+
+set stream packet
+    : FOR    ${tempTp}    IN RANGE    1    ${tp_number}+1
+    \    ${src}=    Evaluate    "00:00:10:01:01:0"+str(1+${tempTp})
+    \    ${psrc}=    Evaluate    "10.1.1."+str(1+${tempTp})
+    \    Ixiasend.Build Ether    dst=FF:FF:FF:FF:FF:FF    src=${src}
+    \    Ixiasend.Build Arp    hwsrc=${src}    psrc=${psrc}    pdst=10.1.1.1
+    \    Ixiasend.Build Packet    length=${frameSize}
+    \    Ixiasend.Set Stream Packet By api    @{tp${tempTp}}    streamId=1
+    \    Ixiasend.Set Stream Control    @{tp${tempTp}}    streamId=1    streamRate=${streamRate}    streamRateMode=${streamRateMode}    streamMode=${IXIA_StreamMode_stop}
+    \    ...    numPackets=${burstNum}
+
+setup dut
+    #使能协议相关配置    <根据具体协议报文进行修改>
+    Exec Cmd List In ConfigMode    ${s1}    interface vlan 1    ip address 10.1.1.1 255.255.255.0
+    #放开限速    s1上关闭测试协议限速或放开协议限速至大于测试目标值
+    Exec Cmd List In ConfigMode    ${s1}    cpu-rx-ratelimit total 0    #放开单板协议总限速
+    Exec Cmd List In ConfigMode    ${s1}    cpu-rx-ratelimit protocol ${frameTypeManual} ${maxProtocolLimitRate}    #放开单板协议限速
+    Exec Cmd List In ConfigMode    ${s1}    cpu-rx-ratelimit control-chan total 0    #放开板间协议总限速
+    Exec Cmd List In ConfigMode    ${s1}    cpu-rx-ratelimit control-chan protocol ${channelProtocol} ${maxChannelLimitRate}    #放开板间协议限速
+    #清除相关计数统计
+    Enable Mode    ${s1}
+    Exec Cmd    ${s1}    clear counter
+    Exec Cmd    ${s1}    clear cpu-rx-stat protocol all
+    Exec Cmd    ${s1}    clear cpu-rx-stat control-chan protocol ${channelProtocol}
+    #debug
+    show for debug
+
+setup testPort
+    Set Test Variable    ${tp_portGroupID}    ${10}
+    Ixiasend.Create Portgroup Id    1    ${tp_portGroupID}
+    : FOR    ${tempTp}    IN RANGE    1    ${tp_number}+1
+    \    Ixiasend.Set Port Mode Default    @{tp${tempTp}}
+    \    Ixiasend.Add Port To Portgroup    @{tp${tempTp}}    ${tp_portGroupID}
+
+setup var
+    ${ret}=    exec cmd slowly    ${s1}    show slot | include member|slot|Member|Slot
+    ${isVSF}=    Tools.Is Match From String    ${ret}    (?i)member    #判断是否堆叠
+    ${isSlot}=    Tools.Is Match From String    ${ret}    (?i)slot    #判断是否机架设备
+    Set Test Variable    ${isVSF}    #确定设备是否为堆叠设备
+    Set Test Variable    ${isSlot}    #确定设备是否为机架设备
+    get All Port Member Slot    #获取所有测试端口的member和slot参数
+    get Max protocolLimitRate    #获取协议限速最大可配置值
+    get Max channelLimitRate    #获取协议板间限速最大可配置值
+    ${streamRate}=    Set Variable If    ${streamRate}==${None} and ( ${isVsf} or ${isSlot} )    ${maxChannelLimitRate}    ${streamRate}==${None}    ${maxProtocolLimitRate}    ${streamRate}
+    ...    #没有配置发送速率且为堆叠或机架设备时，发送速率取板间协议限速最大值；    #没有配置发送速率且为盒式设备时，发送速率取协议最大限速值，    #若配置了发送速率则以配置值为准
+    get burstNum    #根据发包速率和发包时长，获取发包数量
+    ${SW_VERSION}=    Show Version    ${s1}    #获取版本信息
+    ${SW_DEVICE_ID}=    Get Device ID    ${s1}    #获取设备device type
+    ${SW_VLAN_MAC}=    Get Vlan Mac    ${s1}
+    ${time}=    Get Time    epoch
+    Set Test Variable    ${channelCMD}    show cpu-rx-stat control-chan protocol ${channelProtocol}
+    Set Test Variable    ${SW_VERSION}
+    Set Test Variable    ${SW_DEVICE_ID}
+    Set Test Variable    ${SW_VLAN_MAC}
+    Set Test Variable    ${streamRate}
+    Set Test Variable    ${time}
+
+show for debug
+    Return From Keyword If    ${DEBUG} != ${1}
+    Exec Cmd    ${s1}    show cpu-rx protocol all
+    Exec Cmd    ${s1}    show cpu-rx-stat control-chan protocol all
+
+start capture all
+    ${mac}=    Convert Macaddress Format    ${SW_VLAN_MAC}    -    ${SPACE}
+    : FOR    ${tempTp}    IN RANGE    1    ${tp_number}+1
+    \    Ixiasend.Set Port Filters Sa    sa1=${mac}    #通过SW的vlan mac，过滤设备的回复报文
+    \    Ixiasend.Set Port Filters CaptureFilter    sa=1
+    \    Ixiasend.Set Port Filters Enable    @{tp${tempTp}}
+    Ixiasend.Set Cmd To Portgroup    1    ${tp_portGroupID}    startCapture
+
+start transmit all
+    Ixiasend.Set Cmd To Portgroup    1    ${tp_portGroupID}    startTransmit
+
+stop capture all
+    Ixiasend.Set Cmd To Portgroup    1    ${tp_portGroupID}    stopCapture
+
+unInit
+    clean up dut
+    clean up testPort
+    tools.Comment    !!END!! Test-Case: ${TEST_NAME}

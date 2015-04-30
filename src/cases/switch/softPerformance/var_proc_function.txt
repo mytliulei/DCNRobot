@@ -1,0 +1,71 @@
+*** Settings ***
+Resource          var_proc_general.txt
+Resource          var_proc_ixia.txt
+Library           ../../../lib/Tools.py
+
+*** Keywords ***
+Get Device ID
+    [Arguments]    ${alias}
+    ${ret}=    Exec Cmd slowly    ${alias}    show vendor | \ include DevType
+    ${devId}=    Tools.Get Value From String    ${ret}    DevType.*?\\d+\\s+(\\d+)
+    [Return]    ${devId}
+
+clear cpu-rx-stat protocol
+    [Arguments]    ${alias}    ${protocol}
+    Enable Mode    ${alias}
+    Exec Cmd List    ${alias}    clear cpu-rx-stat protocol ${protocol}
+
+clear cpu-rx-stat control-chan protocol
+    [Arguments]    ${alias}    ${protocol}
+    Enable Mode    ${alias}
+    Exec Cmd    ${alias}    clear cpu-rx-stat control-chan protocol ${protocol}
+
+get Cpu Usage
+    [Arguments]    ${alias}    ${last}=1    ${member}=${None}    ${Slot}=${None}
+    [Documentation]    通过show cpu utilization命令获取设备CPU使用率
+    ...
+    ...    args:
+    ...    - \ ${alias}：设备别名
+    ...    - \ ${last}：1，Last 5 second；2，Last 30 second；3，Last 5 minute；4，From running；
+    ...    - \ ${member}：堆叠成员编号
+    ...    - \ ${slot}：槽位号
+    ${cmd}=    Set Variable    show cpu utilization
+    ${cmd}=    Set Variable if    ${member}!=${None}    ${cmd} member ${member}    ${cmd}
+    ${cmd}=    Set Variable if    ${slot}!=${None}    ${cmd} ${slot}    ${cmd}
+    ${ret}=    Exec Cmd    ${alias}    ${cmd}
+    ${usage}=    Run Keyword If    '${last}'=='1'    Tools.Get Value From String    ${ret}    5 second.*?(\\d+)%    ELSE IF
+    ...    '${last}'=='2'    Tools.Get Value From String    ${ret}    30 second.*?(\\d+)%    ELSE IF    '${last}'=='3'
+    ...    Tools.Get Value From String    ${ret}    5 minute.*?(\\d+)%    ELSE IF    '${last}'=='4'    Tools.Get Value From String
+    ...    ${ret}    running.*?(\\d+)%
+    Run Keyword If    ${usage}==${None}    log    获取CPU使用率失败！    WARN
+    ${usage}=    Run Keyword If    ${usage}==${None}    Set Variable    ${0}
+    ...    ELSE    Convert To Number    ${usage}
+    [Return]    ${usage}
+
+Get Mem Usage
+    [Arguments]    ${alias}    ${member}=${None}    ${slot}=${None}
+    ${cmd}=    Set Variable    show memory usage
+    ${cmd}=    Set Variable if    ${member}!=${None}    ${cmd} member ${member}    ${cmd}
+    ${cmd}=    Set Variable if    ${slot}!=${None}    ${cmd} ${slot}    ${cmd}
+    ${ret}=    Exec Cmd    ${alias}    ${cmd}
+    ${freeBytes}=    Tools.Get Value From String    ${ret}    free (\\d+) bytes
+    ${usagePercent}=    Tools.Get Value From String    ${ret}    usage is.*?(\\d.*?)%
+    Run Keyword If    ${freeBytes}==${0}    log    获取内存空闲字节失败！    WARN
+    ${freeBytes}=    Run Keyword If    ${freeBytes}==${None}    Set Variable    ${0}
+    ...    ELSE    Convert To Number    ${freeBytes}
+    Run Keyword If    ${usagePercent}==${0}    log    获取内存使用率失败！    WARN
+    ${usagePercent}=    Run Keyword If    ${usagePercent}==${None}    Set Variable    ${0}
+    ...    ELSE    Convert To Number    ${usagePercent}
+    [Return]    ${freeBytes}    ${usagePercent}
+
+Get Arg Member SLot
+    [Arguments]    ${alias}    ${port}
+    ${ret}=    exec cmd slowly    ${alias}    show slot | include member|slot|Member|Slot
+    ${isVSF}=    Tools.Is Match From String    ${ret}    (?i)member    #判断是否堆叠
+    ${isSlot}=    Tools.Is Match From String    ${ret}    (?i)slot    #判断是否机架设备
+    ${portNum}=    Tools.Get Value From String    ${port}    .*?(\\d+.*)    #获取端口号
+    @{portSplit}=    Split String    ${portNum}    /    #拆分端口号
+    ${memberSlot}=    Run Keyword If    ${isVSF} and ${isSlot}    Set Variable    member ${portSplit[0]} slot ${portSplit[1]}    ELSE IF    ${isVSF}
+    ...    Set Variable    member ${portSplit[0]}    ELSE IF    ${isSlot}    Set Variable    slot ${portSplit[0]}
+    ...    ELSE    Set Variable    ${EMPTY}    #根据是否堆叠，机架确定执行的命令
+    [Return]    ${memberSlot}
