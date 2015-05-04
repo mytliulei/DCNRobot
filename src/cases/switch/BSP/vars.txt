@@ -1,0 +1,34 @@
+*** Settings ***
+Resource          ../../../resource/Switch.txt
+
+*** Variables ***
+${s1_host}        172.17.100.8
+${s1_port}        10009
+${s1_conntype}    TelnetCCM
+${s1com}          s1
+${s2_host}        172.17.100.8
+${s2_port}        10010
+${s2_conntype}    TelnetCCM
+${s2com}          s2
+${s4_host}        172.17.100.8    # 电源开关串口
+${s4_port}        10011    # 电源开关串口号
+${s4com}          s4    # 电源开关串口别名
+${s1p1}           Ethernet1/0/1    # s1同一个phy芯片的第一个端口，连接s2的s2p1
+${s1p2}           Ethernet1/0/13    # 连接TP1
+${s1p3}           Ethernet1/0/14    # 连接TP2
+${s1p4}           Ethernet1/0/6    # s1同一个phy芯片的中间端口
+${s1p5}           Ethernet1/0/12    # s1同一个phy芯片的末尾端口
+${s2p1}           Ethernet1/0/1    # 连接s1的s1p1
+${s2p2}           Ethernet1/0/2    # 连接pc
+${s2p4}           Ethernet1/0/6    # 连接s1p4
+${s2p5}           Ethernet1/0/12    # 连接s1p5
+${testerp1_ip}    172.17.100.252    # ixia ip for tp1
+${testerp2_ip}    172.17.100.252    # ixia ip for tp2
+@{testerp1}       1    1    1
+@{testerp2}       1    1    3
+${ftpserverip}    100.1.1.4    # pc机ip地址
+${host_ip}        100.1.1.1    # s1的interface vlan 1接口ip地址
+${s2_ip}          100.1.1.3    # s2的interface vlan 1接口地址
+${apc_port}       2    # apc电源端口号
+
+*** Keywords ***

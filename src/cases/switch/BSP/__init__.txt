@@ -1,0 +1,191 @@
+*** Settings ***
+Documentation     测试套名称：BSP
+...
+...
+...               测试注意事项说明:
+...               - *执行前需要修改VARS_XXX文件*
+...               - *本测试套需要用到tftp升级，请务必在在PC上开启tftp服务器软件
+...               测试拓扑:
+...
+...
+...               -------------------------------
+...               | \ \ \ \ \ \ \ \ \ \S1P2 |-----TP1
+...               | \ \ \ \ \ S1 \ \ \S1P3 |-----TP2
+...               | \ \ \ \ \ \ \ \ \ \ \ \ \ |
+...               | \ S1P1 \ S1P4 \ S1P5 \ |
+...               -------------------------------
+...               | \ \ \ \ \ \ \ | \ \ \ \ \ \ |
+...               | \ \ \ \ \ \ \ | \ \ \ \ \ \ |
+...               -------------------------------
+...               | S2P1 \ \ S2P4 \ S2P5 \ |
+...               | \ \ \ \ \ S2 \ \ \ \ S2P2 |-----PC
+...               | \ \ \ \ \ \ \ \ \ \ \ \ \ \ \|
+...               | \ \ \ \ \ \ \ \ \ \ \ \ \ \ \|
+...               -------------------------------
+...
+...               ...s1需要接apc电源（部分测试例需要断电重启）
+...               ... \ \ \ s1的s1p1连接s2的s2p1，s2p2连接pc，s1p2接TP1，s1p3接TP2，s1p4连接s2p4，s1p5连接s2p5
+...               ... s1p1、s1p4、s1p5分别是同个phy芯片的第一个、中间和最后一个端口，s2的端口和设备没有要求
+...
+...               本用例执行前请满足如下条件:
+...               ... \ \ \ \ \ \ \ \ \ \ \ \ \ \ - 确保服务器上有对应的nos.img（备份img，最好是被测版本上一个版本）和配置文件
+...               ... \ \ \ \ \ \ \ \ \ \ \ \ \ \ -（-big_size_config_name.cfg）
+Suite Setup       Init BSP Suite
+Suite Teardown    Uninit BSP Suite
+Force Tags        BSP
+Resource          proc.txt
+Resource          vars.txt
+Resource          resource_bsp.txt
+
+*** Keywords ***
+Init BSP Suite
+    [Documentation]    初始化bsp测试套
+    Open Console    ${s1_host}    ${s1_port}    ${s1com}
+    Open Console    ${s2_host}    ${s2_port}    ${s2com}
+    Open APC    ${s4_host}    ${s4_port}    ${s4com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Set Default    ${s1com}
+    Get Memory Size    ${s1com}
+    Set Default    ${s2com}
+    Reload Switch    ${s2com}
+    Exec Cmd List In ConfigMode    ${s1com}    watchdog disable    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Init Ixia
+    Check Topo
+    exec cmd list    ${s2com}    config    interface ${s2p1}    no shutdown    interface ${s2p4}    shutdown
+    ...    interface ${s2p5}    shutdown
+    sleep    30
+    Check Ping    ${ftpserverip}
+    Updata In Img By tftp    ${ftpserverip}    ${backup_img_file}    ${BOOT_IMG_BACKUP_NAME}
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
+    Sleep    5
+    Write Config    ${s1com}
+    Write Config    ${s2com}
+    Enable Mode    ${s1com}
+    Show Switch Information    ${s1com}
+    Enable Mode    ${s2com}
+    Show Switch Information    ${s2com}
+    Enter BootRom From Img    ${s1com}
+    Switch Global
+    Set Switch BoardInfo    ${SN_NUM}    ${PN_NUM}    ${AN_NUM}    ${HW}    ${DATE}    ${TYPE}
+    ...    ${CPU_MAC}    ${VLAN_MAC}    ${LICENSE}
+    Reboot From Bootrom    ${s1com}
+    Close Console    ${s1com}
+    Close Console    ${s2com}
+    Close APC    ${s4com}
+
+Check Topo
+    [Documentation]    检查topo网络
+    ##
+    Tools.Comment    先检查端口是否全部up
+    ${s1p1_status}=    CheckPortStatus    ${s1com}    ${s1p1}
+    Should Be True    ${s1p1_status}    !!interface ${s1p1} isn't up!!
+    ${s1p2_status}=    CheckPortStatus    ${s1com}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p2} isn't up!!
+    ${s1p3_status}=    CheckPortStatus    ${s1com}    ${s1p3}
+    Should Be True    ${s1p3_status}    !!interface ${s1p3} isn't up!!
+    ${s1p4_status}=    CheckPortStatus    ${s1com}    ${s1p4}
+    Should Be True    ${s1p4_status}    !!interface ${s1p4} isn't up!!
+    ${s1p5_status}=    CheckPortStatus    ${s1com}    ${s1p5}
+    Should Be True    ${s1p1_status}    !!interface ${s1p5} isn't up!!
+    ${s2p1_status}=    CheckPortStatus    ${s2com}    ${s2p1}
+    Should Be True    ${s2p1_status}    !!interface ${s2p1} isn't up!!
+    ${s2p2_status}=    CheckPortStatus    ${s2com}    ${s2p2}
+    Should Be True    ${s2p2_status}    !!interface ${s2p2} isn't up!!
+    ${s2p4_status}=    CheckPortStatus    ${s2com}    ${s2p4}
+    Should Be True    ${s2p4_status}    !!interface ${s2p4} isn't up!!
+    ${s2p5_status}=    CheckPortStatus    ${s2com}    ${s2p5}
+    Should Be True    ${s2p5_status}    !!interface ${s2p5} isn't up!!
+    ##
+    Tools.Comment    检查${s1p1}是否连接${s2p1}
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p1}    shutdown
+    Sleep    5
+    ${s2p1_status}=    CheckPortStatus    ${s2com}    ${s2p1}
+    Should Not Be True    ${s2p1_status}    !!interface ${s2p1} doesn't connect to ${s1p1}!!
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p1}    no shutdown
+    Sleep    30
+    ${s2p1_status}=    CheckPortStatus    ${s2com}    ${s2p1}
+    Should Be True    ${s2p1_status}    !!interface ${s2p1} doesn't connect to ${s1p1}!!
+    ##
+    Tools.Comment    检查${s1p4}是否连接${s2p4}
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p4}    shutdown
+    Sleep    5
+    ${s2p4_status}=    CheckPortStatus    ${s2com}    ${s2p4}
+    Should Not Be True    ${s2p4_status}    !!interface ${s2p4} doesn't connect to ${s1p4}!!
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p4}    no shutdown
+    Sleep    30
+    ${s2p4_status}=    CheckPortStatus    ${s2com}    ${s2p4}
+    Should Be True    ${s2p4_status}    !!interface ${s2p4} doesn't connect to ${s1p4}!!
+    ##
+    Tools.Comment    检查${s1p5}是否连接${s2p5}
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p5}    shutdown
+    Sleep    5
+    ${s2p5_status}=    CheckPortStatus    ${s2com}    ${s2p5}
+    Should Not Be True    ${s2p5_status}    !!interface ${s2p5} doesn't connect to ${s1p5}!!
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p5}    no shutdown
+    Sleep    30
+    ${s2p5_status}=    CheckPortStatus    ${s2com}    ${s2p5}
+    Should Be True    ${s2p5_status}    !!interface ${s2p5} doesn't connect to ${s1p5}!!
+    ##
+    Tools.Comment    检查${s2p2}是否连接PC
+    Exec Cmd List In ConfigMode    ${s2com}    interface ${s2p2}    shutdown    interface ${s2p4}    shutdown    interface ${s2p5}
+    ...    shutdown
+    Sleep    5
+    ${ping_result}    Check Ping Fail    ${ftpserverip}
+    Run Keyword If    ${ping_result}>0    !!interface ${s2p2} doesn't connect to PC!!
+    Exec Cmd List In ConfigMode    ${s2com}    interface ${s2p2}    no shutdown
+    Sleep    1 minutes
+    Check Ping    ${ftpserverip}
+    ##
+    Tools.Comment    检查TP1是否连接${s1p2}
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p2}    shutdown
+    Sleep    10
+    ${s1p2_status}=    CheckPortStatus    ${s1com}    ${s1p2}
+    Should Not Be True    ${s1p2_status}    !!interface ${s1p2} is up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Should Not Be True    ${tp1_status}    !!interface ${s1p2} doesn't connect to TP1!!
+    Exec Cmd    ${s1com}    no shutdown
+    Sleep    30
+    ${s1p2_status}=    CheckPortStatus    ${s1com}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p2} isn't up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Should Be True    ${tp1_status}    !!interface ${s1p2} doesn't connect to TP1!!
+    ##
+    Tools.Comment    检查TP2是否连接${s1p3}
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p3}    shutdown
+    Sleep    10
+    ${s1p2_status}=    CheckPortStatus    ${s1com}    ${s1p3}
+    Should Not Be True    ${s1p2_status}    !!interface ${s1p3} is up!!
+    ${tp1_status}=    Get Statics    @{testerp2}    updown
+    Should Not Be True    ${tp1_status}    !!interface ${s1p3} doesn't connect to TP2!!
+    Exec Cmd    ${s1com}    no shutdown
+    Sleep    30
+    ${s1p2_status}=    CheckPortStatus    ${s1com}    ${s1p2}
+    Should Be True    ${s1p2_status}    !!interface ${s1p3} isn't up!!
+    ${tp1_status}=    Get Statics    @{testerp1}    updown
+    Log    ${tp1_status}
+    Should Be True    ${tp1_status}    !!interface ${s1p3} doesn't connect to TP2!!
+
+Uninit BSP Suite
+    Open Console    ${s1_host}    ${s1_port}    ${s1com}
+    Open Console    ${s2_host}    ${s2_port}    ${s2com}
+    Enable Mode    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p1}    no shutdown    interface ${s1p2}    no shutdown    interface ${s1p3}
+    ...    no shutdown    interface ${s1p4}    no shutdown    interface ${s1p5}    no shutdown
+    Exec Cmd List In ConfigMode    ${s2com}    interface ${s2p1}    no shutdown    interface ${s2p2}    no shutdown
+    Show Switch Information    ${s1com}
+    Enable Mode    ${s2com}
+    Show Switch Information    ${s2com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Close Console    ${s1com}
+    Close Console    ${s2com}
+
+Switch Global
+    Set Global Variable    ${VLAN_MAC}    00-03-0f-04-03-02
+    Set Global Variable    ${CPU_MAC}    00-03-0f-04-03-01
+    Set Global Variable    ${SN_NUM}    abcdef2015
+    Set Global Variable    ${LICENSE}    CLDsBOQRaDD/vc+XH9Ls9OI+rvPgj/Zi+hHVBtqVJ0Ab0vBIkLbVZYxqp8c+SGT2RRvKgg==
+    Set Global Variable    ${PN_NUM}    asdfg2015
+    Set Global Variable    ${AN_NUM}    qwert2015
+    Set Global Variable    ${HW}    1.2.5
+    Set Global Variable    ${DATE}    2015/1/1
+    Set Global Variable    ${TYPE}    280

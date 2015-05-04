@@ -1,0 +1,80 @@
+*** Settings ***
+Library           ../../../lib/Tools.py
+Resource          ../../../resource/ixiasend.txt
+Resource          ../../../resource/Switch.txt
+
+*** Keywords ***
+Check Send Receive
+    [Arguments]    ${sport_chassis}    ${sport_card}    ${sport_port}    ${dport_chassis}    ${dport_card}    ${dport_port}
+    ...    ${received_type}    ${receive_packets}    ${tolerance}    ${clear_tag}=${False}
+    [Documentation]    \ args:
+    ...    \- ${sport_chassis} ${sport_card} ${sport_port} #发送端口
+    ...    \- ${dport_chassis} ${dport_card} ${dport_port}#接收端口
+    ...    \- ${received_type}#接收流量单位(bps,pps)
+    ...    \- ${received_packets}#预期接收包数
+    ...    \- ${tolerance}#误差范围
+    ...    \- ${clear_tag}#check前，是否清除计数，缺省清除
+    ...    \- ${transimit_tag}#check前，是否发送流量，缺省不发送
+    ...    \- ${stop_trans_tag}#check后，是否在关闭流量发送，缺省不关闭
+    @{sport}=    Set Variable    ${sport_chassis}    ${sport_card}    ${sport_port}
+    @{dport}=    Set Variable    ${dport_chassis}    ${dport_card}    ${dport_port}
+    Comment    获取发送接收速率
+    Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{sport}
+    Run Keyword If    ${clear_tag}==True    Ixiasend.Clear Statics    @{dport}
+    ${tp1_tx}=    Get Statics    @{sport}    tx${received_type}
+    ${tp2_rx}=    Get Statics    @{dport}    rx${received_type}
+    ${ret}=    Evaluate    ${receive_packets}-${tolerance}<=${tp2_rx}<=${receive_packets}+${tolerance}
+    Log    ${receive_packets}-${tolerance}<=${tp2_rx}<=${receive_packets}+${tolerance}
+    [Return]    ${ret}
+
+CheckPortStatus
+    [Arguments]    ${alias}    ${port}
+    [Documentation]    检查端口状态,True 表示UP,False 表示Down
+    ${port_show}=    Exec Cmd    ${alias}    show interface ${port}
+    ${port_status}=    Tools.Is Match From String    ${port_show}    ${port} is up
+    [Return]    ${port_status}    # 端口状态
+
+Del Static Mac
+    [Arguments]    ${alias}    ${port}    ${vlan}    ${mac}
+    ${mac}=    Tools.Convert Macaddress Format    ${mac}    :    -
+    Exec Cmd List In ConfigMode    ${alias}    no mac-address-table static address ${mac} vlan ${vlan} interface ${port}
+
+Increase STEP
+    ${num}=    Tools.Get Value From String    ${STEP}    (\\d+)
+    Set Test Variable    ${num}    ${${num}+1}
+    Set Test Variable    ${STEP}    Step ${num}
+
+Init STEP
+    Set Test Variable    ${STEP}    Step 1
+
+Log Console
+    [Arguments]    ${alias}    ${message}
+    Exec Cmd List    ${alias}    \##################### ${message}########################
+
+Log Step End
+    [Arguments]    ${alias}    ${message}=${EMPTY}    ${Incr}=True
+    log Console    ${alias}    !!END!! \ ${TEST_NAME} ${STEP} ${message}
+    log    !!END!! \ ${TEST_NAME} ${STEP} ${message}
+    Run Keyword If    ${Incr}==True    Increase STEP
+
+Log Step Start
+    [Arguments]    ${alias}    ${message}=${EMPTY}
+    Log Console    ${alias}    !!Start!! \ ${TEST_NAME} ${STEP} ${message}
+    log    !!Start!! \ ${TEST_NAME} ${STEP} ${message}
+
+Set Static Mac
+    [Arguments]    ${alias}    ${port}    ${vlan}    ${mac}
+    ${mac}=    Tools.Convert Macaddress Format    ${mac}    :    -
+    Exec Cmd List In ConfigMode    ${alias}    mac-address-table static address ${mac} vlan ${vlan} interface ${port}
+
+Show switch port counter
+    [Arguments]    ${alias}    ${port}    ${times}=2 times
+    Repeat Keyword    ${times}    Exec Cmd List    ${alias}    show interface ${port} | begin Statistics
+
+Check Port Bandwidth
+    [Arguments]    ${port}    ${alias}=${s1_alias}
+    [Documentation]    检测端口带宽
+    ${output}    Exec Cmd List    ${alias}    show interface ${port}
+    ${ret}    Tools.Get Value From String    ${output}    .*?MTU 1500 bytes,//sBW//s(.*)//sKbit
+    ${bandwidth}    Evaluate    ${ret}/1000
+    [Return]    ${bandwidth}

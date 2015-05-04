@@ -1,0 +1,1156 @@
+*** Settings ***
+Documentation     img模式下bsp测试例
+Suite Setup       init case    # 打开console
+Suite Teardown    unit case    # 关闭console
+Force Tags        IMG
+Resource          vars.txt
+Resource          proc.txt
+Resource          var_globle.txt
+Resource          resource_bsp.txt
+Library           DateTime
+
+*** Test Cases ***
+clock set.2.2.7.2
+    [Documentation]    测试 clock set功能
+    ...    获取当前时间，year+3，hour+10，验证有效
+    ...    获取当前时间，重新设置回当前时间，验证有效
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${yyyy}    ${mm}    ${dd}    ${hh}=    Get Time    year,month,day,hour    NOW + 10h
+    ${yyyy}    Convert To Integer    ${yyyy}
+    ${yyyy}    evaluate    ${yyyy}+3
+    ${yyyy}    Convert To String    ${yyyy}
+    set clock    ${s1com}    ${hh}:01:00    ${yyyy}.${mm}.${dd}
+    Log Step End    ${s1com}
+    [Teardown]    set clock to now    ${s1com}
+
+reload is ok.2.2.9.1
+    [Documentation]    输入reload 命令交换机能够整机重启
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    Switch.Enable Mode    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    10 minutes
+    Telnet.Read Until Regexp    The system is going down NOW!
+    Telnet.Read Until Regexp    System is booting, please wait...
+    Telnet.Read Until Regexp    .*?Mac\\s+Addr\\s+
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+
+memory usage.2.2.9.4
+    [Documentation]    step 1 检查memory usage = 1-free/total
+    ...
+    ...    step 2 检查10<usage< 98
+    ...    step 3:
+    ...    show memory usage查看内存利用率
+    ...    由于各设备不同状态下内存利用率不确定，这里只检查内存利用率在30%-95%之间
+    ...    重复10次，取平均值，最大，最小值来判定。
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${outp}=    exec cmd    ${s1com}    show memory usage
+    ${total}=    Tools.Get Value From String    ${outp}    .*?total\\s+([0-9]*)\\s+MB
+    ${free}=    Get Value From String    ${outp}    free\\s+([0-9]*)\\s+bytes
+    ${usage}=    Get Value From String    ${outp}    usage\\s+is\\s+([0-9]*\\.[0-9]*)%
+    ${total}=    Convert To Number    ${total}
+    ${free}=    Convert To Number    ${free}
+    ${usage}=    Convert To Number    ${usage}
+    ${usage1}=    Evaluate    (1-${free}/${total}/1024/1024)*100
+    ${diff}=    Evaluate    abs(${usage1}-${usage})
+    ${total}    Convert To Integer    ${total}
+    Should Be True    ${diff}<0.01
+    Should Be True    ${total}==${MEMORY_SIZE}
+    ${usage sum}=    Set Variable    ${0}
+    ${usage max}=    Set Variable    ${0}
+    ${usage min}=    Set Variable    ${100}
+    : FOR    ${count}    IN RANGE    10
+    \    ${outp}=    exec cmd    ${s1com}    show memory usage
+    \    ${usage}=    Get Value From String    ${outp}    usage\\sis\\s([0-9]*\\.[0-9]*)%
+    \    ${usage}=    Convert To Number    ${usage}
+    \    ${usage sum}=    Evaluate    ${usage sum}+${usage}
+    \    ${usage max}=    Set Variable If    ${usage}>${usage max}    ${usage}    ${usage max}
+    \    ${usage min}=    Set Variable If    ${usage}<${usage min}    ${usage}    ${usage min}
+    ${usage avg}=    Evaluate    ${usage sum}/10
+    should be true    (${usage avg}>10) & (${usage avg}<90)
+    should be true    (${usage max}>10) & (${usage max}<95)
+    should be true    (${usage min}>10) & (${usage min}<90)
+    Log Step End    ${s1com}
+
+show temperature.2.2.9.7
+    [Documentation]    盒式交换机show temperature能够正确显示温度
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${be chassis}=    should be chassis    ${s1com}
+    Run Keyword If    ${be chassis}    get temperature from chassis    ${s1com}    ELSE    get temperature from standalone    ${s1com}
+    Log Step End    ${s1com}
+
+when an is empty.2.2.9.17
+    [Documentation]    将board清空，重新设置，修改序列号，重新启动，在img下查看序列号为修改后的新的值（show version查看）
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1    show board获取参数值
+    Log Step Start    ${s1com}
+    Enter bootrom From Img    ${s1com}
+    ${outp}=    exec cmd    ${s1com}    show board
+    ${type}=    get value from string    ${outp}    (?i)Type\\s+is\\s+(.*)\\s+
+    ${vlan mac}=    get value from string    ${outp}    (?i)Vlan\\s+MAC:\\s+(.*)\\s+
+    ${cpu mac}=    get value from string    ${outp}    (?i)CPU\\s+MAC:\\s+(.*)\\s+
+    ${sn}=    get value from string    ${outp}    S/N:\\s+(.*)\\s+
+    ${pn}=    get value from string    ${outp}    P/N:\\s+(.*)\\s+
+    ${hardversion}=    get value from string    ${outp}    H/W:\\s+(.*)\\s+
+    ${manuf}=    get value from string    ${outp}    Manufacture Date:(.*)\\s+
+    Exec Cmd Until Regexp    ${s1com}    clear boardinfo    \\(Y/N\\)\\?\\[N\\]
+    exec cmd    ${s1com}    Y
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    resume vlan & cpu mac
+    Set MAC    ${cpu mac}    ${vlan mac}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    step3    resume other vars
+    Log Step Start    ${s1com}
+    set one boardinfo    ${s1com}    setsn    (?i)Input.*S/N:\\s+    ${sn}
+    set one boardinfo    ${s1com}    setpn    (?i)Input.*P/N:\\s+    ${pn}
+    set one boardinfo    ${s1com}    setver    (?i)Input.*H/W:\\s+    ${hardversion}
+    set one boardinfo    ${s1com}    setdate    (?i)Input.*date:\\s+    ${manuf}
+    set one boardinfo    ${s1com}    settype sw    (?i)Input.*type:\\s+    ${type}
+    ${outp}=    exec cmd    ${s1com}    show board
+    Reboot From Bootrom    ${s1com}
+    ${sn1}    ${hardver1}=    get board info from showversion    ${s1com}
+    should be true    ("${sn1}"=="${sn}")|("${sn1}"=="${pn}")    ${sn}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE.2.2.9.17
+
+check bootrom version in showversion.2.2.9.14
+    [Tags]    ready
+    [Setup]    Init STEP
+    ${version}=    get bootrom version from showversion    ${s1com}
+    ${formatisok}=    Is Match From String    ${version}    ${bootrom_version}
+    should be true    ${formatisok}
+    Log Step End    ${s1com}
+
+check img version.2.2.9.15
+    [Tags]    new
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${version}=    get software version    ${s1com}
+    ${formatisok}=    Is Match From String    ${version}    \\d+\\.\\d+\\.\\d+\\.\\d+
+    should be true    ${formatisok}
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.2.9.16
+    [Documentation]    在img下加入一些基本配置，如vlan，三层接口，snmp，username等,执行连续write的操作，要连续操作30次以上，write执行成功，重启交换机后能够正确加载配置文件。
+    [Setup]    Init STEP
+    Tools.Comment    Step1    在img下配置vlan、三层接口等
+    Log Step Start    ${s1com}
+    ${command_line_list}    Create List    vlan 1-101    spanning-tree    ip dhcp snooping enable    ip igmp snooping    access-list 1 deny any-source
+    ...    username admin privilege 15 password 0 admin    interface Vlan101    ip address 200.1.1.1 255.255.255.0
+    Exec Cmd List In ConfigMode    ${s1com}    @{command_line_list}
+    Check Running-config    ${command_line_list}    8    show running-config
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    连续write 40次,show startup.cfg存在上述配置
+    Log Step Start    ${s1com}
+    : FOR    ${index}    IN RANGE    40
+    \    Write Config    ${s1com}
+    Check Running-config    ${command_line_list}    8    show startup-config startup.cfg
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    重启，成功加载startup.cfg配置文件，存在上述配置
+    Log Step Start    ${s1com}
+    Reload Switch    ${s1com}
+    Check Running-config    ${command_line_list}    8    show running-config
+    [Teardown]    Uninit BSP IN IMG MODE TEST
+
+BSP IN IMG MODE.2.2.10.1
+    [Documentation]    在img下执行show flash和dir可以看到存在img和startup.cfg文件
+    [Setup]    Init STEP
+    Tools.Comment    Step1    在img下show flash存在img和startup.cfg文件
+    Log Step Start    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    show flash
+    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
+    Should Contain    ${set_result}    ${BOOT_IMG_BACKUP_NAME}
+    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    在img下dir存在img和startup.cfg文件
+    Log Step Start    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    dir
+    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
+    Should Contain    ${set_result}    ${BOOT_IMG_BACKUP_NAME}
+    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.2.10.2
+    [Documentation]    show flash能够正确显示flash剩余空间和已使用空间，两者之和等于flash的大小
+    [Setup]    Init STEP
+    Tools.Comment    Step1    在img下show flash已使用空间和剩余空间应该等于flash总大小
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    show flash
+    ${total_size}=    Get Value From String    ${set_result}    Size:(.*?)M
+    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
+    ${avaliable_size}=    Get Value From String    ${set_result}    Avaliable:(.*?)[MK]
+    ${used_and_avaliable_size}    Evaluate    ${used_size}+${avaliable_size}
+    Run Keyword Unless    ${total_size}==${used_and_avaliable_size}    Fail    Flash userd size plus avaliable size isn't total size!
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.2.10.3
+    [Documentation]    telnet控制交换机，在telnet下执行show flash 命令，show flash可以正常显示相关的信息。
+    [Setup]    Init STEP
+    Tools.Comment    Step1    s2分别配置interface vlan 1接口地址，可以ping通
+    Log Step Start    ${s1com}
+    Exec Cmd List In ConfigMode    ${s2com}    interface vlan 1    ip address ${s2_ip} 255.255.255.0
+    Check Ping    ${s2_ip}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    s2上telnet s1
+    Log Step Start    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    username admin privilege 15 password 0 admin
+    Telnet Switch    ${host_ip}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    show flash显示正确
+    Log Step Start    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    show flash
+    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
+    ${total_size}=    Get Value From String    ${set_result}    Size:(.*?)M
+    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
+    ${avaliable_size}=    Get Value From String    ${set_result}    Avaliable:(.*?)[MK]
+    ${used_and_avaliable_size}    Evaluate    ${used_size}+${avaliable_size}
+    Run Keyword Unless    ${total_size}==${used_and_avaliable_size}    Fail    Flash userd size plus avaliable size isn't total size!
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE TEST
+
+BSP IN IMG MODE.2.2.10.4
+    [Documentation]    在load并write一个大于flash剩余空间的文件时，会有错误提示信息，写入失败，同时对flash中的其它文件没有影响，能够正常启动img，同时能够正常进入bootrom
+    [Setup]    Init STEP
+    Tools.Comment    Step1    tftp升级并write一个img，空间不足，write失败
+    Log Step Start    ${s1com}
+    Check Ping    ${ftpserverip}
+    Telnet.Write    copy tftp://${ftpserverip}/${img_file} nos2.img
+    Telnet.Set Timeout    2 minutes
+    ${output}=    Telnet.Read Until Regexp    ${BEGIN_TO_RECEIVE}
+    Telnet.Set Timeout    20 minutes
+    Should Contain    ${output}    ${BEGIN_TO_RECEIVE}
+    Telnet.Read Until Regexp    Begin to write local file, please wait...
+    Telnet.Read Until Regexp    Error:Disk is full
+    Telnet.Read
+    Telnet.Set Timeout    ${sw_timeout}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    nos.img重启正常
+    Log Step Start    ${s1com}
+    Reload Switch    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    nos1.img重启正常
+    Log Step Start    ${s1com}
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    primary
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
+    Reload Switch    ${s1com}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR BOOT IMG
+
+BSP IN IMG MODE.2.2.10.5
+    [Documentation]    在flash中写入多个不同名字的img，通过boot命令修改启动的img，每个写入的img都能够正常启动
+    [Setup]    Init STEP
+    Tools.Comment    Step1    在img下设置第一启动img和第二启动img
+    Log Step Start    ${s1com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    primary
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_DEFAULT_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Reload Switch Without Write    ${s1com}
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Check Version    ${backup_img_version}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    在img下将第一启动img和第二启动img调换
+    Log Step Start    ${s1com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_BACKUP_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Reload Switch Without Write    ${s1com}
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR BOOT IMG
+
+BSP IN IMG MODE.2.2.10.6
+    [Documentation]    Flash容量：用写文件方式将Flash写满，计算所有文件大小的总和，应该接近Flash容量。（只需验证2个img以及3个config文件，不需要将flash写满）
+    [Setup]    Init STEP
+    Tools.Comment    Step1    tftp方式从服务器下载1个大的config文件.copy出另外2个
+    Log Step Start    ${s1com}
+    Check Ping    ${ftpserverip}
+    Updata In Img By tftp    ${ftpserverip}    ${BIG_SIZE_CONFIG_NAME}    111.cfg
+    Copy Config Files    ${s1com}    111.cfg    222.cfg
+    Copy Config Files    ${s1com}    111.cfg    333.cfg
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    dir存在上述文件，总的文件大小正确
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    dir
+    ${files_list}    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    111.cfg    222.cfg    222.cfg
+    : FOR    ${index}    IN RANGE    5
+    \    Should Contain    ${set_result}    @{files_list}[${index}]
+    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
+    ${file_img_size}    Get Value From String    ${FILE_IMG_SIZE}    (.*)M
+    ${size_of_big_size_config_file}    Get Value From String    ${SIZE_OF_BIG_SIZE_CONFIG_FILE}    (.*)K
+    ${real_used_size}    Evaluate    (${file_img_size}*2+${size_of_big_size_config_file}*3/1024)
+    ${ret}    Evaluate    ${used_size}*(1-${FLASH_TOLERANCE})<=${real_used_size}<=${used_size}*(1+${FLASH_TOLERANCE})
+    Log    ${used_size}*(1-${FLASH_TOLERANCE})<=${real_used_size}<=${used_size}*(1+${FLASH_TOLERANCE})
+    Run Keyword Unless    ${ret}    Fail    Flash userd size isn't real total size!
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.2.12.1
+    [Documentation]    交换机重启、挂起任务等产生的critical级别的log都记录在nvram中，show logging buffered可以看到这些日志
+    [Setup]    Init STEP
+    Tools.Comment    Step1    交换机重启
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Exec Cmd    ${s1com}    clear logging sram
+    Reload Switch Without Write    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    show logging buffered存在重启的log
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    show logging buffered level critical | include ${RELOAD_SWITCH_LOG_REGEXP}
+    Sleep    5
+    ${ret}    Tools.Is Match From String    ${output}    ${RELOAD_SWITCH_LOG_REGEXP}
+    Run Keyword If    ${ret}==False    Fail    There isn't critical log for reload!
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    show logging buffered存在watchdog的log
+    Log Step Start    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    watchdog enable
+    ${task_id}    ${task_address}    Get Task ID    ${s1com}
+    Kill Tasklist In Watchdog Disable Mode    ${task_id}    ${s1com}
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    show logging buffered level critical | include ${KILL_TASKLIST_LOG_REGEXP}
+    ${ret}    Tools.Is Match From String    ${output}    ${KILL_TASKLIST_LOG_REGEXP}
+    Run Keyword If    ${ret}==False    Fail    There isn't critical log for kill tasklist!
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
+
+BSP IN IMG MODE.2.2.12.2
+    [Documentation]    执行clear logging操作能够清除掉nvram中的所有信息
+    [Setup]    Init STEP
+    Tools.Comment    Step1    通过loopback端口，删除接口地址，开启spanning-tree产生log
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p1}    shutdown    exit    interface vlan 1    shutdown
+    Exec Cmd List In ConfigMode    ${s1com}    interface vlan 1    no shutdown    exit    interface ${s1p1}    no shutdown
+    ...    exit    spanning-tree
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    show logging buffered至少存在1条以上的log
+    Log Step Start    ${s1com}
+    Sleep    5
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    show logging buffered
+    Sleep    5
+    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
+    Run Keyword If    ${log_number}<1    Fail    There isn't no logs in logging buffer
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    clear log，可以清除logging buffered
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Exec Cmd    ${s1com}    clear logging sdram
+    sleep    100 ms
+    ${output}    Exec Cmd    ${s1com}    show logging buffered
+    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
+    Run Keyword If    ${log_number}>=1    Fail    Clear logging buffer fail!
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE TEST
+
+BSP IN IMG MODE.2.2.12.3
+    [Documentation]    在交换机上反复执行添加critical级别的log和clear log的操作，对nvram执行反复的擦除和写入操作，nvram表现正常，nvram能够正确的对信息执行擦除和写入
+    [Tags]    nvram
+    [Setup]    Init STEP
+    Tools.Comment    Step1    通过该write config生成critical log信息，然后clear，反复测试50次
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Exec Cmd    ${s1com}    clear logging sdram
+    : FOR    ${index}    IN RANGE    100
+    \    Telnet.Write    su
+    \    Telnet.Read
+    \    Telnet.Write    tshell debug call _printx 1 2 0 "critical log one"
+    \    Telnet.Read Until Regexp    the func return 0x0
+    \    sleep    50 ms
+    \    Telnet.Write    ${EMPTY}
+    \    Telnet.Read
+    \    Telnet.Write    show logging buffered
+    \    ${output}    Telnet.Read Until Regexp    Current messages in SDRAM.*\\s
+    \    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
+    \    ${log_number}    Convert To Integer    ${log_number}
+    \    Run Keyword If    ${log_number}<1    Fail    There isn't no enough logs in logging buffer
+    \    Exec Cmd List    ${s1com}    exit    clear logging sdram
+    \    sleep    100 ms
+    \    Telnet.Write    show logging buffered
+    \    ${output}    Telnet.Read Until Regexp    Current messages in SDRAM.*\\s
+    \    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
+    \    ${log_number}    Convert To Integer    ${log_number}
+    \    Run Keyword If    ${log_number}>0    Fail    Clear logging buffer fail!
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE.2.2.12.3
+
+check CPLD version.2.2.14.1
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    Enable mode    ${s1com}
+    ${output}=    exec cmd    ${s1com}    show version
+    ${version}=    Get Value From String    ${output}    (?i)CPLD\\s+Version\\s+(.*)\\s+
+    Should Not Be Empty    ${version}
+    ${formatisok}=    Is Match From String    ${version}    ${cpld_version}
+    should be true    ${formatisok}
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.3.1
+    [Documentation]    启动过程中不做其它的任何操作进行内存自检，自检完成后能够打印内存容量且能够启动img（无法验证是否能够检测出内存问题，这要有这个自检过程即可）
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重启交换机，内存自检，自检完成打印内存容量，并能够启动img
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    3 minutes
+    Telnet.Read Until Regexp    Testing RAM...
+    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    ${ram_b}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    ${ram_c}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    Telnet.Set Timeout    2 minutes
+    Telnet.Read Until Regexp    ${TEST_RAM_REGEXP}
+    Telnet.Read Until Regexp    ${sw_regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+    Should Not Be Equal    ${ram_a}    ${ram_b}
+    Should Not Be Equal    ${ram_b}    ${ram_c}
+    Should Not Be Equal    ${ram_c}    ${TEST_RAM_REGEXP}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    启动img版本正确
+    Log Step Start    ${s1com}
+    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.3.2
+    [Documentation]    在简单内存自检过程中输入“Esc”可以跳过自检过程并启动img，且能够打印出内存容量
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重启交换机，内存自检过程中输入exc，跳出自检过程，打印内存容量，并能够启动img
+    Log Step Start    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    3 minutes
+    Telnet.Read Until Regexp    Testing RAM...
+    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    ${ram_b}    Telnet.Write    0x1B
+    Telnet.Read Until Regexp    ${sw_regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+    Should Not Be Equal    ${ram_a}    ${TEST_RAM_REGEXP}
+    Should Contain    ${ram_b}    ${TEST_RAM_REGEXP}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    启动img版本正确
+    Log Step Start    ${s1com}
+    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.3.3
+    [Documentation]    在简单内存自检过程中输入“CTRL+B”可以跳过自检过程并启动bootrom，且能够打印出内存容量
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重启交换机，内存自检过程中输入“CTRL+B”可以跳过自检过程并启动bootrom,打印内存容量，并能够启动img
+    Log Step Start    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    3 minutes
+    Telnet.Read Until Regexp    Testing RAM...
+    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    ${ram_b}    Telnet.Write    \x02
+    Telnet.Read Until Regexp    \\[Boot\\]
+    Telnet.Set Timeout    20 minutes
+    Reboot From Bootrom    ${s1com}
+    Telnet.Set Timeout    ${sw_timeout}
+    Should Not Be Equal    ${ram_a}    ${TEST_RAM_REGEXP}
+    #Should Contain    ${ram_b}    ${TEST_RAM_REGEXP}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    启动img版本正确
+    Log Step Start    ${s1com}
+    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE.2.3.3
+
+BSP IN IMG MODE.2.3.5
+    [Documentation]    出厂配置启动交换机，启动后剩余可用内存>=(2*产品img大小)
+    [Setup]    Init STEP
+    Tools.Comment    Step1    交换机恢复出厂配置
+    Log Step Start    ${s1com}
+    Set Default    ${s1com}
+    Reload Switch    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    show memory usage查看剩余内存大小
+    Log Step Start    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    show memory usage
+    ${total_size}=    Get Value From String    ${set_result}    The memory total\\s+(.*?)MB
+    ${free_size}=    Get Value From String    ${set_result}    free\\s+(.*?)bytes
+    ${file_img_size}    Get Value From String    ${FILE_IMG_SIZE}    (.*)M
+    ${double_img_size}    Evaluate    ${file_img_size}*1024*1024*2
+    Log    ${free_size}>=${double_img_size}
+    Run Keyword Unless    ${free_size}>=${double_img_size}    Fail    Memory free size isn't excceed double img size!
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.4.1
+    [Documentation]    根据bug 46264添加测试点：在配置ssh-server后并执行配置保留的操作，重启完成后show boot-files检查原来设置的primary img、backup img以及配置文件等信息都能够正常保留，没有丢失。
+    [Setup]    Init STEP
+    Tools.Comment    Step1    配置ssh-server，保存配置，重启进入
+    Log Step Start    ${s1com}
+    ${command_list}    Create List    ssh-server enable    username admin privilege 15 password 0 admin
+    Exec Cmd List In ConfigMode    ${s1com}    @{command_list}
+    Copy Img Files    ${s1com}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}
+    Write Config    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    bootrom下设置启动img，重启
+    Log Step Start    ${s1com}
+    Enter BootRom From Img    ${s1com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Reboot From Bootrom    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    show boot-files配置没有丢失
+    Log Step Start    ${s1com}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Check Boot-files startup-config    ${s1com}    ${BOOT_CONFIG_DEFAULT_NAME}    ${BOOT_STARTUP_CONFIG}
+    Check Version    ${default_img_version}
+    Check Running-config    ${command_list}    2    show running-config
+    [Teardown]    Uninit BSP IN IMG MODE TEST
+
+BSP IN IMG MODE.2.2.8.1
+    [Documentation]    watchdog使能，挂起任务后，系统能够重启并启动正常
+    [Tags]    watchdog enable
+    [Setup]    Init STEP
+    Tools.Comment    Step1    进入shell模式，kill任务挂导致挂起
+    Log Step Start    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    watchdog enable
+    ${task_id}    ${task_address}    Get Task ID    ${s1com}
+    Kill Tasklist In Watchdog Enable Mode    ${task_id}    ${s1com}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
+
+BSP IN IMG MODE.2.2.8.2
+    [Documentation]    watchdog不使能，挂起任务后，系统不会重新启动
+    [Tags]    watchdog disable
+    [Setup]    Init STEP
+    Tools.Comment    Step1    进入shell模式，kill任务挂导致挂起，系统不会重启
+    Log Step Start    ${s1com}
+    ${task_id}    ${task_address}    Get Task ID    ${s1com}
+    Kill Tasklist In Watchdog Disable Mode    ${task_id}    ${s1com}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
+
+BSP IN IMG MODE.2.2.5.4
+    [Documentation]    Flash剩余空间>img文件大小，在img下在write正确的img文件过程中进行断电重启，重启后能够正确引导img并启动成功，img没有升级成功
+    [Tags]    updata and power off
+    [Setup]    Init STEP
+    Tools.Comment    Step1    删除backup img，使flash剩余空间>img文件大小
+    Log Step Start    ${s1com}
+    Delete Files    ${BOOT_IMG_BACKUP_NAME}
+    ${set_result}    Exec Cmd    ${s1com}    dir
+    Should Not Contain    ${set_result}    ${BOOT_IMG_BACKUP_NAME}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    在img下通过tftp升级backup img文件,升级过程中模拟断电重启，img没有升级成功，dir不存在backup img文件
+    Log Step Start    ${s1com}
+    Check Ping    ${ftpserverip}
+    Telnet.Write    copy tftp://${ftpserverip}/${backup_img_file} ${BOOT_IMG_BACKUP_NAME}
+    Telnet.Set Timeout    5 minutes
+    Telnet.Read Until Regexp    Begin to write local file, please wait...
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    Sleep    5
+    APC Login    ${s4com}
+    Telnet.Write    off ${apc_port}
+    Telnet.Read
+    Sleep    2
+    Telnet.Write    on ${apc_port}
+    Telnet.Read
+    Telnet.Switch Connection    ${s1com}
+    Telnet.Set Timeout    10 minutes
+    Telnet.Write    ${EMPTY}
+    Telnet.Read Until Regexp    ${sw_regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    Sleep    60
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    设置${BOOT_IMG_BACKUP_NAME}为第一启动img，启动失败，以第二img启动
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    dir    #如果生成nos1.img文件，就以nos1.img启动，但是启动 失败
+    ${ret}    Tools.Is Match From String    ${output}    ${BOOT_IMG_BACKUP_NAME}
+    Run Keyword If    ${ret}    Boot Img    ${BOOT_IMG_BACKUP_NAME}    primary
+    Run Keyword If    ${ret}    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
+    Run Keyword If    ${ret}    Telnet.Write    reload
+    Run Keyword If    ${ret}    Telnet.Read Until Regexp    \\[Y/N\\]
+    Run Keyword If    ${ret}    Telnet.Write    Y
+    #${boot_file_regexp}=    Create List    Loading flash:/${BOOT_IMG_BACKUP_NAME}    Bad Data CRC    ERROR: can't get kernel image!    Loading backup img file flash:/${BOOT_IMG_DEFAULT_NAME}
+    ${boot_file_regexp}=    Create List    Loading flash:/${BOOT_IMG_BACKUP_NAME}    Bad Data CRC    Loading backup img file flash:/${BOOT_IMG_DEFAULT_NAME}
+    Run Keyword If    ${ret}    Check Boot Primary Fail    3    ${boot_file_regexp}
+    Run Keyword If    ${ret}    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE.2.2.5.4
+
+BSP IN IMG MODE.2.4.4
+    [Documentation]    设备启动过程中，从加电开始，到CRT打印端口up/down之前，所有端口不允许转发任何流量
+    [Tags]    not forward stream
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}    配置stp
+    Exec Cmd List In ConfigMode    ${s1com}    spanning-tree
+    Write Config    ${s1com}
+    sleep    30s    wait for stp
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2
+    Log Step Start    ${s1com}    重启前发送ixia流量
+    Init Ixia
+    Set ixia stream ip    @{testerp1}    stream_rate=1000    stream_rate_mode=${IXIA_StreamRateMode_pps}    dst_mac=00:00:00:22:22:22    src_mac=00:00:00:11:11:11    reset=True
+    Set ixia stream ip    @{testerp2}    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    dst_mac=00:00:00:11:11:11    src_mac=00:00:00:22:22:22    reset=True
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    #wait for counter
+    ${res1}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    1    mode=pps
+    ${res2}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    1    mode=pps
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Should Be True    ${res1}==${res2}==True    tp1与tp2互相收到流量
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3
+    Log Step Start    ${s1com}    通过apc将s1断电后,重新加电,加电过程中交换机不能转发流量,检查启动时间应该在2分钟内
+    APC Login    ${s4com}
+    Telnet.Write    off ${apc_port}
+    Telnet.Read
+    Ixiasend.Clear Statics    @{testerp1}
+    Ixiasend.Clear Statics    @{testerp2}
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    #上电启动
+    Telnet.Write    on ${apc_port}
+    Telnet.Read
+    #上电时间
+    ${secs1}=    Get Time    epoch
+    #STP配置恢复完成时间
+    Get Debug Output Until Regexp    ${s1com}    MSTP is enabled    timeout=20 minute
+    ${secs2}=    Get Time    epoch
+    @{ret}=    Get Debug Output Until Regexp    ${s1com}    ${sw_prompt}    timeout=2minute
+    #配置恢复完成时间
+    ${secs3}=    Get Time    epoch
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    sleep    1min    等待剩余打印信息
+    Read    # 读取剩余内容
+    #处理相关结果
+    ${upTime}=    Evaluate    ${secs3}-${secs1}    #启动时间长度
+    ${transTime}=    Evaluate    ${secs3}-${secs2}-30    #stp配置恢复后，端口使能stp功能30s后(stp缺省30s收敛)，开始转发流量
+    ${tp1_tx}    ${tp1_rx}=    Get Statics    @{testerp1}    txpackets    rxpackets
+    ${tp2_tx}    ${tp2_rx}=    Get Statics    @{testerp2}    txpackets    rxpackets
+    ${res1}=    Evaluate    ${tp2_rx}<=1000*${transTime}*1.5 or 0>=${transTime}
+    ${res2}=    Evaluate    ${tp1_rx}<=2000*${transTime}*1.5 or 0>=${transTime}
+    Run Keyword And Continue On Failure    Should Be True    ${ret[0]}==True    设备在22min内启动失败!!
+    Run Keyword And Continue On Failure    Should Be True    ${res1}==${res2}==True    重启过程中,不应该转发流量
+    Run Keyword And Continue On Failure    Should Be True    ${upTime}<=${120}    盒式设备启动时间应在120s内
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE.2.4.4
+
+BSP IN IMG MODE.2.4.5
+    [Documentation]    设备上下电300次，每次都能正常启动
+    [Tags]    power on and off
+    [Setup]    Init STEP
+    Tools.Comment    Step1    设备上电，检测到Test RAM，说明bsp上电成功，然后 断电，重复测试300次
+    Log Step Start    ${s1com}
+    APC Login    ${s4com}
+    : FOR    ${index}    IN RANGE    300
+    \    Telnet.Switch Connection    ${s4com}
+    \    Telnet.Write    off ${apc_port}
+    \    Telnet.Read
+    \    Sleep    2
+    \    Telnet.Write    on ${apc_port}
+    \    Telnet.Switch Connection    ${s1com}
+    \    Telnet.Set Timeout    5 minutes
+    \    Telnet.Read Until Regexp    Testing RAM...
+    \    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read Until Regexp    ${sw_regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+    APC Logout    ${s4com}
+    Log Step End    ${s1com}
+
+BSP IN IMG MODE.2.4.2
+    [Documentation]    bootrom启动过程中可以显示bootrom版本
+    [Tags]    check bootrom version vhen reload
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重启设备，检查是否打印bootrom的版本号，版本号是否正确
+    Log Step Start    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    10 minutes
+    ${ret}    Telnet.Read Until Regexp    (?i)Bootrom\\s+version:\\s+(.*?)\\s+
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    ${version}    Get Value From String    ${ret}    (?i)Bootrom\\s+version:\\s+(.*)\\s+
+    ${formatisok}=    Is Match From String    ${version}    ${bootrom_version}
+    should be true    ${formatisok}
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+    Log Step End    ${s1com}
+
+*** Keywords ***
+init case
+    open console    ${s1_host}    ${s1_port}    ${s1com}
+    open console    ${s2_host}    ${s2_port}    ${s2com}
+    Open APC    ${s4_host}    ${s4_port}    ${s4com}
+    Check Ping    ${ftpserverip}
+    Write Config    ${s1com}
+
+unit case
+    Tools.Comment    exec cmd list    ${s2com}    config    interface ${s2p1}    no shutdown
+    Tools.Comment    exec cmd list    ${s2com}    config    interface ${s2p4}    no shutdown
+    Tools.Comment    exec cmd list    ${s2com}    config    interface ${s2p5}    no shutdown
+    close console    ${s1com}
+    close console    ${s2com}
+    Close APC    ${s4com}
+
+set clock
+    [Arguments]    ${switch}    ${time}    ${day}
+    [Documentation]    set clock，只check year和hour
+    ${hour_set}=    get value from string    ${time}    ([0-9]{2}):
+    ${year_set}=    get value from string    ${day}    ([0-9]{4})
+    Enable Mode    ${switch}
+    ${outp}=    exec cmd    ${switch}    clock set ${time} ${day}
+    should contain    ${outp}    Current time is
+    log    ${outp}
+    ${hour}=    get value from string    ${outp}    ([0-9]{2}):
+    Should Not Be Equal    ${hour}    ${None}
+    ${year}=    get value from string    ${outp}    ([0-9]{4})
+    Should Be Equal    ${year}    ${year_set}
+    Should Be Equal    ${hour}    ${hour_set}
+
+get switch clock
+    [Arguments]    ${switch}
+    ${outp}=    exec cmd    ${switch}    show clock
+    should contain    ${outp}    Current time is
+    ${ret}    get value from string    ${outp}    ([0-9]{2}):
+    Should Not Be Equal    ${ret}    ${None}
+    ${hour}=    get from list    ${ret}    0
+    ${ret}    get value from string    ${outp}    ([0-9]{4})
+    ${year}=    get from list    ${ret}    0
+    Return From Keyword    ${year}    ${hour}
+
+set clock to now
+    [Arguments]    ${switch}
+    ${yyyy}    ${mm}    ${dd}    ${hh}    ${min}=    Get Time    year,month,day,hour,min
+    set clock    ${s1com}    ${hh}:${min}:00    ${yyyy}.${mm}.${dd}
+
+get uptime
+    [Arguments]    ${switch}
+    [Documentation]    Uptime\\sis\\s(.*)\\sweeks\\,\\s(.*)\\sdays\\,\\s(.*)\\shours\\,\\s(.*)\sminutes
+    Enable Mode    ${switch}
+    ${outp}=    exec cmd    ${switch}    show version
+    ${timelist}=    Get Value From String    ${outp}    Uptime\\sis\\s(.*)\\sweeks\\,\\s(.*)\\sdays\\,\\s(.*)\\shours\\,\\s(.*)\\sminutes
+    should not be empty    ${timelist}
+    ${weeks}=    Get From List    ${timelist}    0
+    ${days}=    Get From List    ${timelist}    1
+    ${hours}=    Get From List    ${timelist}    2
+    ${minutes}=    Get From List    ${timelist}    3
+    ${weeks}=    Convert To Integer    ${weeks}
+    ${days}=    Convert To Integer    ${days}
+    ${hours}=    Convert To Integer    ${hours}
+    ${minutes}=    Convert To Integer    ${minutes}
+    ${uptime}=    Evaluate    ((${weeks}*7+${days})*24+${hours})*60+${minutes}
+    Return From Keyword    ${uptime}
+    log    uptime=${uptime}
+
+Should be Chassis
+    [Arguments]    ${switch}
+    Enable Mode    ${switch}
+    ${outp}=    exec cmd    ${switch}    show slot
+    ${ret}=    get value from string    ${outp}    (Module\\stype)
+    Return From Keyword If    "${ret}"=="${None}"    ${false}
+    return from keyword    ${true}
+
+get running module list
+    [Arguments]    ${switch}
+    should be chassis    ${switch}
+    ${outp}=    exec cmd    ${switch}    show slot
+    ${slot list}=    Tools.Find All From String    ${outp}    .*?--Slot\\s:\\s(.*?)-+
+    Should Not Be Empty    ${slot list}
+    ${module list}=    Create list
+    ${slot num}=    Get Length    ${slot list}
+    : FOR    ${index}    IN RANGE    ${slot num}
+    \    ${slot}=    get from list    ${slot list}    ${index}
+    \    ${outp}=    exec cmd    ${switch}    show slot ${slot}
+    \    ${status}=    Tools.Get Value From String    ${outp}    (RUNNING)
+    \    Run Keyword If    "${status}"!="${none}"    Append To List    ${module list}    ${slot}
+    Return From Keyword    ${module list}
+
+reset slot be ok
+    [Arguments]    ${switch}    ${slot}
+    ${uptime}=    get slot uptime    ${switch}    ${slot}
+    run keyword if    ${uptime}<3    sleep    2 minutes
+    ${uptime}=    Set Variable If    ${uptime}<3    ${uptime}+2    ${uptime}
+    enable mode    ${switch}
+    exec cmd    ${switch}    reset slot ${slot}
+    sleep    2 minutes
+    ${new uptime}=    get slot uptime    ${switch}    ${slot}
+    should be true    ${new uptime}<${uptime}
+
+get slot uptime
+    [Arguments]    ${switch}    ${slot}
+    enable mode    ${switch}
+    comment    处理reset slot 之后产生的错位
+    Telnet.Read
+    ${outp}=    exec cmd    ${switch}    show slot ${slot}
+    ${weeks}=    Get Value From String    ${outp}    Uptime\\s*?:\\s(.*)weeks
+    should not be empty    ${weeks}
+    ${days}=    Get Value From String    ${outp}    Uptime\\s*?:\\s.*weeks\\,\\s(.*)\\sdays\\,
+    ${hours}=    Get Value From String    ${outp}    Uptime\\s*?:\\s.*weeks\\,\\s.*\\sdays\\,\\s(.*)\\shours\\,
+    ${minutes}=    Get Value From String    ${outp}    Uptime\\s*?:\\s.*weeks\\,\\s.*\\sdays\\,\\s.*\\shours\\,\\s(.*)\\sminutes
+    ${weeks}=    Convert To Integer    ${weeks}
+    ${days}=    Convert To Integer    ${days}
+    ${hours}=    Convert To Integer    ${hours}
+    ${minutes}=    Convert To Integer    ${minutes}
+    ${uptime}=    Evaluate    ((${weeks}*7+${days})*24+${hours})*60+${minutes}
+    Return From Keyword    ${uptime}
+
+Module Be ActiveM
+    [Arguments]    ${switch}    ${slot}
+    enable mode    ${switch}
+    ${outp}=    exec cmd    ${switch}    show slot ${slot}
+    ${ret}=    Is Match From String    ${outp}    ACTIVE\\sMASTER
+    Return From Keyword    ${ret}
+
+get temperature from standalone
+    [Arguments]    ${switch}
+    ${outp}=    exec cmd    ${switch}    show temperature
+    ${ret}=    Get value from string    ${outp}    Temperature:\\s([0-9]*\\.[0-9]*)C
+    Should Not Be Equal    ${ret}    ${None}
+    ${temp}=    convert to number    ${ret}
+    should be true    (${temp}>5)&(${temp}<70)
+
+get temperature from chassis
+    [Arguments]    ${switch}
+    @{module list}=    get running module list    ${s1com}
+    : FOR    ${module}    IN    @{module list}
+    \    ${outp}=    exec cmd    ${switch}    show slot ${module}
+    \    ${ret}=    Get value from string    ${outp}    Temperature.*?:\\s([0-9]*)C
+    \    Should Not Be Equal    ${ret}    ${None}
+    \    ${temp}=    get from list    ${ret}    0
+    \    ${temp}=    convert to number    ${temp}
+    \    should be true    (${temp}>5)&(${temp}<70)
+
+not reset active master
+    [Arguments]    ${switch}    ${slot}
+    enable mode    ${switch}
+    ${outp}=    exec cmd    ${switch}    reset slot ${slot}
+    Should Contain    ${outp}    can't reset active master!
+
+abnormal fan log
+    [Arguments]    ${fan list}
+    ${num}=    get length    ${fan list}
+    log    have ${num} abnormal fan:${fan list}
+
+get board info from bootrom
+    [Arguments]    ${switch}    ${slotconn}=None    ${slotid}=None
+    run keyword if    "${slotconn}"=="None"    Enter bootrom From Img    ${switch}    ELSE    Enter Slot Bootrom    ${switch}
+    ...    ${slotconn}    ${slotid}
+    ${com1}=    Set Variable If    "${slotconn}"=="None"    ${switch}    ${slotconn}
+    ${outp}=    Exec cmd    ${com1}    show board
+    ${sn}=    Get Value From String    ${outp}    S/N:\\s+(.*)\\s+
+    ${pn}=    get value from string    ${outp}    P/N:\\s+(.*)\\s+
+    ${an}=    get value from string    ${outp}    A/N:\\s+(.*)\\s+
+    ${hardversion}=    get value from string    ${outp}    H/W:\\s+(.*)\\s+
+    ${manuf}=    get value from string    ${outp}    Manufacture Date:(.*)\\s+
+    Reboot From Bootrom    ${com1}
+    Return From Keyword    ${sn}    ${pn}    ${an}    ${hardversion}    ${manuf}
+
+get board info from showversion
+    [Arguments]    ${switch}
+    enable mode    ${switch}
+    ${outp}=    exec cmd    ${switch}    show ver
+    ${sn}=    get value from string    ${outp}    (?i)Serial\\s+No\\.:(.*)\\s+
+    ${hwver}=    get value from string    ${outp}    (?i)HardWare\\s+Version\\s+(.*)\\s+
+    Return From Keyword    ${sn}    ${hwver}
+
+set board info
+    [Arguments]    ${switch}    ${sn}    ${pn}    ${an}    ${hardversion}    ${manufactory}
+    Enter bootrom From Img    ${switch}
+    set one boardinfo    ${switch}    setsn    (?i)S/N:\\s    ${sn}
+    set one boardinfo    ${switch}    setpn    (?i)P/N:\\s    ${pn}
+    set one boardinfo    ${switch}    setan    (?i)A/N:\\s    ${an}
+    set one boardinfo    ${switch}    setver    (?i)H/W:\\s    ${hardversion}
+    set one boardinfo    ${switch}    setdate    (?i)date:\\s    ${manufactory}
+    ${outp}=    exec cmd    ${switch}    show board
+    ${sn1}=    get value from string    ${outp}    S/N:\\s+(.*)\\s+
+    ${pn1}=    get value from string    ${outp}    P/N:\\s+(.*)\\s+
+    ${an1}=    get value from string    ${outp}    A/N:\\s+(.*)\\s+
+    ${hardversion1}=    get value from string    ${outp}    H/W:\\s+(.*)\\s+
+    ${manufactory1}=    get value from string    ${outp}    Manufacture Date:(.*)\\s+
+    should be equal    ${sn}    ${sn1}
+    should be equal    ${pn}    ${pn1}
+    should be equal    ${an}    ${an1}
+    should be equal    ${hardversion}    ${hardversion1}
+    should be equal    ${manufactory}    ${manufactory1}
+    Reboot From Bootrom    ${switch}
+
+sn should be ok
+    [Arguments]    ${img sn}    ${bootrom sn}    ${bootrom pn}    ${bootrom an}
+    ${sn list}    create list
+    run keyword if    ("${bootrom sn}"!="${none}")&("${bootrom sn}"!="N/A")    Append To List    ${sn list}    ${bootrom sn}
+    run keyword if    ("${bootrom pn}"!="${none}")&("${bootrom pn}"!="N/A")    Append To List    ${sn list}    ${bootrom pn}
+    run keyword if    ("${bootrom an}"!="${none}")&("${bootrom an}"!="N/A")    Append To List    ${sn list}    ${bootrom an}
+    log    ${sn list}
+    ${count}=    get length    ${sn list}
+    run keyword if    ${count}==${0}    should be true    ("${img sn}"=="${none}")|("${img sn}"=="N/A")    ELSE    List Should Contain Value    ${sn list}
+    ...    ${img sn}
+
+set one boardinfo
+    [Arguments]    ${switch}    ${cmd}    ${promt}    ${var}
+    Exec Cmd Until Regexp    ${switch}    ${cmd}    ${promt}
+    exec cmd    ${switch}    ${var}
+
+get boardinfo from slot
+    [Arguments]    ${switch}    ${slotid}
+    enable mode    ${switch}
+    ${outp}=    exec cmd    ${switch}    show slot ${slotid}
+    ${sn}=    get value from string    ${outp}    (?i)Serial\\snumber\\s*:[ \\t\\v]*(.*)\\r
+    ${hwver}=    get value from string    ${outp}    Hardware\\sversion\\s*:[ \\t\\v]*(.*)\\r
+    ${manuf}=    get value from string    ${outp}    Manufacture\\sdate\\s*:[ \\t\\v]*(.*)\\r
+    Return From Keyword    ${sn}    ${hwver}    ${manuf}
+
+get slotid from prompt
+    [Arguments]    ${switch}
+    ${outp}=    exec cmd    ${switch}    show version
+    ${ret}=    get value from string    ${outp}    (?i)Slave_(.*)[>#]
+    return from keyword if    ${ret}!=${none}    ${ret}
+    ${be standby}=    Is Match From String    ${outp}    (?i)S_Master[>#]
+    return from keyword if    ${be standby}    S_Master
+    Should Be True    ${be standby}
+
+get active slotid
+    [Arguments]    ${switch}    ${module list}
+    ${length}=    Get length    ${module list}
+    should be true    ${length}>0
+    : FOR    ${module}    IN    @{module list}
+    \    ${beActive}=    Module Be ActiveM    ${switch}    ${module}
+    \    Return From Keyword If    ${beActive}    ${module}
+    log    Can't find active slot
+    Return From Keyword    FAIL
+
+get standby slotid
+    [Arguments]    ${switch}    ${module list}    ${slotprompt}
+    return from keyword if    "${slotprompt}"!="S_Master"    ${slotprompt}
+    ${length}=    Get length    ${module list}
+    should be true    ${length}>1
+    : FOR    ${module}    IN    @{module list}
+    \    ${beStandby}=    Module Be Standby    ${switch}    ${module}
+    \    Return From Keyword If    ${beStandby}    ${module}
+    log    Can't find standby slot
+    Return From Keyword    FAIL
+
+Module Be Standby
+    [Arguments]    ${switch}    ${slot}
+    enable mode    ${switch}
+    ${outp}=    exec cmd    ${switch}    show slot ${slot}
+    ${ret}=    Is Match From String    ${outp}    (?i)STANDBY\\sMASTER
+    Return From Keyword    ${ret}
+
+Enter Slot Bootrom
+    [Arguments]    ${switch}    ${slotconn}    ${slotid}    ${regexp_testram}=Testing RAM    ${regexp_bootrom}=\\[Boot\\]:    ${timeout}=3 minutes
+    Enable Mode    ${switch}
+    Telnet.Write    reset slot ${slotid}
+    Sleep    10 seconds
+    Telnet.Switch Connection    ${slotconn}
+    Telnet.Set Timeout    ${timeout}
+    Repeat Keyword    2    Telnet.Write    \x02
+    Telnet.Read Until Regexp    ${regexp_bootrom}
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    Enable Mode    ${slotconn}
+
+get mac from bootrom
+    [Arguments]    ${switch}
+    Enter bootrom From Img    ${switch}
+    ${outp}=    Exec cmd    ${switch}    show board
+    ${vlan mac}=    Get Value From String    ${outp}    (?i)Vlan\\s+MAC:\\s+(.*)\\s+
+    ${cpu mac}=    get value from string    ${outp}    (?i)CPU\\s+MAC:\\s+(.*)\\s+
+    Reboot From Bootrom    ${switch}
+    Return From Keyword    ${vlan mac}    ${cpu mac}
+
+get bootrom version from showversion
+    [Arguments]    ${switch}
+    Enable mode    ${switch}
+    ${output}=    exec cmd    ${switch}    show version
+    ${version}=    Get Value From String    ${output}    (?i)BootRom\\s+Version\\s+(.*)\\s+
+    Should Not Be Empty    ${version}
+    Return From Keyword    ${version}
+
+get software version
+    [Arguments]    ${switch}
+    Enable mode    ${switch}
+    ${output}=    exec cmd    ${switch}    show version
+    ${version}=    Get Value From String    ${output}    (?i)SoftWare\\s(?:Package\\s)?Version.*?(\\d\\S*)
+    Should Not Be Empty    ${version}
+    Return From Keyword    ${version}
+
+Check Boot Primary Fail
+    [Arguments]    ${number_boot_fail_regexp}    ${boot_fail_regexp}    ${timeout}=10 minutes
+    [Documentation]    第一、二img都启动失败
+    Telnet.Set Timeout    ${timeout}
+    : FOR    ${index}    IN RANGE    ${number_boot_fail_regexp}
+    \    Telnet.Read Until Regexp    @{boot_fail_regexp}[${index}]
+    Telnet.Read Until Regexp    ${sw_regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+
+Uninit BSP IN IMG MODE FOR BOOT IMG
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    show version
+    ${ret}    Tools.Is Match From String    ${output}    SoftWare Version\\s+${default_img_version}
+    Run Keyword If    ${ret}==False    Reload Switch Without Write    ${s1com}
+
+Uninit BSP IN IMG MODE TEST
+    Delete Files    111.cfg
+    Delete Files    222.cfg
+    Delete Files    333.cfg
+    Exec Cmd List In ConfigMode    ${s1com}    no spanning-tree    no vlan 2-101    no ip dhcp snooping enable    no ip igmp snooping    no access-list 1
+    ...    no interface vlan 101    no username admin    no ssh-server enable    watchdog disable    interface vlan 1    ip address ${host_ip} 255.255.255.0
+    ...    no shutdown    exit    interface ${s1p1}    no shutdown
+    Write Config    ${s1com}
+    Check Ping    ${ftpserverip}
+
+Uninit BSP IN IMG MODE.2.3.3
+    [Arguments]    ${alias}=${s1com}
+    Enable Mode    ${alias}
+    Telnet.Write    ${EMPTY}
+    ${output}    Telnet.Read Until Prompt
+    ${ret}    Tools.Is Match From String    ${output}    \\[Boot\\]:
+    Run Keyword If    ${ret}    Reboot From Bootrom    ${alias}
+
+Uninit BSP IN IMG MODE FOR WATCHDOG
+    Telnet.Write    ${EMPTY}
+    ${output}    Telnet.Read
+    ${ret}    Tools.Is Match From String    ${output}    /\\s+#
+    Run Keyword If    ${ret}    Telnet.Write    exit
+    ${output}    Telnet.Read
+    ${ret}    Tools.Is Match From String    ${output}    /\\s+#
+    Run Keyword If    ${ret}    Reboot From Bootrom    ${s1com}
+
+Uninit BSP IN IMG MODE.2.4.4
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1com}    no spanning-tree
+    Write Config    ${s1com}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Telnet.Switch Connection    ${s4com}
+    Telnet.Write Bare    \r
+    Telnet.Write Bare    \r
+    telnet.write    apc
+    telnet.write    apc-c
+    telnet.write    exit
+    Telnet.Read
+
+Uninit BSP IN IMG MODE.2.2.5.4
+    Delete Files    ${BOOT_IMG_BACKUP_NAME}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    show version
+    ${ret}    Tools.Is Match From String    ${output}    SoftWare Version\\s+${default_img_version}
+    Run Keyword If    ${ret}==False    Reload Switch Without Write    ${s1com}
+    Telnet.Write    ${EMPTY}    #有可能存在bug，导致license丢失，导致连跑失败，因此，需要重新设置license
+    ${output}    Telnet.Read Until Regexp    .*\\(license\\)>    ${sw_prompt}
+    ${ret}    Tools.Is Match From String    ${output}    .*\\(license\\)>
+    Run Keyword If    ${ret}    Input License In Img
+    Telnet.Switch Connection    ${s4com}
+    Telnet.Write Bare    \r
+    Telnet.Write Bare    \r
+    telnet.write    apc
+    telnet.write    apc-c
+    telnet.write    exit
+    Telnet.Read
+
+Uninit BSP IN IMG MODE FOR REBOOT
+    Enable Mode    ${s1com}
+    Telnet.Write    ${EMPTY}
+    Telnet.Read
+    Telnet.Write    ${EMPTY}
+    ${output}    Telnet.Read Until Prompt
+    ${ret}    Tools.Is Match From String    ${output}    \\[Boot\\]:
+    Run Keyword If    ${ret}    Reboot From Bootrom    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    watchdog disable    interface vlan 1    ip address ${HOST_IP} 255.255.255.0
+    Write Config    ${s1com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
+
+Uninit BSP IN IMG MODE.2.2.12.3
+    Enable Mode    ${s1com}
+    Telnet.Write    ${EMPTY}
+    ${output}    Telnet.Read Until Regexp    .*sdiag.*    ${sw_prompt}
+    ${ret}    Tools.Is Match From String    ${output}    .*sdiag.*
+    Run Keyword If    ${ret}    Telnet.Write    exit
+
+Uninit BSP IN IMG MODE.2.2.9.17
+    Enable Mode    ${s1com}
+    telnet.write    ${EMPTY}
+    ${output}    Telnet.Read Until Regexp    .*\\(license\\)>    ${sw_prompt}
+    ${ret}    Tools.Is Match From String    ${output}    .*\\(license\\)>
+    Run Keyword If    ${ret}    Input License In Img
+    ${ret}    Tools.Is Match From String    ${output}    \\[Boot\\]:
+    Run Keyword If    ${ret}    Reboot From Bootrom
+    ${ret}    Tools.Is Match From String    ${output}    None
+    Run Keyword If    ${ret}    Enter Shell And Reboot
+    Run Keyword If    ${ret}    Set Switch BoardInfo

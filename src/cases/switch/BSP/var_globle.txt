@@ -1,0 +1,34 @@
+*** Variables ***
+${BOOT_IMG_DEFAULT_NAME}    nos.img    # 默认img名称
+${BOOT_CONFIG_DEFAULT_NAME}    startup.cfg    # 默认startup文件名
+${BOOT_IMG_BACKUP_NAME}    nos1.img    # 备份img名称
+${FILE_IMG_SIZE}    11.0M    # 默认img文件大小
+${TELNET_SUCCESS_REGEXP}    Telnet: User admin login successfully from ${s2_ip}    # telnet成功提示信息
+${BOOT_PRIMARY_IMG}    primary img
+${BOOT_BACKUP_IMG}    backup img
+${BOOT_CURRENT_IMG}    Current booted img
+${USERNAME_FTP}    admin    # FTP服务器用户名
+${PASSWORD_FTP}    admin    # FTP服务器密码
+${BIG_SIZE_CONFIG_NAME}    big_size_config_name.cfg    # 大config文件
+${SIZE_OF_BIG_SIZE_CONFIG_FILE}    943.4K    # 大config文件的大小
+${UPDATA_SUCCESS_REGEXP}    Write ok    #copy成功
+${FLASH_TOLERANCE}    0.10    # flash计算误差
+${RELOAD_SWITCH_LOG_REGEXP}    .*\\<critical\\>.*DEFAULT\\[zIMI\\]:System warm restart    # 重启交换机，log记录信息
+${KILL_TASKLIST_LOG_REGEXP}    .*\\<critical\\>.*MODULE_WATCHDOG\\[tWatchDog\\]:Data Access Exception:.*name.*    # kill任务进程，log记录信息
+${MEMORY_TOLERANCE}    0.01    # 内存计算误差
+${BOOT_STARTUP_CONFIG}    startup-config    # 启动startup-config匹配字符串
+${BEGIN_TO_RECEIVE}    Begin to receive file, please wait    #tftp升级开始提示信息
+${DEFAULT_DIRECTORY}    flash:/    # 默认工作路径为flash:/
+${DISK_FULL_REGEXP}    Write file.*error(Error:Disk is full.)!    # flash空间不足，提示错误信息
+${IMG_UPTIME}     120    # img启动时间
+${BOOTROM_UPTIME}    40    # bootrom启动时间
+${UPDATA_BOOTROM_TIME}    60    # 升级bootrom时间
+${SUPPORT_BAUDRATE}    supported baudrate:(9600,14400,19200,38400,57600,115200)    # 支持的波特率
+${TASK_NAME}      tL2Input    # 需要kill的任务名称
+${backup_img_version}    7.0.3.5\\(R0241.0015\\)    # backup版本号
+${default_img_version}    7.0.3.5\\(R0241.0017\\)    # 默认img版本号
+${backup_img_file}    7.0.3.5\(R0241.0015\)_nos.img    # 备份img文件
+${bootrom_version}    7.2.10    # bootrom版本号
+${cpld_version}    N/A    # 不支持显示为N/A
+${bootrom_file}    7.2.10_boot.rom
+${img_file}       7.0.3.5\(R0241.0017\)_nos.img

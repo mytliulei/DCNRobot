@@ -1,0 +1,239 @@
+*** Settings ***
+Documentation     bootrom模式下的bsp测试用例
+Suite Setup       Init BSP IN BOOTROM MODE Suite    ${s1_host}    ${s1_port}    ${s1com}    ${s2_host}    ${s2_port}    ${s2com}
+...               # 打开console
+Suite Teardown    Uninit BSP IN BOOTROM MODE Suite    # 关闭console
+Test Setup
+Test Teardown
+Force Tags        BOOTROM
+Test Timeout
+Resource          vars.txt
+Resource          proc.txt
+Resource          resource_bsp.txt
+
+*** Variables ***
+
+*** Test Cases ***
+multi port ping.2.2.1.1
+    [Documentation]    端口应能够连通PC，选用每个芯片的第一个，最后一个和中间的一个端口进行测试
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1    多个端口分别ping pc
+    Log Step Start    ${s1com}
+    : FOR    ${port}    IN    ${s2p1}    ${s2p4}    ${s2p5}
+    \    exec cmd list    ${s2com}    config    interface ${port}    no shutdown
+    \    sleep    30
+    \    simple ping
+    \    exec cmd list    ${s2com}    config    interface ${port}    shutdown
+    \    sleep    1
+    Exec Cmd List In ConfigMode    ${s2com}    interface ${s2p1}    no shutdown
+    sleep    30
+    Log Step End    ${s1com}
+    [Teardown]    uninit test
+
+multi shutnoshut ping.2.2.1.2
+    [Documentation]    反复拔插网线无异常，连通情况下可以ping通
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    : FOR    ${count}    IN RANGE    10
+    \    exec cmd list    ${s2com}    config    interface ${s2p1}    no shutdown
+    \    sleep    1
+    \    exec cmd list    ${s2com}    config    interface ${s2p1}    shutdown
+    \    sleep    1
+    exec cmd list    ${s2com}    config    interface ${s2p1}    no shutdown
+    sleep    30
+    simple ping
+    Log Step End    ${s1com}
+    [Teardown]    uninit test
+
+console is ok.2.2.2.1
+    [Documentation]    加电后Console，看输出和输入字符是否正确
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${outp}=    exec cmd    ${s1com}    dir
+    should contain    ${outp}    ${BOOT_IMG_DEFAULT_NAME}
+    Log Step End    ${s1com}
+
+baudrate cli.2.2.2.3
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1    输入$等错误字符，提示正确的设置参数
+    Log Step Start    ${s1com}
+    : FOR    ${command_list}    IN    a    A    $    *
+    ...    ^$a
+    \    ${outp}=    exec cmd    ${s1com}    baudrate ${command_list}
+    \    should contain    ${outp}    Invalid baudrate!
+    \    should contain    ${outp}    ${SUPPORT_BAUDRATE}
+    \    ${outp}=    exec cmd    ${s1com}    baudrate
+    \    should contain    ${outp}    Current baudrate is 9600bps
+    Log Step End    ${s1com}
+
+img uptime.2.2.6.1
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    reboot from bootrom    ${s1com}
+    Enable Mode    ${s1com}
+    Telnet.Set Timeout    10 minutes
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Read Until Regexp    System is booting, please wait...
+    ${t1}=    get time    epoch
+    Telnet.Read Until Prompt
+    ${t2}=    get time    epoch
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    ${t1}=    Convert To Integer    ${t1}
+    ${t2}=    Convert To Integer    ${t2}
+    ${uptime}=    evaluate    ${t2}-${t1}
+    log    The img uptime is ${uptime}s!
+    Run Keyword If    ${uptime}>${IMG_UPTIME}    Fail    The img uptime is too long!
+    Log Step End    ${s1com}
+    [Teardown]    Enter BootRom    ${s1com}
+
+bootrom uptime.2.2.6.2
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    reboot from bootrom    ${s1com}
+    Enable Mode    ${s1com}
+    Telnet.Set Timeout    3 minutes
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Read Until Regexp    System is booting, please wait...
+    ${t1}=    get time    epoch
+    Telnet.Read Until Regexp    Testing RAM...
+    Telnet.Write    \x02
+    Telnet.Debug Read Until Regexp    \\[Boot\\]:
+    ${t2}=    get time    epoch
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    ${t1}=    Convert To Integer    ${t1}
+    ${t2}=    Convert To Integer    ${t2}
+    ${uptime}=    evaluate    ${t2}-${t1}
+    log    The bootrom uptime is ${uptime}s!
+    Run Keyword If    ${uptime}>${BOOTROM_UPTIME}    Fail    The bootrom uptime is too long!
+    Log Step End    ${s1com}
+    [Teardown]    Enter BootRom    ${s1com}
+
+load and wirte bootrom time.2.2.6.4
+    [Documentation]    记录bootrom下写bootrom的时间
+    [Tags]    update bootrom
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    exec cmd list    ${s1com}    setconfig    ${host_ip}    ${ftpserverip}
+    simple ping
+    Telnet.set timeout    3mins
+    ${t1}=    get time    epoch
+    Telnet.Switch Connection    ${s1com}
+    Telnet.Write    load ${bootrom_file}
+    Telnet.Read Until Regexp    done
+    Telnet.Read
+    ${t2}=    get time    epoch
+    ${t1}=    Convert To Integer    ${t1}
+    ${t2}=    Convert To Integer    ${t2}
+    ${loadtime}=    evaluate    ${t2}-${t1}
+    LOG    load bootrom time is ${loadtime}s.
+    ${t1}=    get time    epoch
+    Telnet.Write    ${EMPTY}
+    Telnet.Read
+    Telnet.Write    write boot.rom
+    ${output}=    Telnet.Read Until Regexp    \\(Y/N\\)    [-a-zA-Z0-9_. ]{1,30}(\\(.*\\))?#    ${sw_prompt}
+    ${writeFlag}=    Tools.Is Match From String    ${output}    \\(Y/N\\)
+    Run Keyword If    ${writeFlag}    Telnet.Write    Y
+    ${outp}=    Telnet.Read Until Regexp    Write flash:/boot.rom OK.
+    ${t2}=    get time    epoch
+    Telnet.set timeout    ${sw_timeout}
+    ${t1}=    Convert To Integer    ${t1}
+    ${t2}=    Convert To Integer    ${t2}
+    ${writetime}=    evaluate    ${t2}-${t1}
+    log    write bootrom time is ${writetime}s.
+    telnet.read
+    ${updata_bootrom_time}    evaluate    ${loadtime}+${writetime}
+    Log    The bootrom updata time is ${updata_bootrom_time}s!
+    Run Keyword If    ${updata_bootrom_time}>${UPDATA_BOOTROM_TIME}    Fail    The bootrom updata time is too long!
+    Log Step End    ${s1com}
+    [Teardown]    Telnet.Set Timeout    ${sw_timeout}
+
+check bootrom version.2.4.2
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    Telnet.Switch Connection    ${s1com}
+    Telnet.Write    reboot
+    Telnet.Set Timeout    3 minutes
+    ${outp}=    Telnet.Read Until Regexp    Testing RAM
+    Telnet.Write    \x02
+    Telnet.Read Until Regexp    \\[Boot\\]
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    ${version}=    get value from string    ${outp}    (Bootrom\\sversion:\\s.*)
+    Should Contain    ${version}    ${bootrom_version}
+    Log Step End    ${s1com}
+
+*** Keywords ***
+uninit test
+    [Arguments]    ${s1_alias}=${s1com}    ${s2_alias}= ${s2com}
+    exec cmd list    ${s2_alias}    config    interface ${s2p1}    no shutdown    interface ${s2p4}    shutdown
+    ...    interface ${s2p5}    shutdown
+
+ping should be ok
+    [Arguments]    ${switch}    ${serverip}
+    exec cmd    ${switch}    ping ${serverip}
+    telnet.write    ping ${serverip}
+    Telnet.Read Until Regexp    host ${serverip} is alive
+
+simple ping
+    exec cmd list    ${s2com}    config    interface vlan 1    ip address ${s2_ip} 255.255.255.0
+    exec cmd list    ${s1com}    setconfig    ${host_ip}    ${ftpserverip}
+    ping should be ok    ${s1com}    ${ftpserverip}
+    exec cmd list    ${s2com}    config    no interface vlan 1
+
+enter configrom from bootrom
+    [Arguments]    ${alias}    ${regexp_testram}=Testing RAM    ${regexp_bootrom}=\\[Boot\\]    ${timeout}=3 minutes
+    Telnet.Switch Connection    ${alias}
+    Telnet.Write    reboot
+    Telnet.Set Timeout    ${timeout}
+    ${output}=    Telnet.Read Until Regexp    ${regexp_testram}
+    Telnet.Write    \x09
+    Telnet.Read Until Regexp    ${regexp_bootrom}
+    Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Read
+    Return From Keyword    ${output}
+    [Teardown]
+
+enter bootrom
+    [Arguments]    ${switch}
+    sleep    1 minutes
+    Telnet.Switch Connection    ${switch}
+    Telnet.Write    enable
+    ${outp}=    Telnet.Read Until Prompt
+    ${in img}=    Is Match From String    ${outp}    (?m)^[-a-zA-Z0-9_]{1,30}(\\(.*\\))?([#>])
+    telnet.Read
+    Run Keyword If    ${in img}    enter bootrom from img    ${switch}    ELSE    enter bootrom from bootrom    ${switch}
+
+Uninit BSP IN BOOTROM MODE Suite
+    [Arguments]    ${s1_alias}=${s1com}    ${s2_alias}= ${s2com}
+    reboot from bootrom    ${s1_alias}
+    exec cmd list    ${s2_alias}    config    interface ${s2p1}    no shutdown    interface ${s2p4}    shutdown
+    ...    interface ${s2p5}    shutdown
+    close console    ${s1_alias}
+    close console    ${s2_alias}
+
+Init BSP IN BOOTROM MODE Suite
+    [Arguments]    ${s1_host}    ${s1_port}    ${s1com}    ${s2_host}    ${s2_port}    ${s2com}
+    open console    ${s1_host}    ${s1_port}    ${s1com}
+    open console    ${s2_host}    ${s2_port}    ${s2com}
+    enter bootrom from img    ${s1com}
+    exec cmd list    ${s2com}    config    interface ${s2p1}    no shutdown
+    sleep    1
