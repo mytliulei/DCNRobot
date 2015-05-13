@@ -1614,7 +1614,7 @@ class DsendService(rpyc.Service):
             countList = getCountList(incrMaxNum,count)
         for incrCount in range(0,int(incrMaxNum)):
             streamValue = eval(streamValueTemp)
-            #streamValue = streamValue/load
+            streamValue = streamValue/load
             stream.append(streamValue)
             if count > 0:
                 xf_count = countList[incrCount]
@@ -1646,6 +1646,7 @@ class DsendService(rpyc.Service):
                 ipktstr = ipktstr[:36]+ipktstr[48:]
             cpktstr = ''.join(ipktstr.split())
             cpkthexlist = [chr(int(cpktstr[i:i+2],16)) for i in range(0,len(cpktstr)-1,2)]
+            #cpkthex = ''.join(cpkthexlist) + load
             cpkthex = ''.join(cpkthexlist) + load
             try:
                 cpkt = Ether(cpkthex)
