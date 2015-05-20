@@ -551,7 +551,7 @@ Set Stream Control
     ...    2: advance
     ...    3: return to id ,default to stream 1
     ...    - numFrames: stream send packet num,enable when streamMode 1,2,3; default 100
-    ...    - ReturnId: enable when streamMode 4 ,default 1
+    ...    - ReturnId: enable when streamMode 3 ,default 1
     ...
     ...    return:
     ...    - 0: ok
