@@ -96,17 +96,18 @@ Library           ../lib/XiaoFish.py
 
 *** Keywords ***
 Connect To XFSend
-    [Arguments]    ${address}    ${alias}
+    [Arguments]    ${address}    ${port}    ${alias}
     [Documentation]    connect to xfsend server and register it by alias name;
     ...
     ...    Note: please use this keyword in initial setup
     ...
     ...    args:
     ...    - address: the ip address of xfdsend server
+    ...    - port : the port of xfdsend server, normally 11918
     ...
     ...    return:
     ...    - 0
-    Import Library    Remote    ${address}    WITH NAME    ${alias}
+    Import Library    Remote    ${address}:${port}    WITH NAME    ${alias}
     ${rc}=    Run Keyword    ${alias}.Init Xfsend
     [Return]    ${rc}
 
@@ -775,7 +776,6 @@ Build Icmpv6 Echo Request
     ...
     ...    return:
     ...    packet field length
-    ...
     ${packetlen}=    XiaoFish.Build Icmpv6 Echo Request    ${code}    ${chksum}    ${identifier}    ${seq}
     [Return]    ${packetlen}
 
@@ -791,6 +791,5 @@ Build Icmpv6 Echo Reply
     ...
     ...    return:
     ...    packet field length
-    ...
     ${packetlen}=    XiaoFish.Build Icmpv6 Echo Reply    ${code}    ${chksum}    ${identifier}    ${seq}
     [Return]    ${packetlen}
