@@ -1647,7 +1647,7 @@ class DsendService(rpyc.Service):
             cpktstr = ''.join(ipktstr.split())
             cpkthexlist = [chr(int(cpktstr[i:i+2],16)) for i in range(0,len(cpktstr)-1,2)]
             #cpkthex = ''.join(cpkthexlist) + load
-            cpkthex = ''.join(cpkthexlist) + load
+            cpkthex = ''.join(cpkthexlist)
             try:
                 cpkt = Ether(cpkthex)
             except Exception,ex:
