@@ -20,7 +20,7 @@ class DcnListener:
         self.args = self.tl.__args__
         self.logfile_path = os.path.join(self.args['robot_path'],'log',self.args['job_id'])
         self.createLogfile(self.logfile_path)
-        self.wlog(self.timenow()+' :Listener Init finished! \n')
+        self.wlog('\n\n'+ self.timenow() + ' :Listener Init finished! \n')
         self.wlog(self.timenow()+' :The args is: \n')
         temp = ''
         for item in self.args:
@@ -44,12 +44,12 @@ class DcnListener:
         
     #Called @ 测试例结束
     def end_test(self, name, attrs):
-        sefl.reportTestResult(name, attrs)
+        self.reportTestResult(name, attrs)
         
     #Called @ 测试集(测试套)开始
     def start_suite(self, name, attrs):
-        self.args['testSuite'] = name
-        self.wlog('%s :Update TestSuite "%s" \n' % (self.timenow(),self.args['testSuite']) )
+        #self.args['testSuite'] = attrs['longname'] #testlink的testSuite是测试套最外层，与robot的当前suite不同，因此不需要更新args中的testSuite内容
+        pass
     
     #Called @ 测试集(测试套)结束
     def end_suite(self,name,attrs):
@@ -69,16 +69,19 @@ class DcnListener:
         return testlink.TestLinkHelper().connect(testlink.TestlinkAPIClient)
         
     def createLogfile(self,path):
+        self.logfile = os.path.join(path, LOG_FILE)
         if not os.path.exists(path):
             os.makedirs(path)
-        if not os.path.isfile(os.path.join(path,LOG_FILE))
+        if not os.path.isfile(self.logfile):
             self.wlog(self.timenow() + ' :Create DcnListener Log File Successful! \n')
     
     def timenow(self):
         return time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))            
     
-    def wlog(self,text,file=os.path.join(self.logfile_path,LOG_FILE)):
-        logfile = open(file,'a+')
+    def wlog(self,text):
+        if isinstance(text,unicode):
+            text = text.encode('utf8')
+        logfile = open(self.logfile,'a+')
         logfile.write(text)
         logfile.close()
         
@@ -98,23 +101,28 @@ class DcnListener:
                 if type(buildid) == list:
                     if buildid[0].has_key('id'):
                         tl.updateJobBuild(args['job_id'],buildid[0].get('id'))
+                self.wlog('%s :Update job_testBuild to "%s" and buildid is "%s" \n' % (self.timenow(),testBuild,buildid[0]['id']))
+                args['notes'] = ''#清除备注信息
             #如果版本存在，检查版本是否连接到测试计划
-            elif tl.isBuildLinkedToTestplan(args['productLine'],args['testPlan'],args['testBuild']) != 0:
-                tl.createBuild(args['productLine'],args['testPlan'],args['testBuild'],args['notes'].split('||||')[0])
-            self.wlog('%s :Update job_testBuild to "%s" and buildid is "%s" \n' % (self.timenow(),testBuild,buildid[0]['id']))
+            # elif tl.isBuildLinkedToTestplan(args['productLine'],args['testPlan'],args['testBuild']) != 0:
+                # tl.updateJobBuild(args['job_id'],buildid[0].get('id'))
         else:
             self.wlog('%s :Get Version fail from string "%s" \n' % (self.timenow(),version))
         
+        
     def reportTestResult(self,name,attrs):
         # 回传测试例执行结果到testlink，result取值范围 p|f|b|w|x|s|c （对应pass、fail、block、warn、N/A、skip、accept）,robot目前仅支持PASS/FAIL
-        self.args['testCase'] = name
+        self.args['testCase'] = name.encode('utf-8')
         self.args['result'] = 'p' if attrs['status'] == 'PASS' else 'f'
+        self.args['notes'] = attrs['message'].encode('utf-8')
         myreport = self.tl.reportTestResultByKey(**self.args)
-        self.wlog('%s :Report testCase "%s" results and server rc is "%s" \n' % (self.timenow(),name,str(myreport)))
+        self.wlog('%s :Report testCase "%s" results and server rc is :\n "%s" \n' % (self.timenow(),name,str(myreport)))
+        self.args['result'] = ''
+        self.args['notes'] = ''
     
     def updateCaseInfo(self,name,attrs):
         #测试例开始时，更新testCase Name并清空result,通知testlink更新当前运行的testCase信息
-        self.args['testCase'] = name
+        self.args['testCase'] = name.encode('utf-8')
         self.args['result'] = ''
         self.tl.updateJobInfo(self.args['job_id'],1,self.args['testCase'])
         self.wlog('%s :Update TestCase "%s" \n' % (self.timenow(),self.args['testCase']) )
@@ -130,15 +138,16 @@ class DcnListener:
         ftp = FTP()
         ip = socket.gethostbyname(socket.gethostname()) or None
         if FTP_SERVER_WUHAN_PRE in ip:
-                ftp = FTP_SERVER_WUHAN
+                fip = FTP_SERVER_WUHAN
         elif FTP_SERVER_BEIJING_PRE in ip:
-                ftp = FTP_SERVER_BEIJING
+                fip = FTP_SERVER_BEIJING
         try:
              ftp.connect(fip, '21')
         except Exception, e:
             self.wlog('%s :Connect to ftp server "%s" error! error code: %s \n' % (self.timenow(), fip, str(e)) )
             return False
         ftp.login(FTP_USER, FTP_PASSWORD)
+        self.wlog('%s :Login ftp server "%s" \n' % (self.timenow(),str(fip)))
         temp = ftp.nlst()
         # 判断job_id对应的文件夹是否已经存在，不存在则创建文件夹
         if self.args['job_id'] not in temp:
@@ -149,6 +158,7 @@ class DcnListener:
         log_file_list = self.getFilesFromDir(self.logfile_path,extension_list)
         # log文件通过ftp上传到testlink服务器
         self.wlog('%s :Start upload files to server! \n' % self.timenow())
+        self.wlog('%s :File list is :\n %s \n' % (self.timenow(),str(log_file_list)))
         for file in log_file_list:
             file_handle = open(file,'rb')
             ftp.storbinary('STOR %s' % os.path.basename(file),file_handle,1024)
@@ -156,7 +166,7 @@ class DcnListener:
         ftp.quit()
     
     
-    def getFilesFromDir(dir,extension_list=[]):
+    def getFilesFromDir(self,dir,extension_list=[]):
         filelist = []
         for path,subdirs,files in os.walk(dir):
             for f in files:
