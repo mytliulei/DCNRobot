@@ -1,590 +1,16 @@
-*** Settings ***
+﻿*** Settings ***
 Documentation     img模式下bsp测试例
 Suite Setup       init case    # 打开console
 Suite Teardown    unit case    # 关闭console
 Force Tags        IMG
 Resource          vars.txt
+Library           DateTime
 Resource          proc.txt
 Resource          var_globle.txt
 Resource          resource_bsp.txt
-Library           DateTime
 
 *** Test Cases ***
-clock set.2.2.7.2
-    [Documentation]    测试 clock set功能
-    ...    获取当前时间，year+3，hour+10，验证有效
-    ...    获取当前时间，重新设置回当前时间，验证有效
-    [Tags]    ready
-    [Setup]    Init STEP
-    Tools.Comment    Step1
-    Log Step Start    ${s1com}
-    ${yyyy}    ${mm}    ${dd}    ${hh}=    Get Time    year,month,day,hour    NOW + 10h
-    ${yyyy}    Convert To Integer    ${yyyy}
-    ${yyyy}    evaluate    ${yyyy}+3
-    ${yyyy}    Convert To String    ${yyyy}
-    set clock    ${s1com}    ${hh}:01:00    ${yyyy}.${mm}.${dd}
-    Log Step End    ${s1com}
-    [Teardown]    set clock to now    ${s1com}
-
-reload is ok.2.2.9.1
-    [Documentation]    输入reload 命令交换机能够整机重启
-    [Tags]    ready
-    [Setup]    Init STEP
-    Tools.Comment    Step1
-    Log Step Start    ${s1com}
-    Switch.Enable Mode    ${s1com}
-    Telnet.Write    reload
-    Telnet.Read Until Regexp    \\[Y/N\\]
-    Telnet.Write    Y
-    Telnet.Set Timeout    10 minutes
-    Telnet.Read Until Regexp    The system is going down NOW!
-    Telnet.Read Until Regexp    System is booting, please wait...
-    Telnet.Read Until Regexp    .*?Mac\\s+Addr\\s+
-    Telnet.Set Timeout    ${sw_timeout}
-    Sleep    60
-    Telnet.Read
-    Switch.Enable Mode    ${s1com}
-    Switch.Set Exec TimeOut    ${s1com}
-
-memory usage.2.2.9.4
-    [Documentation]    step 1 检查memory usage = 1-free/total
-    ...
-    ...    step 2 检查10<usage< 98
-    ...    step 3:
-    ...    show memory usage查看内存利用率
-    ...    由于各设备不同状态下内存利用率不确定，这里只检查内存利用率在30%-95%之间
-    ...    重复10次，取平均值，最大，最小值来判定。
-    [Tags]    ready
-    [Setup]    Init STEP
-    Tools.Comment    Step1
-    Log Step Start    ${s1com}
-    ${outp}=    exec cmd    ${s1com}    show memory usage
-    ${total}=    Tools.Get Value From String    ${outp}    .*?total\\s+([0-9]*)\\s+MB
-    ${free}=    Get Value From String    ${outp}    free\\s+([0-9]*)\\s+bytes
-    ${usage}=    Get Value From String    ${outp}    usage\\s+is\\s+([0-9]*\\.[0-9]*)%
-    ${total}=    Convert To Number    ${total}
-    ${free}=    Convert To Number    ${free}
-    ${usage}=    Convert To Number    ${usage}
-    ${usage1}=    Evaluate    (1-${free}/${total}/1024/1024)*100
-    ${diff}=    Evaluate    abs(${usage1}-${usage})
-    ${total}    Convert To Integer    ${total}
-    Should Be True    ${diff}<0.01
-    Should Be True    ${total}==${MEMORY_SIZE}
-    ${usage sum}=    Set Variable    ${0}
-    ${usage max}=    Set Variable    ${0}
-    ${usage min}=    Set Variable    ${100}
-    : FOR    ${count}    IN RANGE    10
-    \    ${outp}=    exec cmd    ${s1com}    show memory usage
-    \    ${usage}=    Get Value From String    ${outp}    usage\\sis\\s([0-9]*\\.[0-9]*)%
-    \    ${usage}=    Convert To Number    ${usage}
-    \    ${usage sum}=    Evaluate    ${usage sum}+${usage}
-    \    ${usage max}=    Set Variable If    ${usage}>${usage max}    ${usage}    ${usage max}
-    \    ${usage min}=    Set Variable If    ${usage}<${usage min}    ${usage}    ${usage min}
-    ${usage avg}=    Evaluate    ${usage sum}/10
-    should be true    (${usage avg}>10) & (${usage avg}<90)
-    should be true    (${usage max}>10) & (${usage max}<95)
-    should be true    (${usage min}>10) & (${usage min}<90)
-    Log Step End    ${s1com}
-
-show temperature.2.2.9.7
-    [Documentation]    盒式交换机show temperature能够正确显示温度
-    [Tags]    ready
-    [Setup]    Init STEP
-    Tools.Comment    Step1
-    Log Step Start    ${s1com}
-    ${be chassis}=    should be chassis    ${s1com}
-    Run Keyword If    ${be chassis}    get temperature from chassis    ${s1com}    ELSE    get temperature from standalone    ${s1com}
-    Log Step End    ${s1com}
-
-when an is empty.2.2.9.17
-    [Documentation]    将board清空，重新设置，修改序列号，重新启动，在img下查看序列号为修改后的新的值（show version查看）
-    [Tags]    ready
-    [Setup]    Init STEP
-    Tools.Comment    Step1    show board获取参数值
-    Log Step Start    ${s1com}
-    Enter bootrom From Img    ${s1com}
-    ${outp}=    exec cmd    ${s1com}    show board
-    ${type}=    get value from string    ${outp}    (?i)Type\\s+is\\s+(.*)\\s+
-    ${vlan mac}=    get value from string    ${outp}    (?i)Vlan\\s+MAC:\\s+(.*)\\s+
-    ${cpu mac}=    get value from string    ${outp}    (?i)CPU\\s+MAC:\\s+(.*)\\s+
-    ${sn}=    get value from string    ${outp}    S/N:\\s+(.*)\\s+
-    ${pn}=    get value from string    ${outp}    P/N:\\s+(.*)\\s+
-    ${hardversion}=    get value from string    ${outp}    H/W:\\s+(.*)\\s+
-    ${manuf}=    get value from string    ${outp}    Manufacture Date:(.*)\\s+
-    Exec Cmd Until Regexp    ${s1com}    clear boardinfo    \\(Y/N\\)\\?\\[N\\]
-    exec cmd    ${s1com}    Y
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    resume vlan & cpu mac
-    Set MAC    ${cpu mac}    ${vlan mac}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    step3    resume other vars
-    Log Step Start    ${s1com}
-    set one boardinfo    ${s1com}    setsn    (?i)Input.*S/N:\\s+    ${sn}
-    set one boardinfo    ${s1com}    setpn    (?i)Input.*P/N:\\s+    ${pn}
-    set one boardinfo    ${s1com}    setver    (?i)Input.*H/W:\\s+    ${hardversion}
-    set one boardinfo    ${s1com}    setdate    (?i)Input.*date:\\s+    ${manuf}
-    set one boardinfo    ${s1com}    settype sw    (?i)Input.*type:\\s+    ${type}
-    ${outp}=    exec cmd    ${s1com}    show board
-    Reboot From Bootrom    ${s1com}
-    ${sn1}    ${hardver1}=    get board info from showversion    ${s1com}
-    should be true    ("${sn1}"=="${sn}")|("${sn1}"=="${pn}")    ${sn}
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE.2.2.9.17
-
-check bootrom version in showversion.2.2.9.14
-    [Tags]    ready
-    [Setup]    Init STEP
-    ${version}=    get bootrom version from showversion    ${s1com}
-    ${formatisok}=    Is Match From String    ${version}    ${bootrom_version}
-    should be true    ${formatisok}
-    Log Step End    ${s1com}
-
-check img version.2.2.9.15
-    [Tags]    new
-    [Setup]    Init STEP
-    Tools.Comment    Step1
-    Log Step Start    ${s1com}
-    ${version}=    get software version    ${s1com}
-    ${formatisok}=    Is Match From String    ${version}    \\d+\\.\\d+\\.\\d+\\.\\d+
-    should be true    ${formatisok}
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.2.9.16
-    [Documentation]    在img下加入一些基本配置，如vlan，三层接口，snmp，username等,执行连续write的操作，要连续操作30次以上，write执行成功，重启交换机后能够正确加载配置文件。
-    [Setup]    Init STEP
-    Tools.Comment    Step1    在img下配置vlan、三层接口等
-    Log Step Start    ${s1com}
-    ${command_line_list}    Create List    vlan 1-101    spanning-tree    ip dhcp snooping enable    ip igmp snooping    access-list 1 deny any-source
-    ...    username admin privilege 15 password 0 admin    interface Vlan101    ip address 200.1.1.1 255.255.255.0
-    Exec Cmd List In ConfigMode    ${s1com}    @{command_line_list}
-    Check Running-config    ${command_line_list}    8    show running-config
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    连续write 40次,show startup.cfg存在上述配置
-    Log Step Start    ${s1com}
-    : FOR    ${index}    IN RANGE    40
-    \    Write Config    ${s1com}
-    Check Running-config    ${command_line_list}    8    show startup-config startup.cfg
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step3    重启，成功加载startup.cfg配置文件，存在上述配置
-    Log Step Start    ${s1com}
-    Reload Switch    ${s1com}
-    Check Running-config    ${command_line_list}    8    show running-config
-    [Teardown]    Uninit BSP IN IMG MODE TEST
-
-BSP IN IMG MODE.2.2.10.1
-    [Documentation]    在img下执行show flash和dir可以看到存在img和startup.cfg文件
-    [Setup]    Init STEP
-    Tools.Comment    Step1    在img下show flash存在img和startup.cfg文件
-    Log Step Start    ${s1com}
-    ${set_result}    Exec Cmd    ${s1com}    show flash
-    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
-    Should Contain    ${set_result}    ${BOOT_IMG_BACKUP_NAME}
-    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    在img下dir存在img和startup.cfg文件
-    Log Step Start    ${s1com}
-    ${set_result}    Exec Cmd    ${s1com}    dir
-    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
-    Should Contain    ${set_result}    ${BOOT_IMG_BACKUP_NAME}
-    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.2.10.2
-    [Documentation]    show flash能够正确显示flash剩余空间和已使用空间，两者之和等于flash的大小
-    [Setup]    Init STEP
-    Tools.Comment    Step1    在img下show flash已使用空间和剩余空间应该等于flash总大小
-    Log Step Start    ${s1com}
-    Enable Mode    ${s1com}
-    ${set_result}    Exec Cmd    ${s1com}    show flash
-    ${total_size}=    Get Value From String    ${set_result}    Size:(.*?)M
-    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
-    ${avaliable_size}=    Get Value From String    ${set_result}    Avaliable:(.*?)[MK]
-    ${used_and_avaliable_size}    Evaluate    ${used_size}+${avaliable_size}
-    Run Keyword Unless    ${total_size}==${used_and_avaliable_size}    Fail    Flash userd size plus avaliable size isn't total size!
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.2.10.3
-    [Documentation]    telnet控制交换机，在telnet下执行show flash 命令，show flash可以正常显示相关的信息。
-    [Setup]    Init STEP
-    Tools.Comment    Step1    s2分别配置interface vlan 1接口地址，可以ping通
-    Log Step Start    ${s1com}
-    Exec Cmd List In ConfigMode    ${s2com}    interface vlan 1    ip address ${s2_ip} 255.255.255.0
-    Check Ping    ${s2_ip}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    s2上telnet s1
-    Log Step Start    ${s1com}
-    Exec Cmd List In ConfigMode    ${s1com}    username admin privilege 15 password 0 admin
-    Telnet Switch    ${host_ip}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step3    show flash显示正确
-    Log Step Start    ${s1com}
-    ${set_result}    Exec Cmd    ${s1com}    show flash
-    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
-    ${total_size}=    Get Value From String    ${set_result}    Size:(.*?)M
-    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
-    ${avaliable_size}=    Get Value From String    ${set_result}    Avaliable:(.*?)[MK]
-    ${used_and_avaliable_size}    Evaluate    ${used_size}+${avaliable_size}
-    Run Keyword Unless    ${total_size}==${used_and_avaliable_size}    Fail    Flash userd size plus avaliable size isn't total size!
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE TEST
-
-BSP IN IMG MODE.2.2.10.4
-    [Documentation]    在load并write一个大于flash剩余空间的文件时，会有错误提示信息，写入失败，同时对flash中的其它文件没有影响，能够正常启动img，同时能够正常进入bootrom
-    [Setup]    Init STEP
-    Tools.Comment    Step1    tftp升级并write一个img，空间不足，write失败
-    Log Step Start    ${s1com}
-    Check Ping    ${ftpserverip}
-    Telnet.Write    copy tftp://${ftpserverip}/${img_file} nos2.img
-    Telnet.Set Timeout    2 minutes
-    ${output}=    Telnet.Read Until Regexp    ${BEGIN_TO_RECEIVE}
-    Telnet.Set Timeout    20 minutes
-    Should Contain    ${output}    ${BEGIN_TO_RECEIVE}
-    Telnet.Read Until Regexp    Begin to write local file, please wait...
-    Telnet.Read Until Regexp    Error:Disk is full
-    Telnet.Read
-    Telnet.Set Timeout    ${sw_timeout}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    nos.img重启正常
-    Log Step Start    ${s1com}
-    Reload Switch    ${s1com}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step3    nos1.img重启正常
-    Log Step Start    ${s1com}
-    Boot Img    ${BOOT_IMG_BACKUP_NAME}    primary
-    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
-    Reload Switch    ${s1com}
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE FOR BOOT IMG
-
-BSP IN IMG MODE.2.2.10.5
-    [Documentation]    在flash中写入多个不同名字的img，通过boot命令修改启动的img，每个写入的img都能够正常启动
-    [Setup]    Init STEP
-    Tools.Comment    Step1    在img下设置第一启动img和第二启动img
-    Log Step Start    ${s1com}
-    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
-    Boot Img    ${BOOT_IMG_BACKUP_NAME}    primary
-    ${boot_check_regexp}=    Create List    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_DEFAULT_NAME}
-    Check Boot-files img    ${boot_check_regexp}    2
-    Reload Switch Without Write    ${s1com}
-    ${boot_check_regexp}=    Create List    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}
-    Check Boot-files img    ${boot_check_regexp}    2
-    Check Version    ${backup_img_version}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    在img下将第一启动img和第二启动img调换
-    Log Step Start    ${s1com}
-    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
-    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
-    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_BACKUP_NAME}
-    Check Boot-files img    ${boot_check_regexp}    2
-    Reload Switch Without Write    ${s1com}
-    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}
-    Check Boot-files img    ${boot_check_regexp}    2
-    Check Version    ${default_img_version}
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE FOR BOOT IMG
-
-BSP IN IMG MODE.2.2.10.6
-    [Documentation]    Flash容量：用写文件方式将Flash写满，计算所有文件大小的总和，应该接近Flash容量。（只需验证2个img以及3个config文件，不需要将flash写满）
-    [Setup]    Init STEP
-    Tools.Comment    Step1    tftp方式从服务器下载1个大的config文件.copy出另外2个
-    Log Step Start    ${s1com}
-    Check Ping    ${ftpserverip}
-    Updata In Img By tftp    ${ftpserverip}    ${BIG_SIZE_CONFIG_NAME}    111.cfg
-    Copy Config Files    ${s1com}    111.cfg    222.cfg
-    Copy Config Files    ${s1com}    111.cfg    333.cfg
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step3    dir存在上述文件，总的文件大小正确
-    Log Step Start    ${s1com}
-    Enable Mode    ${s1com}
-    ${set_result}    Exec Cmd    ${s1com}    dir
-    ${files_list}    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    111.cfg    222.cfg    222.cfg
-    : FOR    ${index}    IN RANGE    5
-    \    Should Contain    ${set_result}    @{files_list}[${index}]
-    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
-    ${file_img_size}    Get Value From String    ${FILE_IMG_SIZE}    (.*)M
-    ${size_of_big_size_config_file}    Get Value From String    ${SIZE_OF_BIG_SIZE_CONFIG_FILE}    (.*)K
-    ${real_used_size}    Evaluate    (${file_img_size}*2+${size_of_big_size_config_file}*3/1024)
-    ${ret}    Evaluate    ${used_size}*(1-${FLASH_TOLERANCE})<=${real_used_size}<=${used_size}*(1+${FLASH_TOLERANCE})
-    Log    ${used_size}*(1-${FLASH_TOLERANCE})<=${real_used_size}<=${used_size}*(1+${FLASH_TOLERANCE})
-    Run Keyword Unless    ${ret}    Fail    Flash userd size isn't real total size!
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.2.12.1
-    [Documentation]    交换机重启、挂起任务等产生的critical级别的log都记录在nvram中，show logging buffered可以看到这些日志
-    [Setup]    Init STEP
-    Tools.Comment    Step1    交换机重启
-    Log Step Start    ${s1com}
-    Enable Mode    ${s1com}
-    Exec Cmd    ${s1com}    clear logging sram
-    Reload Switch Without Write    ${s1com}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    show logging buffered存在重启的log
-    Log Step Start    ${s1com}
-    Enable Mode    ${s1com}
-    ${output}    Exec Cmd    ${s1com}    show logging buffered level critical | include ${RELOAD_SWITCH_LOG_REGEXP}
-    Sleep    5
-    ${ret}    Tools.Is Match From String    ${output}    ${RELOAD_SWITCH_LOG_REGEXP}
-    Run Keyword If    ${ret}==False    Fail    There isn't critical log for reload!
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step3    show logging buffered存在watchdog的log
-    Log Step Start    ${s1com}
-    Exec Cmd List In ConfigMode    ${s1com}    watchdog enable
-    ${task_id}    ${task_address}    Get Task ID    ${s1com}
-    Kill Tasklist In Watchdog Disable Mode    ${task_id}    ${s1com}
-    Enable Mode    ${s1com}
-    ${output}    Exec Cmd    ${s1com}    show logging buffered level critical | include ${KILL_TASKLIST_LOG_REGEXP}
-    ${ret}    Tools.Is Match From String    ${output}    ${KILL_TASKLIST_LOG_REGEXP}
-    Run Keyword If    ${ret}==False    Fail    There isn't critical log for kill tasklist!
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
-
-BSP IN IMG MODE.2.2.12.2
-    [Documentation]    执行clear logging操作能够清除掉nvram中的所有信息
-    [Setup]    Init STEP
-    Tools.Comment    Step1    通过loopback端口，删除接口地址，开启spanning-tree产生log
-    Log Step Start    ${s1com}
-    Enable Mode    ${s1com}
-    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p1}    shutdown    exit    interface vlan 1    shutdown
-    Exec Cmd List In ConfigMode    ${s1com}    interface vlan 1    no shutdown    exit    interface ${s1p1}    no shutdown
-    ...    exit    spanning-tree
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    show logging buffered至少存在1条以上的log
-    Log Step Start    ${s1com}
-    Sleep    5
-    Enable Mode    ${s1com}
-    ${output}    Exec Cmd    ${s1com}    show logging buffered
-    Sleep    5
-    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
-    Run Keyword If    ${log_number}<1    Fail    There isn't no logs in logging buffer
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step3    clear log，可以清除logging buffered
-    Log Step Start    ${s1com}
-    Enable Mode    ${s1com}
-    Exec Cmd    ${s1com}    clear logging sdram
-    sleep    100 ms
-    ${output}    Exec Cmd    ${s1com}    show logging buffered
-    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
-    Run Keyword If    ${log_number}>=1    Fail    Clear logging buffer fail!
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE TEST
-
-BSP IN IMG MODE.2.2.12.3
-    [Documentation]    在交换机上反复执行添加critical级别的log和clear log的操作，对nvram执行反复的擦除和写入操作，nvram表现正常，nvram能够正确的对信息执行擦除和写入
-    [Tags]    nvram
-    [Setup]    Init STEP
-    Tools.Comment    Step1    通过该write config生成critical log信息，然后clear，反复测试50次
-    Log Step Start    ${s1com}
-    Enable Mode    ${s1com}
-    Exec Cmd    ${s1com}    clear logging sdram
-    : FOR    ${index}    IN RANGE    100
-    \    Telnet.Write    su
-    \    Telnet.Read
-    \    Telnet.Write    tshell debug call _printx 1 2 0 "critical log one"
-    \    Telnet.Read Until Regexp    the func return 0x0
-    \    sleep    50 ms
-    \    Telnet.Write    ${EMPTY}
-    \    Telnet.Read
-    \    Telnet.Write    show logging buffered
-    \    ${output}    Telnet.Read Until Regexp    Current messages in SDRAM.*\\s
-    \    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
-    \    ${log_number}    Convert To Integer    ${log_number}
-    \    Run Keyword If    ${log_number}<1    Fail    There isn't no enough logs in logging buffer
-    \    Exec Cmd List    ${s1com}    exit    clear logging sdram
-    \    sleep    100 ms
-    \    Telnet.Write    show logging buffered
-    \    ${output}    Telnet.Read Until Regexp    Current messages in SDRAM.*\\s
-    \    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
-    \    ${log_number}    Convert To Integer    ${log_number}
-    \    Run Keyword If    ${log_number}>0    Fail    Clear logging buffer fail!
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE.2.2.12.3
-
-check CPLD version.2.2.14.1
-    [Tags]    ready
-    [Setup]    Init STEP
-    Tools.Comment    Step1
-    Log Step Start    ${s1com}
-    Enable mode    ${s1com}
-    ${output}=    exec cmd    ${s1com}    show version
-    ${version}=    Get Value From String    ${output}    (?i)CPLD\\s+Version\\s+(.*)\\s+
-    Should Not Be Empty    ${version}
-    ${formatisok}=    Is Match From String    ${version}    ${cpld_version}
-    should be true    ${formatisok}
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.3.1
-    [Documentation]    启动过程中不做其它的任何操作进行内存自检，自检完成后能够打印内存容量且能够启动img（无法验证是否能够检测出内存问题，这要有这个自检过程即可）
-    [Setup]    Init STEP
-    Tools.Comment    Step1    重启交换机，内存自检，自检完成打印内存容量，并能够启动img
-    Log Step Start    ${s1com}
-    Enable Mode    ${s1com}
-    Telnet.Write    reload
-    Telnet.Read Until Regexp    \\[Y/N\\]
-    Telnet.Write    Y
-    Telnet.Set Timeout    3 minutes
-    Telnet.Read Until Regexp    Testing RAM...
-    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
-    ${ram_b}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
-    ${ram_c}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
-    Telnet.Set Timeout    2 minutes
-    Telnet.Read Until Regexp    ${TEST_RAM_REGEXP}
-    Telnet.Read Until Regexp    ${sw_regexp_reload}
-    Telnet.Set Timeout    ${sw_timeout}
-    Sleep    60
-    Telnet.Read
-    Switch.Enable Mode    ${s1com}
-    Switch.Set Exec TimeOut    ${s1com}
-    Should Not Be Equal    ${ram_a}    ${ram_b}
-    Should Not Be Equal    ${ram_b}    ${ram_c}
-    Should Not Be Equal    ${ram_c}    ${TEST_RAM_REGEXP}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    启动img版本正确
-    Log Step Start    ${s1com}
-    Check Version    ${default_img_version}
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.3.2
-    [Documentation]    在简单内存自检过程中输入“Esc”可以跳过自检过程并启动img，且能够打印出内存容量
-    [Setup]    Init STEP
-    Tools.Comment    Step1    重启交换机，内存自检过程中输入exc，跳出自检过程，打印内存容量，并能够启动img
-    Log Step Start    ${s1com}
-    Telnet.Write    reload
-    Telnet.Read Until Regexp    \\[Y/N\\]
-    Telnet.Write    Y
-    Telnet.Set Timeout    3 minutes
-    Telnet.Read Until Regexp    Testing RAM...
-    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
-    ${ram_b}    Telnet.Write    0x1B
-    Telnet.Read Until Regexp    ${sw_regexp_reload}
-    Telnet.Set Timeout    ${sw_timeout}
-    Sleep    60
-    Telnet.Read
-    Switch.Enable Mode    ${s1com}
-    Switch.Set Exec TimeOut    ${s1com}
-    Should Not Be Equal    ${ram_a}    ${TEST_RAM_REGEXP}
-    Should Contain    ${ram_b}    ${TEST_RAM_REGEXP}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    启动img版本正确
-    Log Step Start    ${s1com}
-    Check Version    ${default_img_version}
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.3.3
-    [Documentation]    在简单内存自检过程中输入“CTRL+B”可以跳过自检过程并启动bootrom，且能够打印出内存容量
-    [Setup]    Init STEP
-    Tools.Comment    Step1    重启交换机，内存自检过程中输入“CTRL+B”可以跳过自检过程并启动bootrom,打印内存容量，并能够启动img
-    Log Step Start    ${s1com}
-    Telnet.Write    reload
-    Telnet.Read Until Regexp    \\[Y/N\\]
-    Telnet.Write    Y
-    Telnet.Set Timeout    3 minutes
-    Telnet.Read Until Regexp    Testing RAM...
-    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
-    ${ram_b}    Telnet.Write    \x02
-    Telnet.Read Until Regexp    \\[Boot\\]
-    Telnet.Set Timeout    20 minutes
-    Reboot From Bootrom    ${s1com}
-    Telnet.Set Timeout    ${sw_timeout}
-    Should Not Be Equal    ${ram_a}    ${TEST_RAM_REGEXP}
-    #Should Contain    ${ram_b}    ${TEST_RAM_REGEXP}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    启动img版本正确
-    Log Step Start    ${s1com}
-    Check Version    ${default_img_version}
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE.2.3.3
-
-BSP IN IMG MODE.2.3.5
-    [Documentation]    出厂配置启动交换机，启动后剩余可用内存>=(2*产品img大小)
-    [Setup]    Init STEP
-    Tools.Comment    Step1    交换机恢复出厂配置
-    Log Step Start    ${s1com}
-    Set Default    ${s1com}
-    Reload Switch    ${s1com}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    show memory usage查看剩余内存大小
-    Log Step Start    ${s1com}
-    ${set_result}    Exec Cmd    ${s1com}    show memory usage
-    ${total_size}=    Get Value From String    ${set_result}    The memory total\\s+(.*?)MB
-    ${free_size}=    Get Value From String    ${set_result}    free\\s+(.*?)bytes
-    ${file_img_size}    Get Value From String    ${FILE_IMG_SIZE}    (.*)M
-    ${double_img_size}    Evaluate    ${file_img_size}*1024*1024*2
-    Log    ${free_size}>=${double_img_size}
-    Run Keyword Unless    ${free_size}>=${double_img_size}    Fail    Memory free size isn't excceed double img size!
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.4.1
-    [Documentation]    根据bug 46264添加测试点：在配置ssh-server后并执行配置保留的操作，重启完成后show boot-files检查原来设置的primary img、backup img以及配置文件等信息都能够正常保留，没有丢失。
-    [Setup]    Init STEP
-    Tools.Comment    Step1    配置ssh-server，保存配置，重启进入
-    Log Step Start    ${s1com}
-    ${command_list}    Create List    ssh-server enable    username admin privilege 15 password 0 admin
-    Exec Cmd List In ConfigMode    ${s1com}    @{command_list}
-    Copy Img Files    ${s1com}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}
-    Write Config    ${s1com}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step2    bootrom下设置启动img，重启
-    Log Step Start    ${s1com}
-    Enter BootRom From Img    ${s1com}
-    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
-    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
-    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}
-    Check Boot-files img    ${boot_check_regexp}    2
-    Reboot From Bootrom    ${s1com}
-    Log Step End    ${s1com}
-    ##
-    Tools.Comment    Step3    show boot-files配置没有丢失
-    Log Step Start    ${s1com}
-    Check Boot-files img    ${boot_check_regexp}    2
-    Check Boot-files startup-config    ${s1com}    ${BOOT_CONFIG_DEFAULT_NAME}    ${BOOT_STARTUP_CONFIG}
-    Check Version    ${default_img_version}
-    Check Running-config    ${command_list}    2    show running-config
-    [Teardown]    Uninit BSP IN IMG MODE TEST
-
-BSP IN IMG MODE.2.2.8.1
-    [Documentation]    watchdog使能，挂起任务后，系统能够重启并启动正常
-    [Tags]    watchdog enable
-    [Setup]    Init STEP
-    Tools.Comment    Step1    进入shell模式，kill任务挂导致挂起
-    Log Step Start    ${s1com}
-    Exec Cmd List In ConfigMode    ${s1com}    watchdog enable
-    ${task_id}    ${task_address}    Get Task ID    ${s1com}
-    Kill Tasklist In Watchdog Enable Mode    ${task_id}    ${s1com}
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
-
-BSP IN IMG MODE.2.2.8.2
-    [Documentation]    watchdog不使能，挂起任务后，系统不会重新启动
-    [Tags]    watchdog disable
-    [Setup]    Init STEP
-    Tools.Comment    Step1    进入shell模式，kill任务挂导致挂起，系统不会重启
-    Log Step Start    ${s1com}
-    ${task_id}    ${task_address}    Get Task ID    ${s1com}
-    Kill Tasklist In Watchdog Disable Mode    ${task_id}    ${s1com}
-    Log Step End    ${s1com}
-    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
-
-BSP IN IMG MODE.2.2.5.4
+2.2.05.4 BSP IN IMG MODE
     [Documentation]    Flash剩余空间>img文件大小，在img下在write正确的img文件过程中进行断电重启，重启后能够正确引导img并启动成功，img没有升级成功
     [Tags]    updata and power off
     [Setup]    Init STEP
@@ -636,7 +62,602 @@ BSP IN IMG MODE.2.2.5.4
     Log Step End    ${s1com}
     [Teardown]    Uninit BSP IN IMG MODE.2.2.5.4
 
-BSP IN IMG MODE.2.4.4
+2.2.07.2 clock set
+    [Documentation]    测试 clock set功能
+    ...    获取当前时间，year+3，hour+10，验证有效
+    ...    获取当前时间，重新设置回当前时间，验证有效
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${yyyy}    ${mm}    ${dd}    ${hh}=    Get Time    year,month,day,hour    NOW + 10h
+    ${yyyy}    Convert To Integer    ${yyyy}
+    ${yyyy}    evaluate    ${yyyy}+3
+    ${yyyy}    Convert To String    ${yyyy}
+    set clock    ${s1com}    ${hh}:01:00    ${yyyy}.${mm}.${dd}
+    Log Step End    ${s1com}
+    [Teardown]    set clock to now    ${s1com}
+
+2.2.08.1 BSP IN IMG MODE
+    [Documentation]    watchdog使能，挂起任务后，系统能够重启并启动正常
+    [Tags]    watchdog enable
+    [Setup]    Init STEP
+    Tools.Comment    Step1    进入shell模式，kill任务挂导致挂起
+    Log Step Start    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    watchdog enable
+    ${task_id}    ${task_address}    Get Task ID    ${s1com}
+    Kill Tasklist In Watchdog Enable Mode    ${task_id}    ${s1com}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
+
+2.2.08.2 BSP IN IMG MODE
+    [Documentation]    watchdog不使能，挂起任务后，系统不会重新启动
+    [Tags]    watchdog disable
+    [Setup]    Init STEP
+    Tools.Comment    Step1    进入shell模式，kill任务挂导致挂起，系统不会重启
+    Log Step Start    ${s1com}
+    ${task_id}    ${task_address}    Get Task ID    ${s1com}
+    Kill Tasklist In Watchdog Disable Mode    ${task_id}    ${s1com}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
+
+2.2.09.01 reload is ok
+    [Documentation]    输入reload 命令交换机能够整机重启
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    Switch.Enable Mode    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    10 minutes
+    Telnet.Read Until Regexp    The system is going down NOW!
+    Telnet.Read Until Regexp    System is booting, please wait...
+    Telnet.Read Until Regexp    .*?Mac\\s+Addr\\s+
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+
+2.2.09.04 memory usage
+    [Documentation]    step 1 检查memory usage = 1-free/total
+    ...
+    ...    step 2 检查10<usage< 98
+    ...    step 3:
+    ...    show memory usage查看内存利用率
+    ...    由于各设备不同状态下内存利用率不确定，这里只检查内存利用率在30%-95%之间
+    ...    重复10次，取平均值，最大，最小值来判定。
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${outp}=    exec cmd    ${s1com}    show memory usage
+    ${total}=    Tools.Get Value From String    ${outp}    .*?total\\s+([0-9]*)\\s+MB
+    ${free}=    Get Value From String    ${outp}    free\\s+([0-9]*)\\s+bytes
+    ${usage}=    Get Value From String    ${outp}    usage\\s+is\\s+([0-9]*\\.[0-9]*)%
+    ${total}=    Convert To Number    ${total}
+    ${free}=    Convert To Number    ${free}
+    ${usage}=    Convert To Number    ${usage}
+    ${usage1}=    Evaluate    (1-${free}/${total}/1024/1024)*100
+    ${diff}=    Evaluate    abs(${usage1}-${usage})
+    ${total}    Convert To Integer    ${total}
+    Should Be True    ${diff}<0.01
+    Should Be True    ${total}==${MEMORY_SIZE}
+    ${usage sum}=    Set Variable    ${0}
+    ${usage max}=    Set Variable    ${0}
+    ${usage min}=    Set Variable    ${100}
+    : FOR    ${count}    IN RANGE    10
+    \    ${outp}=    exec cmd    ${s1com}    show memory usage
+    \    ${usage}=    Get Value From String    ${outp}    usage\\sis\\s([0-9]*\\.[0-9]*)%
+    \    ${usage}=    Convert To Number    ${usage}
+    \    ${usage sum}=    Evaluate    ${usage sum}+${usage}
+    \    ${usage max}=    Set Variable If    ${usage}>${usage max}    ${usage}    ${usage max}
+    \    ${usage min}=    Set Variable If    ${usage}<${usage min}    ${usage}    ${usage min}
+    ${usage avg}=    Evaluate    ${usage sum}/10
+    should be true    (${usage avg}>10) & (${usage avg}<90)
+    should be true    (${usage max}>10) & (${usage max}<95)
+    should be true    (${usage min}>10) & (${usage min}<90)
+    Log Step End    ${s1com}
+
+2.2.09.07 show temperature
+    [Documentation]    盒式交换机show temperature能够正确显示温度
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${be chassis}=    should be chassis    ${s1com}
+    Run Keyword If    ${be chassis}    get temperature from chassis    ${s1com}    ELSE    get temperature from standalone    ${s1com}
+    Log Step End    ${s1com}
+
+2.2.09.17 when an is empty
+    [Documentation]    将board清空，重新设置，修改序列号，重新启动，在img下查看序列号为修改后的新的值（show version查看）
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1    show board获取参数值
+    Log Step Start    ${s1com}
+    Enter bootrom From Img    ${s1com}
+    ${outp}=    exec cmd    ${s1com}    show board
+    ${type}=    get value from string    ${outp}    (?i)Type\\s+is\\s+(.*)\\s+
+    ${vlan mac}=    get value from string    ${outp}    (?i)Vlan\\s+MAC:\\s+(.*)\\s+
+    ${cpu mac}=    get value from string    ${outp}    (?i)CPU\\s+MAC:\\s+(.*)\\s+
+    ${sn}=    get value from string    ${outp}    S/N:\\s+(.*)\\s+
+    ${pn}=    get value from string    ${outp}    P/N:\\s+(.*)\\s+
+    ${hardversion}=    get value from string    ${outp}    H/W:\\s+(.*)\\s+
+    ${manuf}=    get value from string    ${outp}    Manufacture Date:(.*)\\s+
+    Exec Cmd Until Regexp    ${s1com}    clear boardinfo    \\(Y/N\\)\\?\\[N\\]
+    exec cmd    ${s1com}    Y
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    resume vlan & cpu mac
+    Set MAC    ${cpu mac}    ${vlan mac}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    step3    resume other vars
+    Log Step Start    ${s1com}
+    set one boardinfo    ${s1com}    setsn    (?i)Input.*S/N:\\s+    ${sn}
+    set one boardinfo    ${s1com}    setpn    (?i)Input.*P/N:\\s+    ${pn}
+    set one boardinfo    ${s1com}    setver    (?i)Input.*H/W:\\s+    ${hardversion}
+    set one boardinfo    ${s1com}    setdate    (?i)Input.*date:\\s+    ${manuf}
+    set one boardinfo    ${s1com}    settype sw    (?i)Input.*type:\\s+    ${type}
+    ${outp}=    exec cmd    ${s1com}    show board
+    Reboot From Bootrom    ${s1com}
+    ${sn1}    ${hardver1}=    get board info from showversion    ${s1com}
+    should be true    ("${sn1}"=="${sn}")|("${sn1}"=="${pn}")    ${sn}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE.2.2.9.17
+
+2.2.09.14 check bootrom version in showversion
+    [Tags]    ready
+    [Setup]    Init STEP
+    ${version}=    get bootrom version from showversion    ${s1com}
+    ${formatisok}=    Is Match From String    ${version}    ${bootrom_version}
+    should be true    ${formatisok}
+    Log Step End    ${s1com}
+
+2.2.09.15 check img version
+    [Tags]    new
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    ${version}=    get software version    ${s1com}
+    ${formatisok}=    Is Match From String    ${version}    \\d+\\.\\d+\\.\\d+\\.\\d+
+    should be true    ${formatisok}
+    Log Step End    ${s1com}
+
+2.2.09.16 BSP IN IMG MODE
+    [Documentation]    在img下加入一些基本配置，如vlan，三层接口，snmp，username等,执行连续write的操作，要连续操作30次以上，write执行成功，重启交换机后能够正确加载配置文件。
+    [Setup]    Init STEP
+    Tools.Comment    Step1    在img下配置vlan、三层接口等
+    Log Step Start    ${s1com}
+    ${command_line_list}    Create List    vlan 1-101    spanning-tree    ip dhcp snooping enable    ip igmp snooping    access-list 1 deny any-source
+    ...    username admin privilege 15 password 0 admin    interface Vlan101    ip address 200.1.1.1 255.255.255.0
+    Exec Cmd List In ConfigMode    ${s1com}    @{command_line_list}
+    Check Running-config    ${command_line_list}    8    show running-config
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    连续write 40次,show startup.cfg存在上述配置
+    Log Step Start    ${s1com}
+    : FOR    ${index}    IN RANGE    40
+    \    Write Config    ${s1com}
+    Check Running-config    ${command_line_list}    8    show startup-config startup.cfg
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    重启，成功加载startup.cfg配置文件，存在上述配置
+    Log Step Start    ${s1com}
+    Reload Switch    ${s1com}
+    Check Running-config    ${command_line_list}    8    show running-config
+    [Teardown]    Uninit BSP IN IMG MODE TEST
+
+2.2.10.1 BSP IN IMG MODE
+    [Documentation]    在img下执行show flash和dir可以看到存在img和startup.cfg文件
+    [Setup]    Init STEP
+    Tools.Comment    Step1    在img下show flash存在img和startup.cfg文件
+    Log Step Start    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    show flash
+    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
+    Should Contain    ${set_result}    ${BOOT_IMG_BACKUP_NAME}
+    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    在img下dir存在img和startup.cfg文件
+    Log Step Start    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    dir
+    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
+    Should Contain    ${set_result}    ${BOOT_IMG_BACKUP_NAME}
+    Should Contain    ${set_result}    ${BOOT_CONFIG_DEFAULT_NAME}
+    Log Step End    ${s1com}
+
+2.2.10.2 BSP IN IMG MODE
+    [Documentation]    show flash能够正确显示flash剩余空间和已使用空间，两者之和等于flash的大小
+    [Setup]    Init STEP
+    Tools.Comment    Step1    在img下show flash已使用空间和剩余空间应该等于flash总大小
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    show flash
+    ${total_size}=    Get Value From String    ${set_result}    Size:(.*?)M
+    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
+    ${avaliable_size}=    Get Value From String    ${set_result}    Avaliable:(.*?)[MK]
+    ${used_and_avaliable_size}    Evaluate    ${used_size}+${avaliable_size}
+    Run Keyword Unless    ${total_size}==${used_and_avaliable_size}    Fail    Flash userd size plus avaliable size isn't total size!
+    Log Step End    ${s1com}
+
+2.2.10.3 BSP IN IMG MODE
+    [Documentation]    telnet控制交换机，在telnet下执行show flash 命令，show flash可以正常显示相关的信息。
+    [Setup]    Init STEP
+    Tools.Comment    Step1    s2分别配置interface vlan 1接口地址，可以ping通
+    Log Step Start    ${s1com}
+    Exec Cmd List In ConfigMode    ${s2com}    interface vlan 1    ip address ${s2_ip} 255.255.255.0
+    Check Ping    ${s2_ip}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    s2上telnet s1
+    Log Step Start    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    username admin privilege 15 password 0 admin
+    Telnet Switch    ${host_ip}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    show flash显示正确
+    Log Step Start    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    show flash
+    Should Contain    ${set_result}    ${BOOT_IMG_DEFAULT_NAME}
+    ${total_size}=    Get Value From String    ${set_result}    Size:(.*?)M
+    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
+    ${avaliable_size}=    Get Value From String    ${set_result}    Avaliable:(.*?)[MK]
+    ${used_and_avaliable_size}    Evaluate    ${used_size}+${avaliable_size}
+    Run Keyword Unless    ${total_size}==${used_and_avaliable_size}    Fail    Flash userd size plus avaliable size isn't total size!
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE TEST
+
+2.2.10.4 BSP IN IMG MODE
+    [Documentation]    在load并write一个大于flash剩余空间的文件时，会有错误提示信息，写入失败，同时对flash中的其它文件没有影响，能够正常启动img，同时能够正常进入bootrom
+    [Setup]    Init STEP
+    Tools.Comment    Step1    tftp升级并write一个img，空间不足，write失败
+    Log Step Start    ${s1com}
+    Check Ping    ${ftpserverip}
+    Telnet.Write    copy tftp://${ftpserverip}/${img_file} nos2.img
+    Telnet.Set Timeout    2 minutes
+    ${output}=    Telnet.Read Until Regexp    ${BEGIN_TO_RECEIVE}
+    Telnet.Set Timeout    20 minutes
+    Should Contain    ${output}    ${BEGIN_TO_RECEIVE}
+    Telnet.Read Until Regexp    Begin to write local file, please wait...
+    Telnet.Read Until Regexp    Error:Disk is full
+    Telnet.Read
+    Telnet.Set Timeout    ${sw_timeout}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    nos.img重启正常
+    Log Step Start    ${s1com}
+    Reload Switch    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    nos1.img重启正常
+    Log Step Start    ${s1com}
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    primary
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
+    Reload Switch    ${s1com}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR BOOT IMG
+
+2.2.10.5 BSP IN IMG MODE
+    [Documentation]    在flash中写入多个不同名字的img，通过boot命令修改启动的img，每个写入的img都能够正常启动
+    [Setup]    Init STEP
+    Tools.Comment    Step1    在img下设置第一启动img和第二启动img
+    Log Step Start    ${s1com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    backup
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    primary
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_DEFAULT_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Reload Switch Without Write    ${s1com}
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Check Version    ${backup_img_version}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    在img下将第一启动img和第二启动img调换
+    Log Step Start    ${s1com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_BACKUP_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Reload Switch Without Write    ${s1com}
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR BOOT IMG
+
+2.2.10.6 BSP IN IMG MODE
+    [Documentation]    Flash容量：用写文件方式将Flash写满，计算所有文件大小的总和，应该接近Flash容量。（只需验证2个img以及3个config文件，不需要将flash写满）
+    [Setup]    Init STEP
+    Tools.Comment    Step1    tftp方式从服务器下载1个大的config文件.copy出另外2个
+    Log Step Start    ${s1com}
+    Check Ping    ${ftpserverip}
+    Updata In Img By tftp    ${ftpserverip}    ${BIG_SIZE_CONFIG_NAME}    111.cfg
+    Copy Config Files    ${s1com}    111.cfg    222.cfg
+    Copy Config Files    ${s1com}    111.cfg    333.cfg
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    dir存在上述文件，总的文件大小正确
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    dir
+    ${files_list}    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    111.cfg    222.cfg    222.cfg
+    : FOR    ${index}    IN RANGE    5
+    \    Should Contain    ${set_result}    @{files_list}[${index}]
+    ${used_size}=    Get Value From String    ${set_result}    Used:(.*?)M
+    ${file_img_size}    Get Value From String    ${FILE_IMG_SIZE}    (.*)M
+    ${size_of_big_size_config_file}    Get Value From String    ${SIZE_OF_BIG_SIZE_CONFIG_FILE}    (.*)K
+    ${real_used_size}    Evaluate    (${file_img_size}*2+${size_of_big_size_config_file}*3/1024)
+    ${ret}    Evaluate    ${used_size}*(1-${FLASH_TOLERANCE})<=${real_used_size}<=${used_size}*(1+${FLASH_TOLERANCE})
+    Log    ${used_size}*(1-${FLASH_TOLERANCE})<=${real_used_size}<=${used_size}*(1+${FLASH_TOLERANCE})
+    Run Keyword Unless    ${ret}    Fail    Flash userd size isn't real total size!
+    Log Step End    ${s1com}
+
+2.2.12.1 BSP IN IMG MODE
+    [Documentation]    交换机重启、挂起任务等产生的critical级别的log都记录在nvram中，show logging buffered可以看到这些日志
+    [Setup]    Init STEP
+    Tools.Comment    Step1    交换机重启
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Exec Cmd    ${s1com}    clear logging sram
+    Reload Switch Without Write    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    show logging buffered存在重启的log
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    show logging buffered level critical | include ${RELOAD_SWITCH_LOG_REGEXP}
+    Sleep    5
+    ${ret}    Tools.Is Match From String    ${output}    ${RELOAD_SWITCH_LOG_REGEXP}
+    Run Keyword If    ${ret}==False    Fail    There isn't critical log for reload!
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    show logging buffered存在watchdog的log
+    Log Step Start    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    watchdog enable
+    ${task_id}    ${task_address}    Get Task ID    ${s1com}
+    Kill Tasklist In Watchdog Disable Mode    ${task_id}    ${s1com}
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    show logging buffered level critical | include ${KILL_TASKLIST_LOG_REGEXP}
+    ${ret}    Tools.Is Match From String    ${output}    ${KILL_TASKLIST_LOG_REGEXP}
+    Run Keyword If    ${ret}==False    Fail    There isn't critical log for kill tasklist!
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE FOR WATCHDOG
+
+2.2.12.2 BSP IN IMG MODE
+    [Documentation]    执行clear logging操作能够清除掉nvram中的所有信息
+    [Setup]    Init STEP
+    Tools.Comment    Step1    通过loopback端口，删除接口地址，开启spanning-tree产生log
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Exec Cmd List In ConfigMode    ${s1com}    interface ${s1p1}    shutdown    exit    interface vlan 1    shutdown
+    Exec Cmd List In ConfigMode    ${s1com}    interface vlan 1    no shutdown    exit    interface ${s1p1}    no shutdown
+    ...    exit    spanning-tree
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    show logging buffered至少存在1条以上的log
+    Log Step Start    ${s1com}
+    Sleep    5
+    Enable Mode    ${s1com}
+    ${output}    Exec Cmd    ${s1com}    show logging buffered
+    Sleep    5
+    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
+    Run Keyword If    ${log_number}<1    Fail    There isn't no logs in logging buffer
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    clear log，可以清除logging buffered
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Exec Cmd    ${s1com}    clear logging sdram
+    sleep    100 ms
+    ${output}    Exec Cmd    ${s1com}    show logging buffered
+    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
+    Run Keyword If    ${log_number}>=1    Fail    Clear logging buffer fail!
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE TEST
+
+2.2.12.3 BSP IN IMG MODE
+    [Documentation]    在交换机上反复执行添加critical级别的log和clear log的操作，对nvram执行反复的擦除和写入操作，nvram表现正常，nvram能够正确的对信息执行擦除和写入
+    [Tags]    nvram
+    [Setup]    Init STEP
+    Tools.Comment    Step1    通过该write config生成critical log信息，然后clear，反复测试50次
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Exec Cmd    ${s1com}    clear logging sdram
+    : FOR    ${index}    IN RANGE    100
+    \    Telnet.Write    su
+    \    Telnet.Read
+    \    Telnet.Write    tshell debug call _printx 1 2 0 "critical log one"
+    \    Telnet.Read Until Regexp    the func return 0x0
+    \    sleep    50 ms
+    \    Telnet.Write    ${EMPTY}
+    \    Telnet.Read
+    \    Telnet.Write    show logging buffered
+    \    ${output}    Telnet.Read Until Regexp    Current messages in SDRAM.*\\s
+    \    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
+    \    ${log_number}    Convert To Integer    ${log_number}
+    \    Run Keyword If    ${log_number}<1    Fail    There isn't no enough logs in logging buffer
+    \    Exec Cmd List    ${s1com}    exit    clear logging sdram
+    \    sleep    100 ms
+    \    Telnet.Write    show logging buffered
+    \    ${output}    Telnet.Read Until Regexp    Current messages in SDRAM.*\\s
+    \    ${log_number}    Get Value From String    ${output}    Current messages in SDRAM:(.*)\\s
+    \    ${log_number}    Convert To Integer    ${log_number}
+    \    Run Keyword If    ${log_number}>0    Fail    Clear logging buffer fail!
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE.2.2.12.3
+
+2.2.14.1 check CPLD version
+    [Tags]    ready
+    [Setup]    Init STEP
+    Tools.Comment    Step1
+    Log Step Start    ${s1com}
+    Enable mode    ${s1com}
+    ${output}=    exec cmd    ${s1com}    show version
+    ${version}=    Get Value From String    ${output}    (?i)CPLD\\s+Version\\s+(.*)\\s+
+    Should Not Be Empty    ${version}
+    ${formatisok}=    Is Match From String    ${version}    ${cpld_version}
+    should be true    ${formatisok}
+    Log Step End    ${s1com}
+
+2.3.1 BSP IN IMG MODE
+    [Documentation]    启动过程中不做其它的任何操作进行内存自检，自检完成后能够打印内存容量且能够启动img（无法验证是否能够检测出内存问题，这要有这个自检过程即可）
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重启交换机，内存自检，自检完成打印内存容量，并能够启动img
+    Log Step Start    ${s1com}
+    Enable Mode    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    3 minutes
+    Telnet.Read Until Regexp    Testing RAM...
+    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    ${ram_b}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    ${ram_c}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    Telnet.Set Timeout    2 minutes
+    Telnet.Read Until Regexp    ${TEST_RAM_REGEXP}
+    Telnet.Read Until Regexp    ${sw_regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+    Should Not Be Equal    ${ram_a}    ${ram_b}
+    Should Not Be Equal    ${ram_b}    ${ram_c}
+    Should Not Be Equal    ${ram_c}    ${TEST_RAM_REGEXP}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    启动img版本正确
+    Log Step Start    ${s1com}
+    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+
+2.3.2 BSP IN IMG MODE
+    [Documentation]    在简单内存自检过程中输入“Esc”可以跳过自检过程并启动img，且能够打印出内存容量
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重启交换机，内存自检过程中输入exc，跳出自检过程，打印内存容量，并能够启动img
+    Log Step Start    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    3 minutes
+    Telnet.Read Until Regexp    Testing RAM...
+    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    ${ram_b}    Telnet.Write    0x1B
+    Telnet.Read Until Regexp    ${sw_regexp_reload}
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+    Should Not Be Equal    ${ram_a}    ${TEST_RAM_REGEXP}
+    Should Contain    ${ram_b}    ${TEST_RAM_REGEXP}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    启动img版本正确
+    Log Step Start    ${s1com}
+    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+
+2.3.3 BSP IN IMG MODE
+    [Documentation]    在简单内存自检过程中输入“CTRL+B”可以跳过自检过程并启动bootrom，且能够打印出内存容量
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重启交换机，内存自检过程中输入“CTRL+B”可以跳过自检过程并启动bootrom,打印内存容量，并能够启动img
+    Log Step Start    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    3 minutes
+    Telnet.Read Until Regexp    Testing RAM...
+    ${ram_a}    Telnet.Read Until Regexp    0x\\d+\\s+RAM OK
+    ${ram_b}    Telnet.Write    \x02
+    Telnet.Read Until Regexp    \\[Boot\\]
+    Telnet.Set Timeout    20 minutes
+    Reboot From Bootrom    ${s1com}
+    Telnet.Set Timeout    ${sw_timeout}
+    Should Not Be Equal    ${ram_a}    ${TEST_RAM_REGEXP}
+    #Should Contain    ${ram_b}    ${TEST_RAM_REGEXP}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    启动img版本正确
+    Log Step Start    ${s1com}
+    Check Version    ${default_img_version}
+    Log Step End    ${s1com}
+    [Teardown]    Uninit BSP IN IMG MODE.2.3.3
+
+2.3.5 BSP IN IMG MODE
+    [Documentation]    出厂配置启动交换机，启动后剩余可用内存>=(2*产品img大小)
+    [Setup]    Init STEP
+    Tools.Comment    Step1    交换机恢复出厂配置
+    Log Step Start    ${s1com}
+    Set Default    ${s1com}
+    Reload Switch    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    show memory usage查看剩余内存大小
+    Log Step Start    ${s1com}
+    ${set_result}    Exec Cmd    ${s1com}    show memory usage
+    ${total_size}=    Get Value From String    ${set_result}    The memory total\\s+(.*?)MB
+    ${free_size}=    Get Value From String    ${set_result}    free\\s+(.*?)bytes
+    ${file_img_size}    Get Value From String    ${FILE_IMG_SIZE}    (.*)M
+    ${double_img_size}    Evaluate    ${file_img_size}*1024*1024*2
+    Log    ${free_size}>=${double_img_size}
+    Run Keyword Unless    ${free_size}>=${double_img_size}    Fail    Memory free size isn't excceed double img size!
+    Log Step End    ${s1com}
+
+2.4.1 BSP IN IMG MODE
+    [Documentation]    根据bug 46264添加测试点：在配置ssh-server后并执行配置保留的操作，重启完成后show boot-files检查原来设置的primary img、backup img以及配置文件等信息都能够正常保留，没有丢失。
+    [Setup]    Init STEP
+    Tools.Comment    Step1    配置ssh-server，保存配置，重启进入
+    Log Step Start    ${s1com}
+    ${command_list}    Create List    ssh-server enable    username admin privilege 15 password 0 admin
+    Exec Cmd List In ConfigMode    ${s1com}    @{command_list}
+    Copy Img Files    ${s1com}    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}
+    Write Config    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step2    bootrom下设置启动img，重启
+    Log Step Start    ${s1com}
+    Enter BootRom From Img    ${s1com}
+    Boot Img    ${BOOT_IMG_DEFAULT_NAME}    primary
+    Boot Img    ${BOOT_IMG_BACKUP_NAME}    backup
+    ${boot_check_regexp}=    Create List    ${BOOT_IMG_DEFAULT_NAME}    ${BOOT_IMG_BACKUP_NAME}    ${BOOT_IMG_DEFAULT_NAME}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Reboot From Bootrom    ${s1com}
+    Log Step End    ${s1com}
+    ##
+    Tools.Comment    Step3    show boot-files配置没有丢失
+    Log Step Start    ${s1com}
+    Check Boot-files img    ${boot_check_regexp}    2
+    Check Boot-files startup-config    ${s1com}    ${BOOT_CONFIG_DEFAULT_NAME}    ${BOOT_STARTUP_CONFIG}
+    Check Version    ${default_img_version}
+    Check Running-config    ${command_list}    2    show running-config
+    [Teardown]    Uninit BSP IN IMG MODE TEST
+
+2.4.2 BSP IN IMG MODE
+    [Documentation]    bootrom启动过程中可以显示bootrom版本
+    [Tags]    check bootrom version vhen reload
+    [Setup]    Init STEP
+    Tools.Comment    Step1    重启设备，检查是否打印bootrom的版本号，版本号是否正确
+    Log Step Start    ${s1com}
+    Telnet.Write    reload
+    Telnet.Read Until Regexp    \\[Y/N\\]
+    Telnet.Write    Y
+    Telnet.Set Timeout    10 minutes
+    ${ret}    Telnet.Read Until Regexp    (?i)Bootrom\\s+version:\\s+(.*?)\\s+
+    Telnet.Set Timeout    ${sw_timeout}
+    Sleep    60
+    Telnet.Read
+    ${version}    Get Value From String    ${ret}    (?i)Bootrom\\s+version:\\s+(.*)\\s+
+    ${formatisok}=    Is Match From String    ${version}    ${bootrom_version}
+    should be true    ${formatisok}
+    Switch.Enable Mode    ${s1com}
+    Switch.Set Exec TimeOut    ${s1com}
+    Log Step End    ${s1com}
+
+2.4.4 BSP IN IMG MODE
     [Documentation]    设备启动过程中，从加电开始，到CRT打印端口up/down之前，所有端口不允许转发任何流量
     [Tags]    not forward stream
     [Setup]    Init STEP
@@ -699,7 +720,7 @@ BSP IN IMG MODE.2.4.4
     Log Step End    ${s1com}
     [Teardown]    Uninit BSP IN IMG MODE.2.4.4
 
-BSP IN IMG MODE.2.4.5
+2.4.5 BSP IN IMG MODE
     [Documentation]    设备上下电300次，每次都能正常启动
     [Tags]    power on and off
     [Setup]    Init STEP
@@ -723,27 +744,6 @@ BSP IN IMG MODE.2.4.5
     Switch.Enable Mode    ${s1com}
     Switch.Set Exec TimeOut    ${s1com}
     APC Logout    ${s4com}
-    Log Step End    ${s1com}
-
-BSP IN IMG MODE.2.4.2
-    [Documentation]    bootrom启动过程中可以显示bootrom版本
-    [Tags]    check bootrom version vhen reload
-    [Setup]    Init STEP
-    Tools.Comment    Step1    重启设备，检查是否打印bootrom的版本号，版本号是否正确
-    Log Step Start    ${s1com}
-    Telnet.Write    reload
-    Telnet.Read Until Regexp    \\[Y/N\\]
-    Telnet.Write    Y
-    Telnet.Set Timeout    10 minutes
-    ${ret}    Telnet.Read Until Regexp    (?i)Bootrom\\s+version:\\s+(.*?)\\s+
-    Telnet.Set Timeout    ${sw_timeout}
-    Sleep    60
-    Telnet.Read
-    ${version}    Get Value From String    ${ret}    (?i)Bootrom\\s+version:\\s+(.*)\\s+
-    ${formatisok}=    Is Match From String    ${version}    ${bootrom_version}
-    should be true    ${formatisok}
-    Switch.Enable Mode    ${s1com}
-    Switch.Set Exec TimeOut    ${s1com}
     Log Step End    ${s1com}
 
 *** Keywords ***

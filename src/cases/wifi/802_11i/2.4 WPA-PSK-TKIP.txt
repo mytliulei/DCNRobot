@@ -1,11 +1,12 @@
-*** Settings ***
+﻿*** Settings ***
 Suite Setup       Init Test Case
 Suite Teardown    Uninit Test Case
 Resource          802_11i_vars.txt
 Resource          802_11i_vars_modifiable.txt
 
 *** Test Cases ***
-2.4.1 client使用wpa-psk方式，使用正确的密码时，能够关联成功，可以ping通AP
+2.4.1 WPA-PSK-TKIP：关联成功
+    [Documentation]    client使用wpa-psk方式，使用正确的密码时，能够关联成功，可以ping通AP
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -19,7 +20,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.4.2 client使用wpa-psk方式，使用错误的密码时，关联失败
+2.4.2 WPA-PSK-TKIP：错误密码关联失败
+    [Documentation]    client使用wpa-psk方式，使用错误的密码时，关联失败
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -28,7 +30,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.4.3 client使用open方式时，关联失败
+2.4.3 WPA-PSK-TKIP：open方式关联失败
+    [Documentation]    client使用open方式时，关联失败
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -37,7 +40,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.4.4 client使用wep方式时（密码一致），关联失败
+2.4.4 WPA-PSK-TKIP：wep方式关联失败
+    [Documentation]    client使用wep方式时（密码一致），关联失败
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -46,7 +50,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.4.5 client使用wpa2-psk方式时（密码一致），关联失败
+2.4.5 WPA-PSK-TKIP：wpa2-psk方式关联失败
+    [Documentation]    client使用wpa2-psk方式时（密码一致），关联失败
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -55,7 +60,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.4.6 client使用wpa-enterprise方式时（密码一致），关联失败
+2.4.6 WPA-PSK-TKIP：wpa-enterprise方式关联失败
+    [Documentation]    client使用wpa-enterprise方式时（密码一致），关联失败
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -65,7 +71,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.4.7 client使用wpa2-enterprise方式时（密码一致），关联失败
+2.4.7 WPA-PSK-TKIP：wpa2-enterprise方式关联失败
+    [Documentation]    client使用wpa2-enterprise方式时（密码一致），关联失败
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}

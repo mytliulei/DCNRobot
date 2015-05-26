@@ -1,11 +1,12 @@
-*** Settings ***
+﻿*** Settings ***
 Suite Setup       Init Test Case
 Suite Teardown    Uninit Test Case
 Resource          802_11i_vars.txt
 Resource          802_11i_vars_modifiable.txt
 
 *** Test Cases ***
-2.1.1 无线系统采用开放认证方式时，client使用OPEN方式能够认证成功
+2.1.1 OPEN方式client认证成功
+    [Documentation]    无线系统采用开放认证方式时，client使用OPEN方式能够认证成功
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -18,7 +19,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.1.2 无线系统采用WEP方式时，client使用WEP能够认证成功
+2.1.2 WEP方式client认证成功
+    [Documentation]    无线系统采用WEP方式时，client使用WEP能够认证成功
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -32,7 +34,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.1.3无线系统采用WPA-PSK方式时，client使用WPA-PSK能够认证成功
+2.1.3 WPA-PSK方式client认证成功
+    [Documentation]    无线系统采用WPA-PSK方式时，client使用WPA-PSK能够认证成功
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -45,7 +48,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.1.4 无线系统采用WPA-ENTERPRISE方式时，client使用WPA-ENTERPRISE能够认证成功
+2.1.4 WPA-ENTERPRISE方式client认证成功
+    [Documentation]    无线系统采用WPA-ENTERPRISE方式时，client使用WPA-ENTERPRISE能够认证成功
     Network Wpa Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_ccmp}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -61,7 +65,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.1.5 无线系统采用WPA2-PSK方式时，client使用WPA2-PSK能够认证成功
+2.1.5 WPA2-PSK方式client认证成功
+    [Documentation]    无线系统采用WPA2-PSK方式时，client使用WPA2-PSK能够认证成功
     Network Wpa2 Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -75,7 +80,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.1.6 无线系统采用WPA2-ENTERPRISE方式时，client使用WPA2-ENTERPRISE能够认证成功
+2.1.6 WPA2-ENTERPRISE方式client认证成功
+    [Documentation]    无线系统采用WPA2-ENTERPRISE方式时，client使用WPA2-ENTERPRISE能够认证成功
     Network Wpa2 Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_ccmp}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -89,7 +95,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.1.7 当客户端进行需要radius配合的认证时，AP会将认证消息封装到radius-proxy-command消息中发送给UWS
+2.1.7 需要radius配合的认证，AP认证消息封装
+    [Documentation]    当客户端进行需要radius配合的认证时，AP会将认证消息封装到radius-proxy-command消息中发送给UWS
     Network Wpa Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}

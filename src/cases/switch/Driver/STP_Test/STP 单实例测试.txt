@@ -1,0 +1,132 @@
+﻿*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_stp_test.txt
+
+*** Test Cases ***
+1.2.13.1 端口在block状态下，不收发非BPDU帧
+    [Setup]    01_init
+    Log Step Start    step1    开启STP功能，将S1P2发送的STP报文转发至S1P1，模拟环路发生，S1P1为BLK状态
+    Exec Cmd List In ConfigMode    ${s1_alias}    spanning-tree
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    spanning-tree port-priority 240    #保证S1P1为BLK端口
+    Capture Stp packet from s1p2 and Send to s1p1
+    sleep    30s    等待STP收敛
+    Check s1p1 to be Block State
+    Ixiasend.Stop Transmit    @{testerp1}
+    Log Step End    step1
+    ##
+    Log Step Start    step2    S1P1在Block状态下不收发普通流量
+    tools.comment    tp1发送stp及普通数据流量    tp2发送普通数据流量
+    Set tp1 and tp2 stream
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    7s    2s for stp transmit, 5s for counter update
+    ${p2_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p2}    5s_out_pps
+    ${res1}=    Check More or Less    ${p2_dict['5s_out_pps']}    1    tolerance=5
+    ${res2}=    CheckIxiaSendReceive    @{testerp1}    @{testerp2}    0    mode=pps    tolerance=5
+    Should Be True    ${res1} and ${res2}    S1P2没有出口流量，TP2收不到TP1发送的流量
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    5s for counter update
+    ${p1_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    5s_out_pps
+    ${res3}=    Check More or Less    ${p1_dict['5s_out_pps']}    1    tolerance=5
+    ${res4}=    CheckIxiaSendReceive    @{testerp2}    @{testerp1}    0    mode=pps    tolerance=5
+    Should Be True    ${res3} and ${res4}    S1P1没有出口流量，TP1收不到TP2发送的流量
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Log Step End    step2
+    ##
+    Log Step Start    step3    S1P1与S1P2都可以收发BPDU报文
+    Exec Cmd List In ConfigMode    ${s1_alias}    lldp enable    lldp tx-interval 5
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    lldp enable
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    lldp enable
+    Check s1p1 can send lldp packet in Block State
+    Check s1p1 can receive lldp packet in Block State
+    Log Step End    step3
+    [Teardown]    01_uninit
+
+*** Keywords ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 10
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+01_uninit
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    no spanning-tree
+    Exec Cmd List In ConfigMode    ${s1_alias}    lldp disable
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+Capture Stp packet from s1p2 and Send to s1p1
+    Ixiasend.Start Capture    @{testerp2}
+    sleep    2s    wait for capture stp
+    Ixiasend.Stop Capture    @{testerp2}
+    Ixiasend.Get Capture Packet    @{testerp2}    1    10
+    tools.comment    从TP2捕获STP报文
+    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    ether dst 01:80:C2:00:00:00
+    log    ${tp2_packet}
+    Run Keyword If    ${tp2_rx}==0    Fail    TP2没有抓到S1P2的STP报文！
+    ${s1p2_stp_packet}=    Set Variable    @{tp2_packet}[0]
+    Set Test Variable    ${s1p2_stp_packet}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Set Stream Packet By Capture    @{testerp1}    1    ${s1p2_stp_packet}
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_continue}
+    Ixiasend.Start Transmit    @{testerp1}
+
+Check s1p1 can send lldp packet in Block State
+    tools.comment    tp1重新发送stp报文
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Set Stream Packet By Capture    @{testerp1}    1    ${s1p2_stp_packet}
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_continue}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    2s    wait for port to be block
+    Ixiasend.Start Capture    @{testerp1}
+    sleep    6s    wait for capture lldp packet
+    Ixiasend.Stop Capture    @{testerp1}
+    Ixiasend.Get Capture Packet    @{testerp1}    1    10
+    tools.comment    从TP1捕获lldp报文
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    ether dst 01:80:C2:00:00:0e and ether proto 0x88cc
+    log    ${tp1_packet}
+    Should be true    ${tp1_rx}>${0}    TP1没有捕获LLDP报文，S1P1可能没有往外发送LLDP
+    ${s1p1_lldp_packet}=    Set Variable    @{tp1_packet}[0]
+    Set Test Variable    ${s1p1_lldp_packet}
+    Ixiasend.Stop Transmit    @{testerp1}
+
+Check s1p1 can receive lldp packet in Block State
+    tools.comment    在tp1上设置流1，以1pps发送2个STP报文    在设置流量的时候，ixia可能会停止发包，从而导致s1p1恢复为block状态，因此这里设置stream 1的先发送2个stp报文，让端口重新进入block状态
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Set Stream Packet By Capture    @{testerp1}    1    ${s1p2_stp_packet}
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_next}    numPackets=2
+    Ixiasend.Set Stream Packet By Capture    @{testerp1}    2    ${s1p2_stp_packet}
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=2    streamRate=2    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_next}    numPackets=1
+    Ixiasend.Set Stream Packet By Capture    @{testerp1}    3    ${s1p1_lldp_packet}
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=3    streamRate=2    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_return}    returnToId=2
+    ...    numPackets=1
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    5s    2s for stp transmit ,3s for lldp neighbor discover
+    ${res1}=    get lldp port info    ${s1_alias}    ${s1p1}    PortRemoteCounter
+    Should Be True    ${res1}==${1}    s1p1在block状态下没有学习到lldp邻居(邻居数为${res1})
+
+Set tp1 and tp2 stream
+    tools.comment    在tp1上设置流1，以1pps发送2个STP报文    在设置流量的时候，ixia可能会停止发包，从而导致s1p1恢复为FWD状态，因此这里设置stream 1先发送2个stp报文，让端口重新进入block状态
+    Ixiasend.Set Stream Packet By Capture    @{testerp1}    1    ${s1p2_stp_packet}
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=1    streamRate=1    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_next}    numPackets=2
+    tools.comment    在tp1上设置流2，以1001pps发送1个STP报文
+    Ixiasend.Set Stream Packet By Capture    @{testerp1}    2    ${s1p2_stp_packet}
+    Ixiasend.Set Stream Control    @{testerp1}    streamId=2    streamRate=1001    streamRateMode=${IXIA_StreamRateMode_pps}    streamMode=${IXIA_StreamMode_next}    numPackets=1
+    tools.comment    在tp1上设置流2，以1001pps发送1000个普通数据流量
+    Set ixia stream l2    @{testerp1}    dst_mac=00:00:00:33:33:33    src_mac=00:00:00:11:11:11    stream_id=3    stream_rate=1001    stream_rate_mode=${IXIA_StreamRateMode_pps}
+    ...    stream_mode=${IXIA_StreamMode_return}    numPacket=${1000}    returnID=2    reset=False
+    tools.comment    在tp2上设置普通流量
+    Set ixia stream l2    @{testerp2}    dst_mac=00:00:00:33:33:33    src_mac=00:00:00:22:22:22    stream_rate=2000    stream_rate_mode=${IXIA_StreamRateMode_pps}    reset=True
+
+Check s1p1 to be Block State
+    ${p1_state}=    Get STP Port Info    ${s1_alias}    ${s1p1}    0    State
+    ${p2_state}=    Get STP Port Info    ${s1_alias}    ${s1p2}    0    State
+    Should Be True    '${p1_state}'=='BLK'
+    Should Be True    '${p2_state}'=='FWD'

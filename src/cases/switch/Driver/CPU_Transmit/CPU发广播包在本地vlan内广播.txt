@@ -1,0 +1,62 @@
+﻿*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_cpu_transmit.txt
+
+*** Test Cases ***
+1.2.15.1 发广播包在本地vlan内广播
+    [Setup]    01_init
+    Log Step Start    step1    发送广播时,vlan内所有端口都可以收到流量
+    Ixiasend.Start Capture    @{testerp1}
+    Ixiasend.Start Capture    @{testerp2}
+    exec cmd list    ${s1_alias}    clear arp-cache    ping 10.1.1.2
+    Ixiasend.Stop Capture    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp2}
+    Ixiasend.Get Capture Packet    @{testerp1}
+    Ixiasend.Get Capture Packet    @{testerp2}
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    arp src host 10.1.1.1 and dst host 10.1.1.2
+    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    arp src host 10.1.1.1 and dst host 10.1.1.2
+    should be true    ${tp1_rx}>0 and ${tp2_rx}>0    ${TEST_NAME}\n Step1 tp1或者tp2没有收到arp报文,请检查
+    Log Step End    step1
+    #
+    #
+    Log Step Start    step2    发送广播时,非广播vlan内的端口收不到流量
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 20
+    Ixiasend.Start Capture    @{testerp1}
+    Ixiasend.Start Capture    @{testerp2}
+    exec cmd list    ${s1_alias}    clear arp-cache    ping 10.1.1.2
+    Ixiasend.Stop Capture    @{testerp1}
+    Ixiasend.Stop Capture    @{testerp2}
+    Ixiasend.Get Capture Packet    @{testerp1}
+    Ixiasend.Get Capture Packet    @{testerp2}
+    ${tp1_rx}    ${tp1_packet}=    Ixiasend.Filter Capture Packet    @{testerp1}    arp src host 10.1.1.1 and dst host 10.1.1.2
+    ${tp2_rx}    ${tp2_packet}=    Ixiasend.Filter Capture Packet    @{testerp2}    arp src host 10.1.1.1 and dst host 10.1.1.2
+    should be true    ${tp1_rx}>0 and ${tp2_rx}==0    ${TEST_NAME}\n tp1应该收到arp请求报文,而tp2收不到arp请求报文
+    Log Step End    step2
+    [Teardown]    01_uninit
+
+*** Key Words ***
+01_init
+    #
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    Exec Cmd List In ConfigMode    ${s1_alias}    vlan 10;20
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p2}    switchport access vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface vlan 10    ip address 10.1.1.1 255.255.255.0
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+01_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no interface vlan 10
+    Exec Cmd List In ConfigMode    ${s1_alias}    no vlan 10;20
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+show for test failed
+    log    1

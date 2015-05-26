@@ -12,7 +12,7 @@ ${dir_not_existed_file_regexp}    ${NOT_EXISTED_SOURCE_IMG_FILE_NAME}    # dir�
 ${cd_not_existed_device_regexp}    Invalid drive!    # cd切换到不存在的路径，提示错误信息
 
 *** Test Cases ***
-File System.5.2.1.18
+5.2.1.18
     [Documentation]    可以通过pwd显示本卡当前工作路径，默认的工作路径为flash:/
     [Tags]    pwd
     [Setup]    Init STEP
@@ -22,7 +22,7 @@ File System.5.2.1.18
     Should Contain    ${set_result}    Current directory is : ${DEFAULT_DIRECTORY}
     Log Step End    ${s1_alias}
 
-File System.5.2.1.19
+5.2.1.19
     [Documentation]    可以通过dir显示本卡存储设备中的指定文件或目录信息（bootrom下不支持dir相对路径）
     [Tags]    dir
     [Setup]    Init STEP
@@ -51,7 +51,7 @@ File System.5.2.1.19
     Dir In Bootrom    dir ${DEFAULT_DIRECTORY}${BOOT_IMG_DEFAULT_NAME}    1    ${dir_information_line_regexp}
     Log Step End    ${s1_alias}
 
-File System.5.2.1.20
+5.2.1.20
     [Documentation]    如果dir要显示的目录或文件不存在，则提示错误信息
     [Tags]    dir
     [Setup]    Init STEP
@@ -73,7 +73,7 @@ File System.5.2.1.20
     Should Contain    ${set_result}    ${dir_not_existed_file_regexp}
     Log Step End    ${s1_alias}
 
-File System.5.2.1.21
+5.2.1.21
     [Documentation]    Vendor文件被隐藏，不能通过dir看到
     [Tags]    dir
     [Setup]    Init STEP
@@ -89,7 +89,7 @@ File System.5.2.1.21
     Should Not Contain    ${set_result}    vendor.cfg
     Log Step End    ${s1_alias}
 
-File System.5.2.1.23
+5.2.1.23
     [Documentation]    如果通过cd修改的工作路径不存在，则提示错误信息，保持当前的工作路径
     [Tags]    cd
     [Setup]    Init STEP

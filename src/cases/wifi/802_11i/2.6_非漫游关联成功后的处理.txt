@@ -1,11 +1,12 @@
-*** Settings ***
+﻿*** Settings ***
 Suite Setup       Init Test Case
 Suite Teardown    Uninit Test Case
 Resource          802_11i_vars.txt
 Resource          802_11i_vars_modifiable.txt
 
 *** Test Cases ***
-2.6.1 在关联AP的管理UWS上查看associated client表，该client被加入到associated client表中
+2.6.01 关联成功后：client加入associated client表
+    [Documentation]    在关联AP的管理UWS上查看associated client表，该client被加入到associated client表中
     Get Dynamic Vars
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
     Wireless Ap Profile Apply    ${ap_profile}
@@ -23,7 +24,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num1}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.2 在关联AP的管理UWS上查看associated client表，该client是否支持802.11n（802.11n capable）属性正确
+2.6.02 关联成功后：802.11n属性正确
+    [Documentation]    在关联AP的管理UWS上查看associated client表，该client是否支持802.11n（802.11n capable）属性正确
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -36,7 +38,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.3 在关联AP的管理UWS上查看VAP-Client Mapping表，该client和VAP的对应关系正确
+2.6.03 关联成功后：client和VAP对应关系正确
+    [Documentation]    在关联AP的管理UWS上查看VAP-Client Mapping表，该client和VAP的对应关系正确
     Network Wpa Psk    ${ac}    ${ap_network}    ${wpa_wpa2 key}    ${cipher_ccmp}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -49,7 +52,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.4 在关联AP的管理UWS上查看SSID-Client Mapping表，该client和SSID的对应关系正确
+2.6.04 关联成功后：client和SSID对应关系正确
+    [Documentation]    在关联AP的管理UWS上查看SSID-Client Mapping表，该client和SSID的对应关系正确
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -62,7 +66,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.5 在关联AP的管理UWS上查看UWS-Client Mapping表，该client和UWS的对应关系正确
+2.6.05 关联成功后：client和UWS对应关系正确
+    [Documentation]    在关联AP的管理UWS上查看UWS-Client Mapping表，该client和UWS的对应关系正确
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -75,7 +80,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.6 在关联AP的管理UWS上查看该AP关联的client数量，该数量加1
+2.6.06 关联成功后：AP关联client数量加1
+    [Documentation]    在关联AP的管理UWS上查看该AP关联的client数量，该数量加1
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
     sleep    ${sleep_time}
     ${output}=    AC.Exec Cmd    ${ac}    sho wireless client status
@@ -96,7 +102,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be True    ${Flag}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.7 在关联AP的管理UWS上查看client关联AP的AP neighbor client表，该client被加入到该表中
+2.6.07 关联成功后：client加入AP neighbor client表
+    [Documentation]    在关联AP的管理UWS上查看client关联AP的AP neighbor client表，该client被加入到该表中
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -109,7 +116,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.8 在关联AP的管理UWS上查看Detected Clients表，该client被加入到该表中，并且被标示为认证成功
+2.6.08 关联成功后：client加入Detected Clients表
+    [Documentation]    在关联AP的管理UWS上查看Detected Clients表，该client被加入到该表中，并且被标示为认证成功
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -122,7 +130,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.9 关联成功后将会发送关联成功的trap信息
+2.6.09 关联成功后：发送关联成功trap信息
+    [Documentation]    关联成功后将会发送关联成功的trap信息
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -138,7 +147,8 @@ Resource          802_11i_vars_modifiable.txt
     AC.Exec Cmd List In WirelessMode    ${ac}    no trapflags
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.6.10 如果UWS开启了计费功能，则关联成功后会给radius发送计费报文开始计费
+2.6.10 关联成功后：给radius发送计费报文
+    [Documentation]    如果UWS开启了计费功能，则关联成功后会给radius发送计费报文开始计费
     Network Wpa Enterprise    ${ac}    ${ap_network}    ${radius_server_name}    ${cipher_tkip}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}

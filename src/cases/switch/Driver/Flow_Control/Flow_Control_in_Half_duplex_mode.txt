@@ -1,0 +1,80 @@
+﻿*** Settings ***
+Documentation     半双工模式下同时收发流量,不发送Pause帧,端口产生collision,开关flow-control无影响.
+...               - init 检查s1p1如果为光口,则设置用例为invalid,如果为电口,则记录当前speed配置,然后设置端口为半双工
+...               - step1 半双工模式下同时收发流量,不发送Pause帧,端口产生collision
+...               - step2 开启flow-control无影响,依然存在collision,不发送pause
+...               - uninit 停止流量发送,恢复配置.
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_flow_control.txt
+
+*** Test Cases ***
+1.2.4.2 半双工模式下配置flow control,产生collision,但不发送pause帧
+    [Setup]    01_init
+    Log Step Start    Step1    半双工模式下同时收发流量,不发送Pause帧,端口产生collision
+    Ixiasend.Clear Statics    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    10s    等待端口计数
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${tp1_FCR}=    Get Statics    @{testerp1}    flowControlFrames
+    \    #读取端口s1p1与s1p2发送的pause以及collisions计数
+    ${p1_tx}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    tx_pause    tx_collisions
+    ${p1_pause}=    Get From Dictionary    ${p1_tx}    tx_pause
+    ${p1_collisions}=    Get From Dictionary    ${p1_tx}    tx_collisions
+    should be true    ${p1_pause}==${tp1_FCR}==${0}    s1p1不会发送pause帧
+    should be true    ${p1_collisions}>${0}    s1p1应该产生冲突帧
+    Log Step End    Step1
+    #
+    #
+    Log Step Start    Step2    开启flow-control无影响,依然存在collision,不发送pause
+    Set Flow Control    ${s1_alias}    ${s1p1}
+    sleep    5s    等待s1p1 UP
+    Ixiasend.Clear Statics    @{testerp1}
+    Exec Cmd List    ${s1_alias}    clear counters
+    Ixiasend.Start Transmit    @{testerp1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    10s    等待端口计数
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    ${tp1_FCR}=    Get Statics    @{testerp1}    flowControlFrames
+    \    #读取端口s1p1与s1p2发送的pause以及collisions计数
+    ${p1_tx}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    tx_pause    tx_collisions
+    ${p1_pause}=    Get From Dictionary    ${p1_tx}    tx_pause
+    ${p1_collisions}=    Get From Dictionary    ${p1_tx}    tx_collisions
+    should be true    ${p1_pause}==${tp1_FCR}==${0}    s1p1不会发送pause帧
+    should be true    ${p1_collisions}>${0}    s1p1应该产生冲突帧
+    Log Step End    Step2
+    #
+    #
+    [Teardown]    01_uninit
+
+*** Keywords ***
+01_init
+    [Documentation]    检查s1p1如果为光口,则设置用例为invalid,如果为电口,则记录当前speed配置,然后设置端口为半双工
+    #    若s1p1是光口则跳过
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化检查,若s1p1是光口则跳过执行
+    ${hw}=    Get Port Hardware    ${s1_alias}    ${s1p1}
+    Run Keyword If    '${hw}'=='Fiber'    Fail    光口不支持配置半双工模式
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化检查结束
+    #
+    #    设置s1p1为百兆半双工
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置,设置s1p1为百兆半双工,并检查端口
+    @{s1p1_config}=    Get Port Show Run    ${s1_alias}    ${s1p1}    (speed.*)\\r
+    Set Test Variable    @{s1p1_config}    #确定s1p1原来的speed配置,以便测试完成后uninit恢复.
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    speed-duplex force100-half
+    Exec Cmd List    ${s1_alias}    clear counters
+    sleep    10s    等待s1p1 up
+    ${p1_status}=    CheckPortUpdown    ${s1_alias}    ${s1p1}
+    Run Keyword unless    ${p1_status}    Fail    ${s1p1} is DOWN after set speed-duplex force-100half in 10 seconds
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置结束
+
+01_uninit
+    [Documentation]    停止流量发送,恢复配置.
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置
+    unSet Flow Control    ${s1_alias}    ${s1p1}
+    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    no speed-duplex
+    : FOR    ${cfg}    IN    @{s1p1_config}
+    \    Exec Cmd List In ConfigMode    ${s1_alias}    interface ${s1p1}    ${cfg}
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束

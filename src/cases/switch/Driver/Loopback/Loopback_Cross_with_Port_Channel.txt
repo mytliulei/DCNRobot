@@ -1,0 +1,32 @@
+﻿*** Settings ***
+Documentation     loopback 与port-channel 交叉,port-channel及成员端口不可以配置,配置loopback后不能加入port-channel
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_loopback.txt
+
+*** Test Cases ***
+1.2.6.4 Loopback与Port-channel交叉
+    [Setup]    01_init
+    Log Step Start    Step1
+    ${cmd}=    Set Variable    ${CMD_LOOPBACK}
+    ${no_cmd}=    Set Variable    no ${CMD_LOOPBACK}
+    ${chk_cmd}=    Set Variable    ${CMD_LOOPBACK}
+    Check Cross with Port Channel type 1    ${s1_alias}    ${cmd}    ${no_cmd}    ${chk_cmd}    ${s1p1}    ${s1p2}
+    Log Step End    Step1
+    [Teardown]    01_uninit
+
+*** Keywords ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>>
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<<<
+
+01_uninit
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置>>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixiasend.Set Port Mode Default    @{testerp1}
+    Ixiasend.Set Port Mode Default    @{testerp2}
+    Exec Cmd List In ConfigMode    ${s1_alias}    no port-group 1
+    Unset Loopback    ${s1_alias}    ${s1p1}
+    Unset Loopback    ${s1_alias}    ${s1p2}
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置完成<<<<<<

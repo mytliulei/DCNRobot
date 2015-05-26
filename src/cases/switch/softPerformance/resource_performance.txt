@@ -6,3 +6,4 @@ Resource          var_proc_function.txt
 Resource          var_proc_general.txt
 Library           OperatingSystem
 Library           Dialogs
+Variables         ../../../lib/PygalPath.py

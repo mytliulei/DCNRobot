@@ -1,11 +1,12 @@
-*** Settings ***
+﻿*** Settings ***
 Suite Setup       Init Test Case
 Suite Teardown    Uninit Test Case
 Resource          802_11i_vars.txt
 Resource          802_11i_vars_modifiable.txt
 
 *** Test Cases ***
-2.13.1 在AC上查看associated client表，该client在该UWS的associated client表中
+2.13.1 漫游成功：client在associated client表
+    [Documentation]    漫游成功：在AC上查看associated client表，该client在该UWS的associated client表中
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -36,7 +37,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.13.2 在AC上查看associated client表，该client的STBC Capable和802.11n Capable正确
+2.13.2 漫游成功：STBC Capable和802.11n Capable正确
+    [Documentation]    漫游成功：在AC上查看associated client表，该client的STBC Capable和802.11n Capable正确
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -60,7 +62,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.13.3 在AC上查看client关联AP的AP neighbor client表，该client被加入到该表中
+2.13.3 漫游成功：client在AP neighbor client表
+    [Documentation]    漫游成功：在AC上查看client关联AP的AP neighbor client表，该client被加入到该表中
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -90,7 +93,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.13.4 在AC上查看Roam history表，会添加此次漫游事件到该表
+2.13.4 漫游成功：Roam history记录漫游事件
+    [Documentation]    漫游成功：在AC上查看Roam history表，会添加此次漫游事件到该表
     AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    shut
     AP.Factory Reset    ${ap2}
     Network Open    ${ac}    ${ap_network}
@@ -113,7 +117,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.13.5 在AC上查看VAP-Client Mapping表，该client和VAP的对应关系正确更新
+2.13.5 漫游成功：client和VAP对应关系更新
+    [Documentation]    漫游成功：在AC上查看VAP-Client Mapping表，该client和VAP的对应关系正确更新
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -139,7 +144,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.13.6 在AC上查看SSID-Client Mapping表，该client和SSID的对应关系正确更新
+2.13.6 漫游成功：client和SSID对应关系更新
+    [Documentation]    漫游成功：在AC上查看SSID-Client Mapping表，该client和SSID的对应关系正确更新
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -159,7 +165,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.13.7 在AC上查看UWS-Client Mapping表，该client和UWS的对应关系正确更新
+2.13.7 漫游成功：该client和UWS对应关系更新
+    [Documentation]    漫游成功：在AC上查看UWS-Client Mapping表，该client和UWS的对应关系正确更新
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -179,7 +186,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be Equal    ${Num}    ${1}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.13.8 如果此次漫游为本UWS内部的漫游，在AP的管理UWS上查看原关联AP的认证client数目减一
+2.13.8 漫游成功：原关联AP认证client数目减一
+    [Documentation]    漫游成功：如果此次漫游为本UWS内部的漫游，在AP的管理UWS上查看原关联AP的认证client数目减一
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -205,7 +213,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Be True    ${Flag}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.13.9 如果此次漫游为本UWS内部的漫游，在AP的管理UWS上查看关联AP的认证client数目加一
+2.13.9 漫游成功：新关联AP认证client数目加一
+    [Documentation]    漫游成功：如果此次漫游为本UWS内部的漫游，在AP的管理UWS上查看关联AP的认证client数目加一
     AC.Exec Cmd List In ConfigMode    ${ac}    int e ${ac_ap2_port}    shut
     AP.Factory Reset    ${ap2}
     Network Open    ${ac}    ${ap_network}

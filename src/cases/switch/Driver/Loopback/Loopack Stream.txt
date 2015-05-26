@@ -1,0 +1,73 @@
+﻿*** Settings ***
+Documentation     测试点:1.2.6.1-3
+...               - 1.2.6.1 loopback端口发出的数据会从本端口收到
+...               - 1.2.6.2 loopback端口不收取外部发送的报文
+...               - 1.2.6.3 loobback端口不会把报文发送到外部
+...
+...               测试例 01_Loopback端口功能
+...               - step1 s1p1设置环回后,tp2发包,tp2能收到环回流量.tp1收不到流量
+...               - step2 tp2停止发流,tp1发送流量,tp1和tp2都收不到流量
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_loopback.txt
+
+*** Test Cases ***
+1.2.6.1-3 Loopback端口功能
+    [Setup]    01_init
+    Log Step Start    Step1    s1p1设置环回后,tp2发包,tp2能收到环回流量.tp1收不到流量
+    #设置端口环回功能
+    Set Loopback    ${s1_alias}    ${s1p1}
+    Exec Cmd List    ${s1_alias}    clear counters
+    ${tp1_updown}=    Ixiasend.Get Statics    @{testerp1}    updown
+    ${s1p1_updown}=    CheckPortUpdown    ${s1_alias}    ${s1p1}
+    Ixiasend.Start Transmit    @{testerp2}
+    sleep    5s    等待端口统计计数
+    ${stat_dict}=    Get Show Interface Port    ${s1_alias}    ${s1p1}    5s_out_bps    5s_in_bps
+    ${s1p1_tx}=    Get From Dictionary    ${stat_dict}    5s_out_bps
+    ${s1p1_rx}=    Get From Dictionary    ${stat_dict}    5s_in_bps
+    ${res1}=    Check More or Less    ${s1p1_tx}    ${s1p1_rx}    0.1    #s1p1的收发应该一致
+    ${s1p1_ls}=    Get Port Speed    ${s1_alias}    ${s1p1}    #s1p1的速率,单位bits
+    ${tp2_ls}=    Get Statics    @{testerp2}    lineSpeed    #TP2的速率,单位Mbits
+    ${tp2_rx}=    Ixiasend.Get Statics    @{testerp2}    rxbps
+    ${tp2_tx}=    Ixiasend.Get Statics    @{testerp2}    txbps
+    ${tp1_rx}=    Ixiasend.Get Statics    @{testerp1}    rxbps
+    ${speed}=    Set Variable If    1000000*${tp2_ls}<${s1p1_ls}    ${1000000*${tp2_ls}*0.762}    ${${s1p1_ls}*0.762}    #乘以0.762是因为64字节线速发包时，速率只有线速的76.2%
+    ${res2}=    Check More or Less    ${tp2_rx}    ${speed}    0.1    #tp2能收到s1p1的环回流量    #由于交换机端口统计功能误差偏大,因此将tp2收包与端口理论线速速率进行比较来判断
+    Should Be True    ${tp1_updown}==${0}    tp1 must be down
+    Should Be True    ${s1p1_updown}    s1p1 must be up
+    Should Be True    ${res1}    s1p1发送的报文会从本端口收到
+    Should Be True    ${res2}    tp2能收到s1p1的环回流量
+    Should Be True    ${tp1_rx}==${0}    tp1收不到任何流量
+    Log Step End    Step1
+    #
+    #
+    Log Step Start    Step2    tp2停止发流,tp1发送流量,tp1和tp2都收不到流量
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixiasend.Start Transmit    @{testerp1}
+    sleep    2s
+    ${tp2_rx}=    Ixiasend.Get Statics    @{testerp2}    rxbps
+    ${tp1_rx}=    Ixiasend.Get Statics    @{testerp1}    rxbps
+    should be true    ${tp1_rx}==${tp2_rx}==${0}    tp1和tp2都不会收到流量
+    Log Step End    Step2
+    #
+    #
+    [Teardown]    01_uninit
+
+*** Keywords ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>>
+    #配置初始拓扑>>>>
+    \    #设置ixia流量
+    Set ixia stream ip    @{testerp1}    stream_rate=100    stream_rate_mode=${IXIA_StreamRateMode_percent}    reset=True    dst_mac=00:00:00:aa:aa:aa    src_mac=00:00:00:01:01:01
+    Set ixia stream ip    @{testerp2}    stream_rate=100    stream_rate_mode=${IXIA_StreamRateMode_percent}    reset=True    dst_mac=00:00:00:bb:bb:bb    src_mac=00:00:00:02:02:02
+    #配置完成<<<<<
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<<<
+
+01_uninit
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置>>>>>>
+    Ixiasend.Stop Transmit    @{testerp1}
+    Ixiasend.Stop Transmit    @{testerp2}
+    Ixia.Set Port Mode Default    @{testerp1}
+    Ixia.Set Port Mode Default    @{testerp2}
+    Unset Loopback    ${s1_alias}    ${s1p1}
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    恢复配置完成<<<<<<

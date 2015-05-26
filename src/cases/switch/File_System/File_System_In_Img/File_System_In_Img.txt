@@ -16,7 +16,7 @@ ${source_config_file_not_existed_regexp}    Can't find file "${NOT_EXISTED_SOURC
 ${rename_config_to_different_postfix_regexp}    Rename "${DEFAULT_DIRECTORY}${BOOT_CONFIG_DEFAULT_NAME}" error(Error:Unsupported.)!
 
 *** Test Cases ***
-File System.5.2.2.9
+5.2.2.09
     [Documentation]    不支持用format命令对flash文件的格式化
     [Tags]    format
     [Setup]    Init STEP
@@ -28,7 +28,7 @@ File System.5.2.2.9
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.12
+5.2.2.12
     [Documentation]    format设备不存在时，提示相应的错误信息
     [Tags]    format
     [Setup]    Init STEP
@@ -46,7 +46,7 @@ File System.5.2.2.12
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.23
+5.2.2.23
     [Documentation]    可以通过pwd显示本卡当前工作路径，默认的工作路径为flash:/
     [Tags]    format
     [Setup]    Init STEP
@@ -58,7 +58,7 @@ File System.5.2.2.23
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.24
+5.2.2.24
     [Documentation]    可以通过dir显示本卡存储设备中的指定文件或目录信息，支持绝对路径和相对路径
     [Tags]    dir
     [Setup]    Init STEP
@@ -92,7 +92,7 @@ File System.5.2.2.24
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.27
+5.2.2.27
     [Documentation]    如果dir要显示的目录或文件不存在，则提示错误信息
     [Tags]    dir
     [Setup]    Init STEP
@@ -118,7 +118,7 @@ File System.5.2.2.27
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.28
+5.2.2.28
     [Documentation]    Vendor文件被隐藏，不能通过dir看到
     [Tags]    dir
     [Setup]    Init STEP
@@ -137,7 +137,7 @@ File System.5.2.2.28
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.30
+5.2.2.30
     [Documentation]    如果通过cd修改的工作路径不存在，则提示错误信息，保持当前的工作路径
     [Tags]    cd
     [Setup]    Init STEP
@@ -155,7 +155,7 @@ File System.5.2.2.30
     Should Contain    ${set_result}    ${DEFAULT_DIRECTORY}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.31
+5.2.2.31
     [Documentation]    可以通过delete删除本卡存储设备上的指定文件
     [Tags]    delete
     [Setup]    Init STEP
@@ -204,7 +204,7 @@ File System.5.2.2.31
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.33
+5.2.2.33
     [Documentation]    如果delete的目的文件不存在，则提示错误信息
     [Tags]    delete
     [Setup]    Init STEP
@@ -221,7 +221,7 @@ File System.5.2.2.33
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.34
+5.2.2.34
     [Documentation]    可以通过rename把本卡上的某个指定的文件重命名为新的文件名
     [Tags]    rename
     [Setup]    Init STEP
@@ -283,7 +283,7 @@ File System.5.2.2.34
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.36
+5.2.2.36
     [Documentation]    如果rename的源文件不存在时提示错误信息
     [Tags]    rename
     [Setup]    Init STEP
@@ -313,7 +313,7 @@ File System.5.2.2.36
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.37
+5.2.2.37
     [Documentation]    如果rename的目标文件名已存在，提示错误信息，重命名操作失败
     [Tags]    rename
     [Setup]    Init STEP
@@ -345,7 +345,7 @@ File System.5.2.2.37
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.38
+5.2.2.38
     [Documentation]    rename操作的目的文件名不能为绝对路径，只能为相对路径
     [Tags]    rename
     [Setup]    Init STEP
@@ -376,7 +376,7 @@ File System.5.2.2.38
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.42
+5.2.2.42
     [Documentation]    如果copy命令的源文件不存在，提示错误信息
     [Tags]    copy
     [Setup]    Init STEP
@@ -395,7 +395,7 @@ File System.5.2.2.42
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.44
+5.2.2.44
     [Documentation]    若目标文件名与已经存在的文件名重名，系统将要求用户通过选择y/n方式来决定是否覆盖目标文件，用户选择生效
     [Tags]    copy
     [Setup]    Init STEP
@@ -480,7 +480,7 @@ File System.5.2.2.44
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System For Reload
 
-File System.5.2.2.45
+5.2.2.45
     [Documentation]    若目标文件名与已经存在的文件名重名，系统将要求用户通过选择y/n方式来决定是否覆盖目标文件，用户无输入时，默认相当于选择N
     [Setup]    Init STEP
     Tools.Comment    Step1    copy nos.img到backup img，提示Y/N，无输入
@@ -534,7 +534,7 @@ File System.5.2.2.45
     Check Running-config    ${config_command}    2    show startup-config ${BOOT_STARTUP1_CFG}
     [Teardown]    Uninit File System For Reload
 
-File System.5.2.2.47
+5.2.2.47
     [Documentation]    在ftp/tftp方式下限制.img文件最大为25MB，其它文件最大为5MB（不同机型限制大小可能不一样，需要参照相应的需求）
     [Tags]    copy
     [Setup]    Init STEP
@@ -570,7 +570,7 @@ File System.5.2.2.47
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.49
+5.2.2.49
     [Documentation]    单个文件或单个子目录名称不能超过80个字符
     [Tags]    copy
     [Setup]    Init STEP
@@ -619,7 +619,7 @@ File System.5.2.2.49
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.50
+5.2.2.50
     [Documentation]    对大文件进行copy、rename、delete等文件操作，功能正确
     [Setup]    Init STEP
     Tools.Comment    Step1    用tftp方式下载一个大的config文件
@@ -657,7 +657,7 @@ File System.5.2.2.50
     Log Step End    ${s1_alias}
     [Teardown]    Uninit File System Test
 
-File System.5.2.2.51
+5.2.2.51
     [Documentation]    通过copy、rename等手段对flash中文件进行操作时，源文件和目标文件扩展名必须相同
     [Setup]    Init STEP
     Tools.Comment    Step1    copy源img文件到目的文件，目的文件后缀不同，提示错误

@@ -1,4 +1,4 @@
-*** Settings ***
+﻿*** Settings ***
 Documentation     bootrom模式下的bsp测试用例
 Suite Setup       Init BSP IN BOOTROM MODE Suite    ${s1_host}    ${s1_port}    ${s1com}    ${s2_host}    ${s2_port}    ${s2com}
 ...               # 打开console
@@ -14,7 +14,7 @@ Resource          resource_bsp.txt
 *** Variables ***
 
 *** Test Cases ***
-multi port ping.2.2.1.1
+2.2.01.1 multi port ping
     [Documentation]    端口应能够连通PC，选用每个芯片的第一个，最后一个和中间的一个端口进行测试
     [Tags]    ready
     [Setup]    Init STEP
@@ -31,7 +31,7 @@ multi port ping.2.2.1.1
     Log Step End    ${s1com}
     [Teardown]    uninit test
 
-multi shutnoshut ping.2.2.1.2
+2.2.01.2 multi shutnoshut ping
     [Documentation]    反复拔插网线无异常，连通情况下可以ping通
     [Tags]    ready
     [Setup]    Init STEP
@@ -48,7 +48,7 @@ multi shutnoshut ping.2.2.1.2
     Log Step End    ${s1com}
     [Teardown]    uninit test
 
-console is ok.2.2.2.1
+2.2.02.1 console is ok
     [Documentation]    加电后Console，看输出和输入字符是否正确
     [Tags]    ready
     [Setup]    Init STEP
@@ -58,7 +58,7 @@ console is ok.2.2.2.1
     should contain    ${outp}    ${BOOT_IMG_DEFAULT_NAME}
     Log Step End    ${s1com}
 
-baudrate cli.2.2.2.3
+2.2.02.3 baudrate cli
     [Tags]    ready
     [Setup]    Init STEP
     Tools.Comment    Step1    输入$等错误字符，提示正确的设置参数
@@ -72,7 +72,7 @@ baudrate cli.2.2.2.3
     \    should contain    ${outp}    Current baudrate is 9600bps
     Log Step End    ${s1com}
 
-img uptime.2.2.6.1
+2.2.06.1 img uptime
     [Tags]    ready
     [Setup]    Init STEP
     Tools.Comment    Step1
@@ -97,7 +97,7 @@ img uptime.2.2.6.1
     Log Step End    ${s1com}
     [Teardown]    Enter BootRom    ${s1com}
 
-bootrom uptime.2.2.6.2
+2.2.06.2 bootrom uptime
     [Tags]    ready
     [Setup]    Init STEP
     Tools.Comment    Step1
@@ -124,7 +124,7 @@ bootrom uptime.2.2.6.2
     Log Step End    ${s1com}
     [Teardown]    Enter BootRom    ${s1com}
 
-load and wirte bootrom time.2.2.6.4
+2.2.06.4 load and wirte bootrom time
     [Documentation]    记录bootrom下写bootrom的时间
     [Tags]    update bootrom
     [Setup]    Init STEP
@@ -164,7 +164,7 @@ load and wirte bootrom time.2.2.6.4
     Log Step End    ${s1com}
     [Teardown]    Telnet.Set Timeout    ${sw_timeout}
 
-check bootrom version.2.4.2
+2.4.2 check bootrom version
     [Tags]    ready
     [Setup]    Init STEP
     Tools.Comment    Step1

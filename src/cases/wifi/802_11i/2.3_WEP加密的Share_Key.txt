@@ -1,11 +1,12 @@
-*** Settings ***
+﻿*** Settings ***
 Suite Setup       Init Test Case
 Suite Teardown    Uninit Test Case
 Resource          802_11i_vars.txt
 Resource          802_11i_vars_modifiable.txt
 
 *** Test Cases ***
-2.3.1 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
+2.3.01 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -19,7 +20,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.2 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key1，key5，key6，key7，能够关联上AP，可以ping通AP
+2.3.02 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key1，key5，key6，key7，能够关联上AP，可以ping通AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -33,7 +35,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.3 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key5，key1，key6，key7，不能关联上AP
+2.3.03 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key5，key1，key6，key7，不能关联上AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -43,7 +46,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.4 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key5，key2，key3，key4，不能关联上AP
+2.3.04 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key1，客户端设置4个key为key5，key2，key3，key4，不能关联上AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -53,7 +57,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.5 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
+2.3.05 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_2}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -67,7 +72,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.6 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key5，key2，key6，key7，能够关联上AP，可以ping通AP
+2.3.06 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key5，key2，key6，key7，能够关联上AP，可以ping通AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_2}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -81,7 +87,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.7 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key2，key5，key6，key7，不能关联上AP
+2.3.07 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key2，key5，key6，key7，不能关联上AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_2}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -91,7 +98,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.8 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key1，key5，key3，key4，不能关联上AP
+2.3.08 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key2，客户端设置4个key为key1，key5，key3，key4，不能关联上AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_2}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -101,7 +109,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.9 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
+2.3.09 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_3}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -115,7 +124,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.10 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key5，key6，key3，key7，能够关联上AP，可以ping通AP
+2.3.10 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key5，key6，key3，key7，能够关联上AP，可以ping通AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_3}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -129,7 +139,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.11 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key7，key5，key6，key3，不能关联上AP
+2.3.11 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key7，key5，key6，key3，不能关联上AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_3}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -139,7 +150,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.12 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key1，key2，key5，key4，不能关联上AP
+2.3.12 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key3，客户端设置4个key为key1，key2，key5，key4，不能关联上AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_3}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -149,7 +161,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.13 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
+2.3.13 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key1，key2，key3，key4，能够关联上AP，可以ping通AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -163,7 +176,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.14 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key5，key6，key7，key4，能够关联上AP，可以ping通AP
+2.3.14 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key5，key6，key7，key4，能够关联上AP，可以ping通AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -177,7 +191,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.15 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key7，key5，key4，key6，不能关联上AP
+2.3.15 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key7，key5，key4，key6，不能关联上AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -187,7 +202,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.16 设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key1，key2，key3，key6，不能关联上AP
+2.3.16 WEP加密的Share Key：密钥匹配
+    [Documentation]    设置wep的4个key分别为key1，key2，key3，key4，设置认证加密使用key4，客户端设置4个key为key1，key2，key3，key6，不能关联上AP
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -197,7 +213,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.17 AP设置为WEP认证模式时，client使用开放式认证，关联失败
+2.3.17 WEP加密的Share Key：开放式认证关联失败
+    [Documentation]    AP设置为WEP认证模式时，client使用开放式认证，关联失败
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -206,7 +223,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.18 AP设置为WEP认证模式时，client使用WPA-PSK认证，密码和设置tx-key一致，关联失败
+2.3.18 WEP加密的Share Key：WPA-PSK认证关联失败
+    [Documentation]    AP设置为WEP认证模式时，client使用WPA-PSK认证，密码和设置tx-key一致，关联失败
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -215,7 +233,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.19 AP设置为WEP认证模式时，client使用WPA2-PSK认证，密码和设置tx-key一致，关联失败
+2.3.19 WEP加密的Share Key：WPA2-PSK认证关联失败
+    [Documentation]    AP设置为WEP认证模式时，client使用WPA2-PSK认证，密码和设置tx-key一致，关联失败
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -224,7 +243,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.20 AP设置为WEP认证模式时，client使用wpa-802.1x认证，关联失败
+2.3.20 WEP加密的Share Key：wpa-802.1x认证关联失败
+    [Documentation]    AP设置为WEP认证模式时，client使用wpa-802.1x认证，关联失败
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -234,7 +254,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.3.21 AP设置为WEP认证模式时，client使用wpa2-802.1x认证，关联失败
+2.3.21 WEP加密的Share Key：wpa2-802.1x认证关联失败
+    [Documentation]    AP设置为WEP认证模式时，client使用wpa2-802.1x认证，关联失败
     Network Wep Share Key    ${ac}    ${ap_network}    ${wep_key_type_ascii}    ${wep_txkey_4}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}

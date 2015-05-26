@@ -1,11 +1,12 @@
-*** Settings ***
+﻿*** Settings ***
 Suite Setup       Init Test Case
 Suite Teardown    Uninit Test Case
 Resource          802_11i_vars.txt
 Resource          802_11i_vars_modifiable.txt
 
 *** Test Cases ***
-2.2.2 client使用开放式认证+WEP加密，使用错误的密钥可以关联成功，但无法进行通信
+2.2.02 开放式认证+WEP加密：错误密钥可以关联无法通信
+    [Documentation]    开放式认证+WEP加密：client使用开放式认证+WEP加密，使用错误的密钥可以关联成功，但无法进行通信
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -16,7 +17,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${dhip_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.2.3 client使用开放式认证+WEP加密，使用正确的密钥可以关联成功，能够进行正常通信（能ping通AP）
+2.2.03 开放式认证+WEP加密：正确密钥关联成功正常通信
+    [Documentation]    开放式认证+WEP加密：client使用开放式认证+WEP加密，使用正确的密钥可以关联成功，能够进行正常通信（能ping通AP）
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -30,7 +32,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be Equal    ${lossvalue}    ${100}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.2.4 client使用WEP认证，使用正确的密钥无法关联成功
+2.2.04 开放式认证+WEP加密：WEP认证无法关联成功
+    [Documentation]    开放式认证+WEP加密：client使用WEP认证，使用正确的密钥无法关联成功
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -39,7 +42,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.2.5 client使用wpa-psk认证，使用正确的密钥无法关联成功
+2.2.05 开放式认证+WEP加密：wpa-psk认证无法关联成功
+    [Documentation]    开放式认证+WEP加密：client使用wpa-psk认证，使用正确的密钥无法关联成功
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -48,7 +52,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.2.6 client使用wpa2-psk认证，使用正确的密钥无法关联成功
+2.2.06 开放式认证+WEP加密：wpa2-psk认证无法关联成功
+    [Documentation]    开放式认证+WEP加密：client使用wpa2-psk认证，使用正确的密钥无法关联成功
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -57,7 +62,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.2.7client使用wpa-enterprise认证，使用正确的密钥无法关联成功
+2.2.07 开放式认证+WEP加密：wpa-enterprise认证无法关联成功
+    [Documentation]    开放式认证+WEP加密：client使用wpa-enterprise认证，使用正确的密钥无法关联成功
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -67,7 +73,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.2.8client使用wpa2-enterprise认证，使用正确的密钥无法关联成功
+2.2.08 开放式认证+WEP加密：wpa2-enterprise认证无法关联成功
+    [Documentation]    开放式认证+WEP加密：client使用wpa2-enterprise认证，使用正确的密钥无法关联成功
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -77,7 +84,8 @@ Resource          802_11i_vars_modifiable.txt
     Should Not Be True    ${auth_result}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.2.9 当client成功关联到AP时，UWS将会收到AP发送的client Authentication消息（debug查看）
+2.2.09 开放式认证+WEP加密：成功关联发送client Authentication消息
+    [Documentation]    开放式认证+WEP加密：当client成功关联到AP时，UWS将会收到AP发送的client Authentication消息（debug查看）
     Network Open    ${ac}    ${ap_network}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}
@@ -89,7 +97,8 @@ Resource          802_11i_vars_modifiable.txt
     AC.Stop Debug    ${ac}
     Sta Wpa Disconnect    ${sta}    ${sta1_netcard}
 
-2.2.10 当client关联到AP失败时，查看Detected Clients表，该client会被加入到该表中，但状态被标识为detected
+2.2.10 开放式认证+WEP加密：关联失败时client在Detected Clients表
+    [Documentation]    开放式认证+WEP加密：当client关联到AP失败时，查看Detected Clients表，该client会被加入到该表中，但状态被标识为detected
     Network Wep Open    ${ac}    ${ap_network}    ${wep_key_type_hex}    ${wep_txkey_1}
     Wireless Ap Profile Apply    ${ap_profile}
     sleep    ${sleep_time}

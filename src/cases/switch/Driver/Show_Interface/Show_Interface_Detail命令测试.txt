@@ -1,0 +1,53 @@
+﻿*** Settings ***
+Suite Setup       init suite test
+Suite Teardown    uninit suite test
+Resource          resource_show_interface.txt
+
+*** Test Cases ***
+1.2.20.2 show interface detail
+    Log Step Start    step1    检查show interface detail能够显示所有端口的brief信息(通过show interface port status来判断是否显示全)
+    Exec Cmd List    ${s1_alias}
+    ${showPortStatus}=    Exec Cmd slowly    ${s1_alias}    show interface ethernet status | include UP|DOWN
+    ${showInterface}=    Exec Cmd Until Regexp    ${s1_alias}    show interface detail    ${sw_prompt}    timeout=5 minute
+    @{ports}=    Tools.Find All From String    ${showPortStatus}    (?m)^(\\d+/.*?)\\s+    #获取所有端口号
+    : FOR    ${port}    IN    @{ports}
+    \    Should Contain    ${showInterface}    ${port}    show interface没有输出端口${port}的信息!!
+    Log Step End    step1
+    ##
+    Log Step Start    step2    检查show interface detail能够显示端口的详细信息
+    ${lineNum}=    Get Line Count    ${showPortStatus}
+    ${portNum}=    Set Variable    ${${lineNum}-1}    #showPortStatus中包含有交换机hostname,需要排除
+    ${str1}=    Get Lines Containing String    ${showInterface}    Input and output packets by length
+    ${count1}=    Get Line Count    ${str1}
+    ${str2}=    Get Lines Containing String    ${showInterface}    Output packets dropped because of no buffer
+    ${count2}=    Get Line Count    ${str2}
+    ${str3}=    Get Lines Containing String    ${showInterface}    Input IPv4 L3 packets
+    ${count3}=    Get Line Count    ${str3}
+    ${str4}=    Get Lines Containing String    ${showInterface}    Output IPv4 L3 packets
+    ${count4}=    Get Line Count    ${str4}
+    ${str5}=    Get Lines Containing String    ${showInterface}    Input IPv6 L3 packets
+    ${count5}=    Get Line Count    ${str5}
+    ${str6}=    Get Lines Containing String    ${showInterface}    Output IPv6 L3 packets
+    ${count6}=    Get Line Count    ${str6}
+    should be true    ${count1}==${portNum}
+    should be true    ${count2}==${portNum}
+    Run Keyword If    ${DEVICE_TYPE}==${0}    should be true    ${count3}==${portNum}
+    Run Keyword If    ${DEVICE_TYPE}==${0}    should be true    ${count4}==${portNum}
+    Run Keyword If    ${DEVICE_TYPE}==${0}    should be true    ${count5}==${portNum}
+    Run Keyword If    ${DEVICE_TYPE}==${0}    should be true    ${count6}==${portNum}
+    Log Step End    step2
+
+*** Key Words ***
+01_init
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置>>>>>
+    tools.Comment    ${SUITE_NAME}    ${TEST_NAME}    初始化配置完成<<<<<
+
+01_uninit
+    #    失败后的show检查
+    Run Keyword If Test Failed    show for Test failed
+    #
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始配置>>>>>
+    tools.comment    ${SUITE_NAME}    ${TEST_NAME}    恢复初始结束<<<<<
+
+show for Test failed
+    log    ok
