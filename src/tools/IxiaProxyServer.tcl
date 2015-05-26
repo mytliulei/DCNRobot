@@ -1012,6 +1012,10 @@ proc SetPortFlowControl {cmdstr} {
     set card [lindex $cmdlist 2]
     set mode [lindex $cmdlist 3]
     set portlist [list [list $chasId $port $card]]
+    if {[port get $chasId $port $card] == 0} {
+        set phy_now [port cget -phyMode]
+        port setPhyMode $phy_now $chasId $port $card
+    }
     #port setDefault
     if {$mode == 0} {
         port config -flowControl false
@@ -1037,6 +1041,7 @@ proc SetPortConfigDefault {cmdstr} {
         return -100
     }
     global ixia_ip
+    ixDisconnectFromChassis $ixia_ip
     if {[ConnectToIxia $ixia_ip] != 0} {
         return -400
     }
@@ -1045,7 +1050,12 @@ proc SetPortConfigDefault {cmdstr} {
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
     set portlist [list [list $chasId $port $card]]
-    set ret [port setModeDefaults $chasId $port $card]
+    if {[port get $chasId $port $card] == 0} {
+        set phy_now [port cget -phyMode]
+    }
+    #set ret [port setModeDefaults $chasId $port $card]
+    set ret [port setFactoryDefaults $chasId $port $card]
+    port setPhyMode $phy_now $chasId $port $card
     ixWritePortsToHardware portlist
     return $ret
 }
