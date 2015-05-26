@@ -213,7 +213,7 @@ Execute Sudo Command
     ...    args:
     ...    - ${alias}: sta别名
     ...    - ${cmd}: 命令
-    ...    - ${password}: root的密码
+    ...    - ${password}: 密码
     ...    - ${return_stdout}: 返回stdout的信息，默认为True
     ...    - ${return_stderr}: 返回stderr的信息，默认为False
     ...    - ${return_rc}: 返回命令执行的返回值，默认为False
