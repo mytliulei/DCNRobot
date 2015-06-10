@@ -184,17 +184,17 @@ Build Payload
     [Return]    ${packetlen}
 
 Connect To Ixia
-    [Arguments]    ${address}
+    [Arguments]    ${address}    ${username}=${None}
     [Documentation]    start ixia proxy server and connect to ixia;
     ...
     ...    Note: in the beginning of \ every lowest test suit,please use this keyword,in the end of this test suit,the ixia proxy server will be shutdown automatically
     ...
     ...    args:
-    ...    - ixia_ip: the ip address of ixia
+    ...    - address: the ip address of ixia
     ...
     ...    return:
     ...    - True or False
-    ${rc}=    Ixia.Init Ixia    ${address}
+    ${rc}=    Ixia.Init Ixia    ${address}    ${username}
     Should Be True    ${rc}
     [Return]    ${rc}
 

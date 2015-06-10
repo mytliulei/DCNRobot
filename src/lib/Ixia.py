@@ -116,7 +116,7 @@ class Ixia(object):
         if self._initFlag[version]:
             return True,True
         proxy_server_port = self._proxy_bind_port[version]
-        if not uername:
+        if not username:
             username = "robot-%s" % os.environ["USERNAME"]
         sRet = self._start_proxy_server(ixia_ip,proxy_server_port,username,debug)
         if not sRet:
