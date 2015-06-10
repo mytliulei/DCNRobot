@@ -104,7 +104,7 @@ class Ixia(object):
 
         args:
         - ixia_ip: the ip address of ixia
-        - username: ixia login username, default take local hostname automatically
+        - username: take ixia port ownership with username, it will take os hostname by default vaule None
 
         return:
         - True or False

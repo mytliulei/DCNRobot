@@ -191,6 +191,7 @@ Connect To Ixia
     ...
     ...    args:
     ...    - address: the ip address of ixia
+    ...    - uername: take ixia port ownership with username, it will take os hostname by default vaule None
     ...
     ...    return:
     ...    - True or False
