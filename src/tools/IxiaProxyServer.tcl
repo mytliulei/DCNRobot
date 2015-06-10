@@ -236,6 +236,9 @@ proc SetStreamFromHexstr {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set streamId [lindex $cmdlist 3]
     # set streamRateMode [lindex $cmdlist 4]
     # set streamRate [lindex $cmdlist 5]
@@ -314,6 +317,9 @@ proc SetPortModeDefault {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set portlist [list [list $chasId $port $card]]
     set ret [port setModeDefaults $chasId $port $card]
     ixWriteConfigToHardware portlist
@@ -334,6 +340,7 @@ proc StartTransmit {cmdstr} {
     set chasId [GetIxiaChassID $ixia_ip]
     set ret 0
     foreach {x port card} $cmdlist {
+        IxiaLogin $chasId $port $card
         set portlist [list [list $chasId $port $card]]
         set res [ixStartTransmit portlist]
         set ret [expr $ret + $res]
@@ -356,6 +363,7 @@ proc StopTransmit {cmdstr} {
     set chasId [GetIxiaChassID $ixia_ip]
     set ret 0
     foreach {x port card} $cmdlist {
+        IxiaLogin $chasId $port $card
         set portlist [list [list $chasId $port $card]]
         set res [ixStopTransmit portlist]
         set ret [expr $ret + $res]
@@ -379,6 +387,9 @@ proc GetStatistics {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set portlist [list [list $chasId $port $card] ]
     set ret ""
     set statlist [lrange $cmdlist 3 end]
@@ -553,7 +564,7 @@ proc ClearStatistics {cmdstr} {
     # set portlist [list [list $chasId $port $card]]
     # set ret [ixClearPortStats portlist]
     foreach {x port card} $cmdlist {
-        #set portlist [list [list $chasId $port $card]]
+        IxiaLogin $chasId $port $card
         set res [ixClearPortStats $chasId $port $card]
         set ret [expr $ret + $res]
     }
@@ -575,6 +586,7 @@ proc StartCapture {cmdstr} {
     set chasId [GetIxiaChassID $ixia_ip]
     set ret 0
     foreach {x port card} $cmdlist {
+        IxiaLogin $chasId $port $card
         set portlist [list [list $chasId $port $card]]
         set res [ixStartCapture portlist]
         set ret [expr $ret + $res]
@@ -597,6 +609,7 @@ proc StopCapture {cmdstr} {
     set chasId [GetIxiaChassID $ixia_ip]
     set ret 0
     foreach {x port card} $cmdlist {
+        IxiaLogin $chasId $port $card
         set portlist [list [list $chasId $port $card]]
         set res [ixStopCapture portlist]
         set ret [expr $ret + $res]
@@ -619,6 +632,9 @@ proc CheckTransmitDone {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set portlist [list [list $chasId $port $card]]
     set ret [ixCheckTransmitDone portlist]
     return $ret
@@ -640,6 +656,9 @@ proc GetCapturePacket {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set fromPacket [lindex $cmdlist 3]
     set toPacket [lindex $cmdlist 4]
     if {$fromPacket < 1} {
@@ -696,6 +715,9 @@ proc GetCapturePacketNum {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     #set portlist [list [list $chasId $port $card]]
     capture get $chasId $port $card
     set ret [capture cget -nPackets]
@@ -718,6 +740,9 @@ proc SetStreamControl {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set streamId [lindex $cmdlist 3]
     set streamRateMode [lindex $cmdlist 4]
     set streamRate [lindex $cmdlist 5]
@@ -781,6 +806,9 @@ proc SetStreamEnable {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set streamId [lindex $cmdlist 3]
     set enable [lindex $cmdlist 4]
     set portlist [list [list $chasId $port $card]]
@@ -813,6 +841,9 @@ proc SetStreamFromIxiaAPI {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set streamId [lindex $cmdlist 3]
     set fcs [lindex $cmdlist 4]
     set packetlist [lrange $cmdlist 5 end]
@@ -898,6 +929,9 @@ proc SetPortSpeedDuplex {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set mode [lindex $cmdlist 3]
     set negstr [lindex $cmdlist 4]
     set portlist [list [list $chasId $port $card]]
@@ -1010,6 +1044,9 @@ proc SetPortFlowControl {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set mode [lindex $cmdlist 3]
     set portlist [list [list $chasId $port $card]]
     if {[port get $chasId $port $card] == 0} {
@@ -1049,6 +1086,9 @@ proc SetPortConfigDefault {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set portlist [list [list $chasId $port $card]]
     if {[port get $chasId $port $card] == 0} {
         set phy_now [port cget -phyMode]
@@ -1077,6 +1117,9 @@ proc SetPortIgnoreLink {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set flag [lindex $cmdlist 3]
     set portlist [list [list $chasId $port $card]]
     #port setDefault
@@ -1109,6 +1152,9 @@ proc GetStatisticsTimeout {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set portlist [list [list $chasId $port $card] ]
     set ret ""
     set statis [lindex $cmdlist 3]
@@ -1297,6 +1343,9 @@ proc SetPortFiltersEnable {cmdstr} {
     set x [lindex $cmdlist 0]
     set card [lindex $cmdlist 1]
     set port [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set filterlist [lrange $cmdlist 3 end]
     set filter_cmdstr [join $filterlist " "]
     if {$logflag == 1} {
@@ -1361,6 +1410,9 @@ proc GetCapturePacketTimestamp {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set fromPacket [lindex $cmdlist 3]
     set toPacket [lindex $cmdlist 4]
     if {$fromPacket < 1} {
@@ -1435,6 +1487,9 @@ proc AddPortToPortgroup {cmdstr} {
     set x [lindex $cmdlist 0]
     set card [lindex $cmdlist 1]
     set port [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set goupid [lindex $cmdlist 3]
     set ret [portGroup add $goupid $chasId $card $port]
     return $ret
@@ -1456,6 +1511,9 @@ proc DelPortToPortgroup {cmdstr} {
     set x [lindex $cmdlist 0]
     set card [lindex $cmdlist 1]
     set port [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set goupid [lindex $cmdlist 3]
     set ret [portGroup del $goupid $chasId $card $port]
     return $ret
@@ -1517,6 +1575,9 @@ proc SetPortTransmitMode {cmdstr} {
     set x [lindex $cmdlist 0]
     set port [lindex $cmdlist 1]
     set card [lindex $cmdlist 2]
+    if {[IxiaLogin $chasId $port $card] != 0} {
+        return -401
+    }
     set mode [lindex $cmdlist 3]
     set portlist [list [list $chasId $port $card]]
     #port setDefault
@@ -1561,12 +1622,24 @@ proc OpenLog {} {
     return $fid
 }
 
+proc IxiaLogin {chas card port} {
+    global username
+    if {$username != ""} {
+        ixLogin $username
+        set portlist [list [list $chas $card $port]]
+        ixTakeOwnership $portlist force
+    }
+    return 0
+}
+
 set bind_addr 0.0.0.0
 set bind_port 11917
 set ixia_version 4.10
 set ixia_ip 0.0.0.0
 set logflag 0
 set logfid ""
+set username ""
+
 if {$argc > 2} {
     array set argarray $argv
     if {[info exists argarray(ixiaversion)]} {
@@ -1583,6 +1656,9 @@ if {$argc > 2} {
     }
     if {[info exists argarray(logflag)]} {
         set logflag $argarray(logflag)
+    }
+    if {[info exists argarray(username)]} {
+        set username $argarray(username)
     }
 }
 

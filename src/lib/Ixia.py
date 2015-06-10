@@ -96,7 +96,7 @@ class Ixia(object):
         self.expect_ret_Re = re.compile(r'\n')
 
 
-    def init_ixia(self,ixia_ip,debug=False):
+    def init_ixia(self,ixia_ip,username=None,debug=False):
         '''
         start ixia proxy server and connect to ixia;
 
@@ -104,6 +104,7 @@ class Ixia(object):
 
         args:
         - ixia_ip: the ip address of ixia
+        - username: ixia login username, default take local hostname automatically
 
         return:
         - True or False
@@ -115,7 +116,9 @@ class Ixia(object):
         if self._initFlag[version]:
             return True,True
         proxy_server_port = self._proxy_bind_port[version]
-        sRet = self._start_proxy_server(ixia_ip,proxy_server_port,debug)
+        if not uername:
+            username = "robot-%s" % os.environ["USERNAME"]
+        sRet = self._start_proxy_server(ixia_ip,proxy_server_port,username,debug)
         if not sRet:
             return False
         #cRet = self._start_ixia_client(proxy_server_port)
@@ -170,7 +173,7 @@ class Ixia(object):
         with open(filename,'rb') as handle:
             return handle.read()
 
-    def _start_proxy_server(self,_ixia_ip,_proxy_server_port,debug=False):
+    def _start_proxy_server(self,_ixia_ip,_proxy_server_port,username,debug=False):
         '''
         '''
         #debug ixia 
@@ -187,7 +190,7 @@ class Ixia(object):
         #process \s in path
         proxy_file_sub = re.compile(r'\\([^\\]*\s+[^\\]*)\\')
         proxy_file = proxy_file_sub.sub(r'\\"\1"\\',self._proxy_server_path)
-        cmd = '%s %s ixiaip %s bindport %s ixiaversion %s' % (cmdpath,proxy_file,_ixia_ip,_proxy_server_port,version)
+        cmd = '%s %s ixiaip %s bindport %s ixiaversion %s username %s' % (cmdpath,proxy_file,_ixia_ip,_proxy_server_port,version,username)
         if debug:
             cmd += ' logflag 1'
         p=subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
