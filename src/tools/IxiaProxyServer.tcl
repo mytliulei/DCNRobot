@@ -1624,10 +1624,18 @@ proc OpenLog {} {
 
 proc IxiaLogin {chas card port} {
     global username
+    global loginflag
+    global takelist
     if {$username != ""} {
-        ixLogin $username
+        if {$loginflag == "false"} {
+            ixLogin $username
+            set loginflag true
+        }
         set portlist [list [list $chas $card $port]]
-        ixTakeOwnership $portlist force
+        if {[lsearch $takelist $portlist] == -1} {
+            ixTakeOwnership $portlist force
+            lappend takelist $portlist
+        }
     }
     return 0
 }
@@ -1639,6 +1647,8 @@ set ixia_ip 0.0.0.0
 set logflag 0
 set logfid ""
 set username ""
+set loginflag false
+set takelist ""
 
 if {$argc > 2} {
     array set argarray $argv
