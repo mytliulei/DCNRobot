@@ -1633,7 +1633,10 @@ proc IxiaLogin {chas card port} {
         }
         set portlist [list [list $chas $card $port]]
         if {[lsearch $takelist $portlist] == -1} {
-            ixTakeOwnership $portlist force
+            port get $chas $card $port
+            if { [port cget -owner] != $username} {
+                ixTakeOwnership $portlist force
+            }
             lappend takelist $portlist
         }
     }
