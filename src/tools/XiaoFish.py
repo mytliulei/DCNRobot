@@ -1451,8 +1451,10 @@ class DsendService(rpyc.Service):
                 except TypeError:
                     hstrList = []
             else:
-                requireNumber = int(args)
-                hstrList = DsendService.xf.get_capture_packet_hexstr(port,requireNumber)
+                requireNumber = int(args) + 1
+                if num >= int(requireNumber):
+                    num = int(requireNumber)
+                hstrList = DsendService.xf.get_capture_packet_hexstr(port,num)
             return dumps(hstrList)
         elif proc == "getPortStatus":
             ret = "NULL"
@@ -1566,11 +1568,12 @@ class DsendService(rpyc.Service):
         if (str(streamSize) == 'auto') | (str(streamSize) == 'Auto'):
             streamSize = 64
         if str(streamMode) == 'bps':
-            ppsRate = int(rate)/int(streamSize)/8
+            ppsRate = float(rate)/int(streamSize)/8
         elif str(streamMode) == 'pps':
-            ppsRate = int(rate)
+            ppsRate = float(rate)
         elif str(streamMode) == 'percent':
-            return "not support line speed percent mode"
+            ppsRate = float(rate)
+            #return "not support line speed percent mode"
         else:
             return 'streamMode is %s,Please input correct streamMode' % streamMode
         #compute incr field
