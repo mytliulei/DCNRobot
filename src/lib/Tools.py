@@ -87,7 +87,7 @@ class Tools(object):
 
         examples:
         | Incr Ip | 10.1.1.1 | #结果10.1.1.2 |
-        | Incr Ip | 10.1.1.1 | step=${2}  | #结果10.1.1.3 |            
+        | Incr Ip | 10.1.1.1 | step=${2}  | #结果10.1.1.3 |
         | Incr Ip | 10.1.1.1 | mask=${24} | #结果10.1.2.1 |
         '''
         iplist = ip.split('.')
@@ -108,7 +108,7 @@ class Tools(object):
         gv = inc + step
         mod = int(shex,16) & (2 ** mv - 1)
         resv = ((gv << mv) + mod) & (2 ** 32 - 1)
-        reslist = [] 
+        reslist = []
         for i in range(4):
             reslist.insert(0,str(resv >> (i * 8) & (2 ** 8 - 1)))
         return '.'.join(reslist)
@@ -118,7 +118,7 @@ class Tools(object):
         '''
         KeyWord: Incr Ipv6
 
-        args: 
+        args:
             - ipv6:ip地址 如'2000::1'
             - step:增长数量  默认1
             - mask:掩码，从掩码位置增长，默认128,即默认从最后一位开始增长
@@ -203,11 +203,11 @@ class Tools(object):
     def get_value_from_string(self,string,regexp):
         '''
         KeyWord: Get Value From String, 从匹配字符串中按照正则表达式找出子串
-            
+
         args:
             - string: 匹配字符串
             - regexp: 正则表达式
-            
+
         return:
             - None，未匹配成功
             - (group(1),group(2),...),匹配成功后的子串元组
@@ -234,11 +234,11 @@ class Tools(object):
     def find_all_from_string(self,string,regexp):
         '''
         KeyWord: Find All From String, 从匹配字符串中找出所有符合正则表达式的子串
-            
+
         args:
             - string: 匹配字符串
             - regexp: 正则表达式
-            
+
         return:
             - None，未匹配成功
             - (group(1),group(2),...),所有的子串元组
@@ -328,11 +328,11 @@ class Tools(object):
     def find_all_num_from_string(self,string,regexp):
         '''
         KeyWord: Find All From String, 从匹配字符串中找出所有符合正则表达式的子串的数目
-            
+
         args:
             - string: 匹配字符串
             - regexp: 正则表达式
-            
+
         return:
             - 符合匹配的数字
 
@@ -370,3 +370,32 @@ class Tools(object):
         except Exception,ex:
             #raise RuntimeError(unicode(ex))
             pass
+
+    def ip_to_hexstr(self,ip,joinstr=""):
+        """
+        KeyWord: Ip To Hexstr, Convert ip address to Hex String
+
+        args:
+        - ip:ip地址 如'10.1.1.1'
+        - joinstr: 十六进制字符串的连接符，默认为空
+
+        return: IP地址对应的十六进制字符串
+
+        examples:
+        | Ip To Hexstr | 10.1.1.1 | #结果0A010101 |
+        | Ip To Hexstr | 10.1.1.1 | : | #结果0A:01:01:01 |
+        | Ip To Hexstr | 10.1.1.1 | - | #结果0A-01-01-01 |
+        """
+        iplist = ip.split('.')
+        if len(iplist) != 4:
+            logger.info('ip format error')
+            return
+        hexstr_list=[]
+        for i_ip in iplist:
+            if int(i_ip) > 255 or int(i_ip) < 0:
+                logger.info('ip format error')
+                return
+            hexstr_list.append('%02X' % int(i_ip))
+        return joinstr.join(hexstr_list)
+
+
