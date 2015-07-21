@@ -27,6 +27,7 @@ class PacketBase(object):
         self._pkt_streamlist_hexstring = []
         self._packetList = []
         self._packetField = []
+        # ixia para
         self._ixia_flag = False
         self._ixia_packetField = []
         self._ixia_vlan_flag = 0
@@ -44,10 +45,20 @@ class PacketBase(object):
         self._ixia_mld_kwargs_detail = None
         self._ixia_ipv6_icmpv6_echo_flag = 0
         self._packet_scapy_length = 0
+        # pktgen para
+        self._pktgen_flag = False
+        self._pktgen_packetField = []
+        self._pktgen_vlan_flag = 0
+        self._pktgen_packet_cmd = None
 
     def _set_ixia_flag(self,flag):
         old = self._ixia_flag
         self._ixia_flag = flag
+        return old
+
+    def _set_pktgen_flag(self,flag):
+        old = self._pktgen_flag
+        self._pktgen_flag = flag
         return old
 
     def _get_stream_from_pcapfile(self,filename):
@@ -76,10 +87,20 @@ class PacketBase(object):
         else:
             return ""
 
+    def get_packet_cmd_pktgen(self):
+        """
+        """
+        if self._pktgen_flag:
+            return self._pktgen_packet_cmd
+        else:
+            return ""
+
     def empty_packet_list(self):
         self._packetList = []
         if self._ixia_flag:
             self._ixia_packet_cmd = ""
+        elif self._pktgen_flag:
+            self._pktgen_packet_cmd = ""
 
     def _build_stream(self):
         ''''''
@@ -170,7 +191,20 @@ class PacketBase(object):
             ycmd = '@'.join(self._ixia_write_cmd)
             self._ixia_packet_cmd = xcmd + '$' + ycmd
             self._reset_ixia_parameter()
-            return 0
+        elif self._pktgen_flag:
+            cmdlist = []
+            cmdlist.append("pkt_size %s" % length)
+            cmdstr = '!'.join(cmdlist)
+            self._pktgen_packetField.append(cmdstr)
+            self._pktgen_packet_cmd = "@".join(self._pktgen_packetField)
+            self._reset_pktgen_parameter()
+        return 0
+
+    def _reset_pktgen_parameter(self):
+        """
+        """
+        self._pktgen_packetField = []
+        self._pktgen_vlan_flag = 0
 
     def _reset_ixia_parameter(self):
         '''
@@ -226,7 +260,23 @@ class PacketBase(object):
             self._packetField.append(cmd)
             if self._ixia_flag:
                 self._build_ether_ixia(dst,src,typeid,kwargs)
+            elif self._pktgen_flag:
+                self._build_ether_pktgen(dst,src,typeid,kwargs)
             return len(p)
+
+    def _build_ether_pktgen(self,dst,src,typeid,kwargs):
+        """
+        """
+        cmdlist = []
+        cmdlist.append("dstmac %s" % dst)
+        cmdlist.append("srcmac %s" % src)
+        if kwargs and "src_mac_count" in kwargs.keys():
+            cmdlist.append("src_mac_count %s" % kwargs["src_mac_count"])
+        if kwargs and "dst_mac_count" in kwargs.keys():
+            cmdlist.append("dst_mac_count %s" % kwargs["dst_mac_count"])
+        cmd = '!'.join(cmdlist)
+        self._pktgen_packetField.append(cmd)
+        return True
 
     def _build_ether_ixia(self,dst,src,typeid,kwargs):
         '''
@@ -492,7 +542,29 @@ class PacketBase(object):
             self._packetField.append(cmd)
             if self._ixia_flag:
                 self._build_ip_ixia(ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,kwargs)
+            elif self._pktgen_flag:
+                self._build_ip_pktgen(ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,kwargs)
             return len(p)
+
+    def _build_ip_pktgen(self,ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,kwargs):
+        """
+        """
+        cmdlist = []
+        cmdlist.append("dst_min %s" % dst)
+        cmdlist.append("src_min %s" % src)
+        if tos:
+            cmdlist.append("tos %02X" % tos)
+        if kwargs and "src_ip_count" in kwargs.keys():
+            import Tools.Tools
+            src_max = Tools.Tools.incr_ip(src,int(kwargs["src_ip_count"]))
+            cmdlist.append("src_max %s" % src_max)
+        if kwargs and "dst_ip_count" in kwargs.keys():
+            import Tools.Tools
+            dst_max = Tools.Tools.incr_ip(dst,int(kwargs["dst_ip_count"]))
+            cmdlist.append("dst_max %s" % dst_max)
+        cmd = '!'.join(cmdlist)
+        self._pktgen_packetField.append(cmd)
+        return True
 
     def _build_ip_ixia(self,ihl,tos,iplen,iden,flags,frag,ttl,proto,chksum,src,dst,options,kwargs):
         '''
@@ -780,7 +852,29 @@ class PacketBase(object):
             self._packetField.append(cmd)
             if self._ixia_flag:
                 self._build_ipv6_ixia(version,tc,fl,plen,nh,hlim,src,dst,kwargs)
+            elif self._pktgen_flag:
+                self._build_ipv6_pktgen(version,tc,fl,plen,nh,hlim,src,dst,kwargs)
             return len(p)
+
+    def _build_ipv6_pktgen(self,version,tc,fl,plen,nh,hlim,src,dst,kwargs):
+        """
+        """
+        cmdlist = []
+        cmdlist.append("dst6 %s" % dst)
+        cmdlist.append("src6 %s" % src)
+        if tc:
+            cmdlist.append("traffic_class %02X" % tc)
+        if kwargs and "src_ipv6_count" in kwargs.keys():
+            import Tools.Tools
+            src6_max = Tools.Tools.incr_ipv6(src,int(kwargs["src_ipv6_count"]))
+            cmdlist.append("src6_max %s" % src6_max)
+        if kwargs and "dst_ipv6_count" in kwargs.keys():
+            import Tools.Tools
+            dst6_max = Tools.Tools.incr_ipv6(dst,int(kwargs["dst_ipv6_count"]))
+            cmdlist.append("dst6_max %s" % dst6_max)
+        cmd = '!'.join(cmdlist)
+        self._pktgen_packetField.append(cmd)
+        return True
 
     def _build_ipv6_ixia(self,version,tc,fl,plen,nh,hlim,src,dst,kwargs):
         '''
@@ -1388,7 +1482,20 @@ class PacketBase(object):
             self._packetField.append(cmd)
             if self._ixia_flag:
                 self._build_vlan_ixia(prio,cfi,vlan,typeid,kwargs)
+            elif self._pktgen_flag:
+                self._build_vlan_pktgen(prio,cfi,vlan,typeid,kwargs)
             return len(p)
+
+    def _build_vlan_pktgen(self,prio,cfi,vlan,typeid,kwargs):
+        """
+        """
+        cmdlist = []
+        cmdlist.append("vlan_id %s" % vlan)
+        cmdlist.append("vlan_p %s" % prio)
+        self._pktgen_vlan_flag += 1
+        cmd = '!'.join(cmdlist)
+        self._pktgen_packetField.append(cmd)
+        return True
 
     def _build_vlan_ixia(self,prio,cfi,vlan,typeid,kwargs):
         '''
