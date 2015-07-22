@@ -35,6 +35,9 @@ class Pktgen(object):
         self.if_control_cmdlist = {}
         self.if_statistics = {}
         self.if_cap_pkt = {}
+        self.if_cap_file = {}
+        self.if_cap_pid = {}
+        self.if_cap_num = {}
 
     def __del__(self):
         ''''''
@@ -125,26 +128,63 @@ class Pktgen(object):
     def start_capture(self,iface):
         """
         """
+        cmd = "tcpdump -n -P in -i %s -w %s" % (iface,fname)
+        self.if_cap_file[iface] = fname
+        return cmd
 
     def stop_capture(self,iface):
         """
         """
+        if iface not in self.if_cap_pid.keys():
+            raise AssertionError('iface %s not defined' % iface)
+        pid = self.if_cap_pid[iface]
+        cmd = "kill %s" % pid
+        return cmd
 
-    def clear_statics(self,iface):
+    def _clear_statics(self,iface):
         """
         """
 
     def filter_capture_packet(self,iface,express):
         """
         """
+        if iface not in self.if_cap_file.keys():
+            raise AssertionError('iface %s not defined' % iface)
+        fname = self.if_cap_file[iface]
+        cmd = "tcpdump -n -r %s '%s' | wc -l" % (fname,express)
+        return cmd
 
-    def get_capture_packet_num(self,if):
+    def get_filter_capture_packet_num(self,iface,express):
+        """
+        """
+        if iface not in self.if_cap_file.keys():
+            raise AssertionError('iface %s not defined' % iface)
+        fname = self.if_cap_file[iface]
+        cmd = "tcpdump -n -xx -r %s '%s'" % (fname,express)
+        return cmd
+
+    def get_capture_packet_num(self,iface):
+        """
+        """
+        if iface not in self.if_cap_file.keys():
+            raise AssertionError('iface %s not defined' % iface)
+        fname = self.if_cap_file[iface]
+        cmd = "tcpdump -n -r %s | wc -l" % fname
+        return cmd
+
+    def _get_statistics(self,if):
         """
         """
 
-    def get_statistics(self,if):
+    def _get_statis_beckmark(self,iface):
         """
         """
+        cmdlist = []
+        cmdlist.append("cat /sys/class/net/%s/statistics/tx_packets" % iface)
+        cmdlist.append("cat /sys/class/net/%s/statistics/tx_bytes" % iface)
+        cmdlist.append("cat /sys/class/net/%s/statistics/rx_packets" % iface)
+        cmdlist.append("cat /sys/class/net/%s/statistics/rx_bytes" % iface)
+        return cmdlist
 
     def set_stream_control(self,iface,count,rate=None,ratep=None):
         """
