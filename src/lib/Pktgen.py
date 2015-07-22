@@ -96,6 +96,13 @@ class Pktgen(object):
         cmdlist.append("test -f /proc/net/pktgen/kpktgend_0")
         return cmdlist
 
+    def check_tcpdump(self):
+        """
+        """
+        cmdlist = []
+        cmdlist.append("which tcpdump")
+        return cmdlist
+
     def set_stream_packet(self,iface):
         """
         """
@@ -128,6 +135,7 @@ class Pktgen(object):
     def start_capture(self,iface):
         """
         """
+        fname = "/tmp/%s.pcap" % int(time.time())
         cmd = "tcpdump -n -P in -i %s -w %s" % (iface,fname)
         self.if_cap_file[iface] = fname
         return cmd
@@ -138,12 +146,14 @@ class Pktgen(object):
         if iface not in self.if_cap_pid.keys():
             raise AssertionError('iface %s not defined' % iface)
         pid = self.if_cap_pid[iface]
-        cmd = "kill %s" % pid
-        return cmd
+        cmdlist = []
+        cmdlist.append("kill %s" % pid)
+        return cmdlist
 
     def _clear_statics(self,iface):
         """
         """
+        pass
 
     def filter_capture_packet(self,iface,express):
         """
@@ -151,17 +161,25 @@ class Pktgen(object):
         if iface not in self.if_cap_file.keys():
             raise AssertionError('iface %s not defined' % iface)
         fname = self.if_cap_file[iface]
-        cmd = "tcpdump -n -r %s '%s' | wc -l" % (fname,express)
-        return cmd
+        cmdlist = []
+        if express:
+            cmdlist.append("tcpdump -n -r %s '%s' | wc -l" % (fname,express))
+        else:
+            cmdlist.append("tcpdump -n -r %s | wc -l" % fname)
+        return cmdlist
 
-    def get_filter_capture_packet_num(self,iface,express):
+    def get_filter_capture_packet(self,iface,express):
         """
         """
         if iface not in self.if_cap_file.keys():
             raise AssertionError('iface %s not defined' % iface)
         fname = self.if_cap_file[iface]
-        cmd = "tcpdump -n -xx -r %s '%s'" % (fname,express)
-        return cmd
+        cmdlist = []
+        if express:
+            cmdlist.append("tcpdump -n -xx -r %s '%s'" % (fname,express))
+        else:
+            cmdlist.append("tcpdump -n -xx -r %s" % fname)
+        return cmdlist
 
     def get_capture_packet_num(self,iface):
         """
@@ -169,12 +187,14 @@ class Pktgen(object):
         if iface not in self.if_cap_file.keys():
             raise AssertionError('iface %s not defined' % iface)
         fname = self.if_cap_file[iface]
-        cmd = "tcpdump -n -r %s | wc -l" % fname
-        return cmd
+        cmdlist = []
+        cmdlist.append("tcpdump -n -r %s | wc -l" % fname)
+        return cmdlist
 
-    def _get_statistics(self,if):
+    def _get_statistics(self,iface):
         """
         """
+        pass
 
     def _get_statis_beckmark(self,iface):
         """
