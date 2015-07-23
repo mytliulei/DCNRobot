@@ -50,6 +50,7 @@ class PacketBase(object):
         self._pktgen_packetField = []
         self._pktgen_vlan_flag = 0
         self._pktgen_packet_cmd = None
+        self._pktgen_packet_size = None
 
     def _set_ixia_flag(self,flag):
         old = self._ixia_flag
@@ -91,9 +92,9 @@ class PacketBase(object):
         """
         """
         if self._pktgen_flag:
-            return self._pktgen_packet_cmd
+            return self._pktgen_packet_cmd,self._pktgen_packet_size
         else:
-            return ""
+            return "",0
 
     def empty_packet_list(self):
         self._packetList = []
@@ -192,10 +193,7 @@ class PacketBase(object):
             self._ixia_packet_cmd = xcmd + '$' + ycmd
             self._reset_ixia_parameter()
         elif self._pktgen_flag:
-            cmdlist = []
-            cmdlist.append("pkt_size %s" % length)
-            cmdstr = '!'.join(cmdlist)
-            self._pktgen_packetField.append(cmdstr)
+            self._pktgen_packet_size = length - 4
             self._pktgen_packet_cmd = "@".join(self._pktgen_packetField)
             self._reset_pktgen_parameter()
         return 0
@@ -268,8 +266,8 @@ class PacketBase(object):
         """
         """
         cmdlist = []
-        cmdlist.append("dstmac %s" % dst)
-        cmdlist.append("srcmac %s" % src)
+        cmdlist.append("dst_mac %s" % dst)
+        cmdlist.append("src_mac %s" % src)
         if kwargs and "src_mac_count" in kwargs.keys():
             cmdlist.append("src_mac_count %s" % kwargs["src_mac_count"])
         if kwargs and "dst_mac_count" in kwargs.keys():

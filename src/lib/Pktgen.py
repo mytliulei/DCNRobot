@@ -30,14 +30,16 @@ class Pktgen(object):
         self._pkt_kws = self._lib_kws = None
         self._pkt_class = rfbase.PacketBase()
         self._pkt_class._set_pktgen_flag(True)
-        self._PGDEV = "/proc/net/pktgen/kpktgend_0"
+        self._pg_thread = "/proc/net/pktgen/kpktgend_0"
+        self._pg_dev = "/proc/net/pktgen/"
+        self._pg_ctrl = "/proc/net/pktgen/pgctrl"
         self.if_pkt_cmdlist = {}
         self.if_control_cmdlist = {}
         self.if_statistics = {}
         self.if_cap_pkt = {}
         self.if_cap_file = {}
-        self.if_cap_pid = {}
         self.if_cap_num = {}
+        self.if_pkt_size = {}
 
     def __del__(self):
         ''''''
@@ -107,7 +109,8 @@ class Pktgen(object):
         """
         """
         cmdlist = []
-        cmdstr = self._pkt_class.get_packet_cmd_pktgen()
+        cmdstr = self._pkt_class.get_packet_cmd_pktgen()[0]
+        self.if_pkt_size[iface] = self._pkt_class.get_packet_cmd_pktgen()[1]
         for icmd in cmdstr.split("@"):
             for jcmd in icmd.split("!"):
                 cmdlist.append(jcmd)
@@ -119,18 +122,20 @@ class Pktgen(object):
         """
         if iface not in self.if_pkt_cmdlist.keys() or iface not in self.if_control_cmdlist.keys():
             raise AssertionError('iface %s not define packet or stream control' % iface)
-        cmdlist = self.if_pkt_cmdlist[iface] + self.if_control_cmdlist[iface]
-        cmdlist.append("start")
-        return self._trans_cmd(cmdlist)
+        cmdlist = []
+        cmdlist.append(["echo rem_device_all > ", self._pg_thread])
+        cmdlist.append(["echo add_device %s > " % iface, self._pg_thread])
+        cmdlist += self._trans_cmd(iface, self.if_control_cmdlist[iface] + self.if_pkt_cmdlist[iface])
+        cmd_start = "echo start > %s" % self._pg_ctrl
+        return cmdlist,cmd_start
 
     def stop_transmit(self,iface):
         """
         """
         if iface not in self.if_pkt_cmdlist.keys() or iface not in self.if_control_cmdlist.keys():
             raise AssertionError('iface %s not defined' % iface)
-        cmdlist = []
-        cmdlist.append("stop")
-        return self._trans_cmd(cmdlist)
+        cmd_stop = "ps -ef | grep \"echo start > %s\" | head -n 1 | awk '{print $2}' | xargs kill" % self._pg_ctrl
+        return cmd_stop
 
     def start_capture(self,iface):
         """
@@ -143,12 +148,11 @@ class Pktgen(object):
     def stop_capture(self,iface):
         """
         """
-        if iface not in self.if_cap_pid.keys():
+        if iface not in self.if_cap_file.keys():
             raise AssertionError('iface %s not defined' % iface)
-        pid = self.if_cap_pid[iface]
-        cmdlist = []
-        cmdlist.append("kill %s" % pid)
-        return cmdlist
+        fname = self.if_cap_file[iface]
+        cmd = "ps -ef | grep \"tcpdump -n -P in -i %s -w %s\" | head -n 1 | awk '{print $2}' | xargs kill" % (iface,fname)
+        return cmd
 
     def _clear_statics(self,iface):
         """
@@ -161,12 +165,11 @@ class Pktgen(object):
         if iface not in self.if_cap_file.keys():
             raise AssertionError('iface %s not defined' % iface)
         fname = self.if_cap_file[iface]
-        cmdlist = []
         if express:
-            cmdlist.append("tcpdump -n -r %s '%s' | wc -l" % (fname,express))
+            cmd = "tcpdump -n -r %s '%s' | wc -l" % (fname,express)
         else:
-            cmdlist.append("tcpdump -n -r %s | wc -l" % fname)
-        return cmdlist
+            cmd = "tcpdump -n -r %s | wc -l" % fname
+        return cmd
 
     def get_filter_capture_packet(self,iface,express):
         """
@@ -174,12 +177,11 @@ class Pktgen(object):
         if iface not in self.if_cap_file.keys():
             raise AssertionError('iface %s not defined' % iface)
         fname = self.if_cap_file[iface]
-        cmdlist = []
         if express:
-            cmdlist.append("tcpdump -n -xx -r %s '%s'" % (fname,express))
+            cmd = "tcpdump -n -XX -r %s '%s'" % (fname,express)
         else:
-            cmdlist.append("tcpdump -n -xx -r %s" % fname)
-        return cmdlist
+            cmd ="tcpdump -n -XX -r %s" % fname
+        return cmd
 
     def get_capture_packet_num(self,iface):
         """
@@ -187,9 +189,8 @@ class Pktgen(object):
         if iface not in self.if_cap_file.keys():
             raise AssertionError('iface %s not defined' % iface)
         fname = self.if_cap_file[iface]
-        cmdlist = []
-        cmdlist.append("tcpdump -n -r %s | wc -l" % fname)
-        return cmdlist
+        cmd = "tcpdump -n -r %s | wc -l" % fname
+        return cmd
 
     def _get_statistics(self,iface):
         """
@@ -212,6 +213,7 @@ class Pktgen(object):
         cmdlist = []
         cmdlist.append("count %s" % count)
         cmdlist.append("clone_skb 0")
+        cmdlist.append("pkt_size %s" % self.if_pkt_size[iface])
         if ratep:
             cmdlist.append("ratep %s" % ratep)
         elif rate:
@@ -221,8 +223,10 @@ class Pktgen(object):
         self.if_control_cmdlist[iface] = cmdlist
         return cmdlist
 
-    def _trans_cmd(self,cmdlist=None):
+    def _trans_cmd(self, iface, cmdlist=None):
         """
         """
-        tran_cmdlist = [ "echo %s > %s" % (icmd,self._PGDEV) for icmd in cmdlist]
+        pgdev = self._pg_dev + iface
+        #tran_cmdlist = [ "echo %s > %s" % (icmd,pgdev) for icmd in cmdlist]
+        tran_cmdlist = [ ["echo %s > " % icmd, pgdev] for icmd in cmdlist]
         return tran_cmdlist

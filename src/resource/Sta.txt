@@ -37,9 +37,11 @@ Documentation     控制Station的关键字集合，使用规范：
 Library           SSHLibrary
 Library           ../lib/Tools.py
 Library           ../lib/Pktgen.py
+Library           String
+Library           Collections
 
 *** Variables ***
-${sc_prompt}      \#
+${sc_prompt}      \    #
 ${sc_timeout}     ${60}
 ${sc_newline}     ${None}
 ${sc_path_separator}    ${None}
@@ -219,7 +221,7 @@ Execute Sudo Command
     ...    - ${return_stderr}: 返回stderr的信息，默认为False
     ...    - ${return_rc}: 返回命令执行的返回值，默认为False
     SSHLibrary.Switch Connection    ${alias}
-    SSHLibrary.Write    ${cmd}
+    SSHLibrary.Write    sudo ${cmd}
     SSHLibrary.Read Until    :
     SSHLibrary.Write    ${password}
     ${output}=    SSHLibrary.Read Until Prompt
@@ -712,7 +714,7 @@ Build Ether
     [Return]    ${plen}
 
 Build Dot1Q
-    [Arguments]    ${prio}=${0}    ${cfi}=${0}    ${vlan}=${1}
+    [Arguments]    ${prio}=${0}    ${vlan}=${1}
     [Documentation]    build 802.1Q field packet
     ...
     ...    args:
@@ -783,7 +785,7 @@ Set Stream Control
     [Return]    ${rc}
 
 Build Packet
-    [Arguments]    ${length}=${128}    ${packetstr}=${None}
+    [Arguments]    ${length}=${128}
     [Documentation]    将之前建立的各层字段组织为一个报文
     ...
     ...    参数：
@@ -792,33 +794,43 @@ Build Packet
     [Return]    ${rc}
 
 Start Transmit
-    [Arguments]    ${interface}
+    [Arguments]    ${alias}    ${interface}
     [Documentation]    start to transmit stream
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: \ \ network interface
     ...
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
-    ${rc}=    Pktgen.Start Transmit    ${interface}
-    [Return]    ${rc}
+    ${cmd_list}    ${cmd_start}    Pktgen.Start Transmit    ${interface}
+    Log Many    @{cmd_list}
+    : FOR    ${cmd}    IN    @{cmd_list}
+    \    Sta.Pktgen Set Dev    ${alias}    @{cmd}[0]    @{cmd}[1]
+    Sta.Start Command    ${alias}    ${cmd_start}
+    [Return]    ${0}
 
 Stop Transmit
-    [Arguments]    ${interface}
+    [Arguments]    ${alias}    ${interface}    ${dev}=/proc/net/pktgen/kpktgend_0
     [Documentation]    stop to transmit stream
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: \ \ network interface
     ...
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
-    ${rc}=    Pktgen.Stop Transmit    ${interface}
+    ${check_stop}=    Sta.Execute Command    ${alias}    cat ${dev}
+    ${stop_flag}=    Tools.Is Match From String    ${check_stop}    Stopped: ${interface}
+    Run Keyword If    ${stop_flag}    Return From Keyword    ${0}
+    ${cmd_stop}=    Pktgen.Stop Transmit    ${interface}
+    ${rc}=    Sta.Execute Command    ${alias}    ${cmd_stop}    return_stdout=${False}    return_rc=${True}
     [Return]    ${rc}
 
 Start Capture
-    [Arguments]    ${interface}
+    [Arguments]    ${alias}    ${interface}
     [Documentation]    start to capture stream
     ...
     ...    args:
@@ -827,11 +839,11 @@ Start Capture
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
-    ${rc}=    Pktgen.Start Capture    ${interface}
-    [Return]    ${rc}
+    ${cmd_start_cap}=    Pktgen.Start Capture    ${interface}
+    Sta.Start Command    ${alias}    ${cmd_start_cap}
 
 Stop Capture
-    [Arguments]    ${interface}
+    [Arguments]    ${alias}    ${interface}
     [Documentation]    stop to capture stream
     ...
     ...    args:
@@ -840,11 +852,15 @@ Stop Capture
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
-    ${rc}=    Pktgen.Stop Capture    ${interface}
+    ${cmd_stop_cap}=    Pktgen.Stop Capture    ${interface}
+    Sta.Execute Command    ${alias}    ${cmd_stop_cap}
+    ${cmd_num}=    Pktgen.Get Capture Packet Num    ${interface}
+    ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
+    ${rc}=    Tools.Get Value From String    ${output_num}    (?m)^(\\d+)$
     [Return]    ${rc}
 
-Filter Capture Packet
-    [Arguments]    ${interface}    ${fliter_express}=${None}
+Get Filter Capture Packet Num
+    [Arguments]    ${alias}    ${interface}    ${fliter_express}=${None}
     [Documentation]    filter the capture packet,and return a list including filter num and filter packets
     ...
     ...    Note:please use this keyword after Stop Capture
@@ -1006,11 +1022,13 @@ Filter Capture Packet
     ...    不能和下面的混淆
     ...    not ( host vs or ace )
     ...    表达式参数即可以作为单个参数，也可以作为多个参数传递给tcpdump，后者更加方便一些。一般的，如果表达式包含一个Shell的元字符，那么用一个参数传递比较容易，最好把它括起来，多个参数在传递前，用空格连接起来。
-    ${filterres}=    Pktgen.Filter Capture Packet    ${interface}    ${fliter_express}
-    [Return]    ${filterres}
+    ${cmd_num}=    Pktgen.Filter Capture Packet    ${interface}    ${fliter_express}
+    ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
+    ${rc}=    Tools.Get Value From String    ${output_num}    (?m)^(\\d+)$
+    [Return]    ${rc}
 
 Get Capture Packet Num
-    [Arguments]    ${interface}
+    [Arguments]    ${alias}    ${interface}
     [Documentation]    get capture packet num,please use this keyword after Start Capture and Stop Capture
     ...
     ...    args:
@@ -1019,11 +1037,13 @@ Get Capture Packet Num
     ...    return:
     ...    - non negative number: num of capture packet
     ...    - negative number: error code
-    ${rc}=    Pktgen.Get Capture Packet Num    ${interface}
+    ${cmd_num}=    Pktgen.Get Capture Packet Num    ${interface}
+    ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
+    ${rc}=    Tools.Get Value From String    ${output_num}    (?m)^(\\d+)$
     [Return]    ${rc}
 
 Get Filter Capture Packet
-    [Arguments]    ${interface}    ${filter_express}
+    [Arguments]    ${alias}    ${interface}    ${filter_express}=${None}
     [Documentation]    get capture packet, and save internally
     ...
     ...    Note:please use this keyword after Start Capture and Stop Capture
@@ -1035,5 +1055,73 @@ Get Filter Capture Packet
     ...    return:
     ...    - non negative number: num of capture packet
     ...    - negative number: error code
-    ${rc}=    Pktgen.Get Filter Capture Packet    ${interface}    ${filter_express}
+    ${cmd_num}=    Pktgen.Get Filter Capture Packet    ${interface}    ${filter_express}
+    ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
+    ${rc}=    Tools.Get Value From String    ${output_num}    (?m)^(\\d+)$
     [Return]    ${rc}
+
+Set Stream Packet
+    [Arguments]    ${interface}
+    [Documentation]    set a packet on interface of station
+    ...
+    ...    Note:please use this keyword after Build Packet
+    ...
+    ...    args:
+    ...    - interface: \ \ network interface
+    ...
+    ...    return:
+    ...    - 0: ok
+    ...    - non zero: error code
+    ${rc}=    Pktgen.Set Stream Packet    ${interface}
+    [Return]    ${rc}
+
+Pktgen Set Dev
+    [Arguments]    ${alias}    ${cmd}    ${dev}
+    ${cmdstr}=    Set Variable    ${cmd}${dev}
+    Sta.Execute Command    ${alias}    ${cmdstr}
+    ${result}=    Sta.Execute Command    ${alias}    cat ${dev} | fgrep "Result: OK"
+    Should Match Regexp    ${result}    OK
+
+Make Kwargs
+    [Arguments]    @{kwargs}
+    [Documentation]    构建各个报文字段的扩展参数，用法见举例，使用方法与IxExplorer一致
+    ...
+    ...    扩展参数表：
+    ...
+    ...    1. Build Ether：
+    ...
+    ...    1). dst_mac_count：\ 目的mac变化数量
+    ...
+    ...    2). src_mac_count ：\ 源mac变化数量
+    ...
+    ...
+    ...    举例：目的mac递增10个
+    ...    | ${dict}= | Make Kwargs | dst_mac_count=10 |
+    ...    | Build Ether | dst=00:00:01:00:00:01 | src=00:00:02:00:00:01 | kwargs=${dict} |
+    ...    ---
+    ...
+    ...    2. Build Ip:
+    ...
+    ...    1). src_ip_count: \ 源ip变化数量
+    ...
+    ...    2). dst_ip_count: \ 目的ip变化数量
+    ...
+    ...    举例：源ip递增10个
+    ...    | ${dict}= | Make Kwargs | src_ip_count=10 |
+    ...    | Build Ip | dst=00:00:01:00:00:01 | src=00:00:02:00:00:01 | kwargs=${dict} |
+    ...    ---
+    ...
+    ...    3. Build Ipv6:
+    ...
+    ...    1). dst_ipv6_count: \ 源ipv6变化数量
+    ...
+    ...    2). dst_ipv6_count: \ 目的ipv6变化数量
+    ...
+    ...    ---
+    @{kwlist}=    Create List    test    test
+    : FOR    ${istr}    IN    @{kwargs}
+    \    @{ilist}    String.Split String    ${istr}    =
+    \    @{kwlist}=    Collections.Combine Lists    ${kwlist}    ${ilist}
+    ${dict}=    Collections.Create Dictionary    @{kwlist}
+    Log    ${dict}
+    [Return]    ${dict}
