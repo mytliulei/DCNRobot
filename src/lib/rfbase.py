@@ -552,14 +552,10 @@ class PacketBase(object):
         cmdlist.append("src_min %s" % src)
         if tos:
             cmdlist.append("tos %02X" % tos)
-        if kwargs and "src_ip_count" in kwargs.keys():
-            import Tools.Tools
-            src_max = Tools.Tools.incr_ip(src,int(kwargs["src_ip_count"]))
-            cmdlist.append("src_max %s" % src_max)
-        if kwargs and "dst_ip_count" in kwargs.keys():
-            import Tools.Tools
-            dst_max = Tools.Tools.incr_ip(dst,int(kwargs["dst_ip_count"]))
-            cmdlist.append("dst_max %s" % dst_max)
+        if kwargs and "src_ip_max" in kwargs.keys():
+            cmdlist.append("src_max %s" % kwargs["src_ip_max"])
+        if kwargs and "dst_ip_max" in kwargs.keys():
+            cmdlist.append("dst_max %s" % kwargs["dst_ip_max"])
         cmd = '!'.join(cmdlist)
         self._pktgen_packetField.append(cmd)
         return True
@@ -862,14 +858,10 @@ class PacketBase(object):
         cmdlist.append("src6 %s" % src)
         if tc:
             cmdlist.append("traffic_class %02X" % tc)
-        if kwargs and "src_ipv6_count" in kwargs.keys():
-            import Tools.Tools
-            src6_max = Tools.Tools.incr_ipv6(src,int(kwargs["src_ipv6_count"]))
-            cmdlist.append("src6_max %s" % src6_max)
-        if kwargs and "dst_ipv6_count" in kwargs.keys():
-            import Tools.Tools
-            dst6_max = Tools.Tools.incr_ipv6(dst,int(kwargs["dst_ipv6_count"]))
-            cmdlist.append("dst6_max %s" % dst6_max)
+        if kwargs and "src_ipv6_max" in kwargs.keys():
+            cmdlist.append("src6_max %s" % kwargs["src_ipv6_max"])
+        if kwargs and "dst_ipv6_max" in kwargs.keys():
+            cmdlist.append("dst6_max %s" % kwargs["dst_ipv6_max"])
         cmd = '!'.join(cmdlist)
         self._pktgen_packetField.append(cmd)
         return True

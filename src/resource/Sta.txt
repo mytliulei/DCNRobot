@@ -18,7 +18,42 @@ Documentation     控制Station的关键字集合，使用规范：
 ...               - Write一般用于交互式的命令（所有的Write在一个shell上），比如需要输入Y/N的命令或者对环境变量有依赖的命令，该命令的返回信息通过Read，Read Until Prompt等读取
 ...
 ...               ---
-...               3. *常用命令:*
+...               3. *Sta发包: 编辑报文*
+...               - 分层编辑报文，目前提供的关键字有：Build Ether; Build Dot1Q; Build Ip; Build Ipv6; 具体用法参见各关键字说明
+...               - 通过关键字Build Packet组装各层报文，*注意: 各层报文要按从从低到高顺序编辑*
+...               - *注意:目前只支持单层tag*
+...
+...               举例:
+...               | Sta.Build Ether | dst=00:00:00:00:00:02 | src=00:00:00:00:00:01 |
+...               | Sta.Build Dot1q | vlan=${10} | prio=${7} |
+...               | Sta.Build Ip | dst=10.1.1.1 | src=20.1.1.2 |
+...               | Sta.Build Packet |
+...
+...               ---
+...               4. *Sta发包: 将编辑的报文设置到接口*
+...               - 通过关键字Set Stream Packet将编辑好的报文设置到端口
+...
+...               ---
+...               5. *Sta发包: 设置发送报文的属性*
+...               - 通过关键字Set Stream Control设置流的发送参数
+...               - *注意: 发送速率有bps和pps两个参数，设置时只能设置1个参数，不能同时指定*
+...               - *注意: 参数count是发送的数目，设置为0时是持续发送，但因为目前不支持速率统计，在测试中这种方式很难做精确的检查*
+...
+...               ---
+...               6. *Sta发包: 发包和停止*
+...               - 关键字: Start Transmit; \ Stop Transmit
+...
+...               ---
+...               7. *Sta发包: 抓包过滤:*
+...               - 抓包关键字: Start Capture
+...               - 停止抓包关键字: Stop Capture
+...               - 获取抓包的数量: Get Capture Packet Num
+...               - 获取过滤报文的数量: Get Filter Capture Packet Num,
+...               - *注意: 必须在抓包结束后，过滤报文的关键字才能使用;*
+...               - *按不同条件，可以对抓到的报文反复使用不同的过滤条件过滤; 具体使用方法见关键字说明*
+...
+...               ---
+...               8. *常用命令:*
 ...               - Sta Wep Open Connect
 ...               - Sta Wep Shared Connect
 ...               - Sta Wpa Open Connect
@@ -32,8 +67,10 @@ Documentation     控制Station的关键字集合，使用规范：
 ...               - Check Sta Ping
 ...
 ...               ---
-...               4. *注意事项*
+...               9. *注意事项*
 ...               - 命令执行结束的标志为匹配到提示符，timeout时间为1分钟，如果命令的执行时间多于1分钟，用Sa.Set Client Configuration暂时修改timeout时间，然后执行完毕后再恢复默认值
+...               - Sta发包 采用的是pktgen，因此只支持设置mac，ip，vlan，ipv6，不支持tcp，icmp，arp等协议
+...               - Sta发包 不支持速率统计，在测试中请使用抓包方式来检查
 Library           SSHLibrary
 Library           ../lib/Tools.py
 Library           ../lib/Pktgen.py
@@ -696,21 +733,23 @@ Sta Get Interface Ip
     [Return]    ${ipaddress}
 
 Build Ether
-    [Arguments]    ${dst}=ff:ff:ff:ff:ff:ff    ${src}=00:00:00:00:00:00    ${kwargs}=${None}
+    [Arguments]    ${dst}    ${src}    ${dst_mac_count}=${None}    ${src_mac_count}=${None}
     [Documentation]    build Ethernet field packet
     ...
     ...    args:
-    ...    - dst \ \ \ : Dest Mac \ \ \ = ff:ff:ff:ff:ff:ff
-    ...    - src \ \ \ : Source Mac \ = 00:00:00:00:00:00
+    ...    - dst \ \ \ : Dest Mac
+    ...    - src \ \ \ : Source Mac
+    ...    - dst_mac_count: default None
+    ...    - src_mac_count: \ dafault None
     ...
     ...    return:
     ...    packet field length
     ...
     ...    exapmle:
     ...    | Build Ether | dst=00:00:00:00:00:01 | src=00:00:00:00:00:02 |
-    ...    | Build Ether | src=00:00:00:00:00:02 |
-    ...    | Build Ether | dst=00:00:00:00:00:02 |
-    ${plen}=    Pktgen.Build Ether    ${dst}    ${src}    ${None}    ${kwargs}
+    ...    | Build Ether | src=00:00:00:00:00:02 \ | src_mac_count={10} |
+    ...    | Build Ether | dst=00:00:00:00:00:02 | dst_mac_count={10} |
+    ${plen}=    Pktgen.Build Ether    ${dst}    ${src}    ${dst_mac_count}    ${src_mac_count}
     [Return]    ${plen}
 
 Build Dot1Q
@@ -731,37 +770,43 @@ Build Dot1Q
     [Return]    ${packetlen}
 
 Build Ip
-    [Arguments]    ${src}    ${dst}    ${tos}=${0x0}    ${kwargs}=${None}
+    [Arguments]    ${dst_ip_min}    ${src_ip_min}    ${tos}=${0x0}    ${dst_ip_max}=${None}    ${src_ip_max}=${None}
     [Documentation]    build ip field packet
     ...
     ...    args:
-    ...    - tos \ \ \ \ = 0x0
-    ...    - src \ \ \ \ = 0.0.0.0
-    ...    - dst \ \ \ \ = 0.0.0.0
-    ...
+    ...    - dst_ip_min : \ \ \ \ dst ip
+    ...    - src_ip_min : \ \ \ \ \ src ip
+    ...    - tos \ \ \ \ type of service
+    ...    - dst_ip_max \ : \ max dst ip
+    ...    - src_ip_max \ : \ max src ip
     ...
     ...    return:
     ...    packet field length
     ...
     ...    exapmle:
-    ...    | Build Ip | src=10.1.1.1 | dst=10.1.1.254 |
-    ${packetlen}=    Pktgen.Build Ip    tos=${tos}    src=${src}    dst=${dst}    kwargs=${kwargs}
+    ...    | Build Ip | dst_ip_min=10.1.1.20 | src_ip_min=10.1.1.1 |
+    ...    | Build Ip | dst_ip_min=10.1.1.20 | src_ip_min=10.1.1.1 | tos=${0} | dst_ip_max=10.1.1.30 |
+    ${packetlen}=    Pktgen.Build Ip    ${tos}    ${dst_ip_min}    ${src_ip_min}    ${dst_ip_max}    ${src_ip_max}
     [Return]    ${packetlen}
 
 Build Ipv6
-    [Arguments]    ${src}    ${dst}    ${tc}=${0}    ${kwargs}=${None}
+    [Arguments]    ${dst_ipv6_min}    ${src_ipv6_min}    ${tc}=${0}    ${dst_ipv6_max}=${None}    ${src_ipv6_max}=None
     [Documentation]    build ipv6 field packet
     ...
     ...    args:
+    ...    - dst_ipv6_min \ \ \ \ \ \ \ \ \ dst ipv6
+    ...    - src_ipv6_min \ \ \ \ \ \ \ \ src ipv6
     ...    - tc \ \ \ \ \ \ \ \ = 0; \ \ \ \ \ \ \ \ traffic class
-    ...    - src \ \ \ \ \ \ \ - dst \ \ \ \ \ \ \ - kwargs \ \ \ \ = None,the detail spec in the doc of keywrod Make Kwargs
+    ...    - dst_ipv6_max \ : \ dst ipv6 count
+    ...    - src_ipv6_max \ : \ \ src ipv6 count
     ...
     ...    return:
     ...    - packet field length
     ...
     ...    exapmle:
-    ...    | Build Ipv6 | src=2001::1 | dst=2002::1 |
-    ${packetlen}=    Pktgen.Build Ipv6    tc=${tc}    src=${src}    dst=${dst}    kwargs=${kwargs}
+    ...    | Build Ipv6 | dst_ipv6_min=2002::1 | src_ipv6_min=2001::1 |
+    ...    | Build Ipv6 | dst_ipv6_min=2002::1 | src_ipv6_min=2001::1 | tc=${0} | dst_ipv6_max=${10} |
+    ${packetlen}=    Pktgen.Build Ipv6    ${tc}    ${dst_ipv6_min}    ${src_ipv6_min}    ${dst_ipv6_max}    ${src_ipv6_max}
     [Return]    ${packetlen}
 
 Set Stream Control
@@ -804,10 +849,16 @@ Start Transmit
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
+    ${cmd_init}=    Pktgen.Init Pktgen
+    ${init_code}=    Sta.Execute Command    ${alias}    ${cmd_init}    return_stdout=${False}    return_rc=${True}
+    Should Be Equal As Integers    ${init_code}    ${0}    ${alias} can not load module \ pktgen,please check
+    ${cmd_check}=    Pktgen.Check Pktgen
+    ${check_code}=    Sta.Execute Command    ${alias}    ${cmd_check}    return_stdout=${False}    return_rc=${True}
+    Should Be Equal As Integers    ${check_code}    ${0}    ${alias} pktgen thread not run, please check
     ${cmd_list}    ${cmd_start}    Pktgen.Start Transmit    ${interface}
     Log Many    @{cmd_list}
     : FOR    ${cmd}    IN    @{cmd_list}
-    \    Sta.Pktgen Set Dev    ${alias}    @{cmd}[0]    @{cmd}[1]
+    \    Sta.Pktgen Set Dev    ${alias}    @{cmd}[0]    @{cmd}[1]     ${interface}
     Sta.Start Command    ${alias}    ${cmd_start}
     [Return]    ${0}
 
@@ -822,6 +873,12 @@ Stop Transmit
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
+    ${cmd_init}=    Pktgen.Init Pktgen
+    ${init_code}=    Sta.Execute Command    ${alias}    ${cmd_init}    return_stdout=${False}    return_rc=${True}
+    Should Be Equal As Integers    ${init_code}    ${0}    ${alias} can not load module \ pktgen,please check
+    ${cmd_check}=    Pktgen.Check Pktgen
+    ${check_code}=    Sta.Execute Command    ${alias}    ${cmd_check}    return_stdout=${False}    return_rc=${True}
+    Should Be Equal As Integers    ${check_code}    ${0}    ${alias} pktgen thread not run, please check
     ${check_stop}=    Sta.Execute Command    ${alias}    cat ${dev}
     ${stop_flag}=    Tools.Is Match From String    ${check_stop}    Stopped: ${interface}
     Run Keyword If    ${stop_flag}    Return From Keyword    ${0}
@@ -839,7 +896,13 @@ Start Capture
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
-    ${cmd_start_cap}=    Pktgen.Start Capture    ${interface}
+    ${cmd_check}=    Pktgen.Check Tcpdump
+    ${check_code}=    Sta.Execute Command    ${alias}    ${cmd_check}    return_stdout=${False}    return_rc=${True}
+    Should Be Equal As Integers    ${check_code}    ${0}    ${alias} not install tcpdump,please check
+    ${cmd_check_P}=    Pktgen.Check Tcpdump Paramter In
+    ${check_output}=    Sta.Execute Command    ${alias}    ${cmd_check_P}    return_stdout=${False}    return_stderr=${True}
+    ${p_flag}=    Tools.Is Match From String    ${check_output}    -P in\\|out\\|inout
+    ${cmd_start_cap}=    Pktgen.Start Capture    ${interface}    ${p_flag}
     Sta.Start Command    ${alias}    ${cmd_start_cap}
 
 Stop Capture
@@ -852,7 +915,13 @@ Stop Capture
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
-    ${cmd_stop_cap}=    Pktgen.Stop Capture    ${interface}
+    ${cmd_check}=    Pktgen.Check Tcpdump
+    ${check_code}=    Sta.Execute Command    ${alias}    ${cmd_check}    return_stdout=${False}    return_rc=${True}
+    Should Be Equal As Integers    ${check_code}    ${0}    ${alias} not install tcpdump,please check
+    ${cmd_check_P}=    Pktgen.Check Tcpdump Paramter In
+    ${check_output}=    Sta.Execute Command    ${alias}    ${cmd_check_P}    return_stdout=${False}    return_stderr=${True}
+    ${p_flag}=    Tools.Is Match From String    ${check_output}    -P in\\|out\\|inout
+    ${cmd_stop_cap}=    Pktgen.Stop Capture    ${interface}    ${p_flag}
     Sta.Execute Command    ${alias}    ${cmd_stop_cap}
     ${cmd_num}=    Pktgen.Get Capture Packet Num    ${interface}
     ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
@@ -1057,8 +1126,8 @@ Get Filter Capture Packet
     ...    - negative number: error code
     ${cmd_num}=    Pktgen.Get Filter Capture Packet    ${interface}    ${filter_express}
     ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
-    ${rc}=    Tools.Get Value From String    ${output_num}    (?m)^(\\d+)$
-    [Return]    ${rc}
+    Log    ${output_num}
+    [Return]    ${output_num}
 
 Set Stream Packet
     [Arguments]    ${interface}
@@ -1076,52 +1145,11 @@ Set Stream Packet
     [Return]    ${rc}
 
 Pktgen Set Dev
-    [Arguments]    ${alias}    ${cmd}    ${dev}
-    ${cmdstr}=    Set Variable    ${cmd}${dev}
-    Sta.Execute Command    ${alias}    ${cmdstr}
+    [Arguments]    ${alias}    ${cmd}    ${dev}    ${iface}
+    Sta.Execute Command    ${alias}    ${cmd}${dev}
+    ${rate_result}=    Sta.Execute Command    ${alias}    cat ${dev}
+    ${rate_flag}=    Tools.Is Match From String    ${rate_result}    Result: No such parameter "rate"|Result: No such parameter "ratep"
+    ${delay_cmd}=    Run Keyword If    ${rate_flag}    Pktgen.Get Stream Delay    ${iface}
+    Run Keyword If    ${rate_flag}    Sta.Execute Command    ${alias}    ${delay_cmd}${dev}
     ${result}=    Sta.Execute Command    ${alias}    cat ${dev} | fgrep "Result: OK"
     Should Match Regexp    ${result}    OK
-
-Make Kwargs
-    [Arguments]    @{kwargs}
-    [Documentation]    构建各个报文字段的扩展参数，用法见举例，使用方法与IxExplorer一致
-    ...
-    ...    扩展参数表：
-    ...
-    ...    1. Build Ether：
-    ...
-    ...    1). dst_mac_count：\ 目的mac变化数量
-    ...
-    ...    2). src_mac_count ：\ 源mac变化数量
-    ...
-    ...
-    ...    举例：目的mac递增10个
-    ...    | ${dict}= | Make Kwargs | dst_mac_count=10 |
-    ...    | Build Ether | dst=00:00:01:00:00:01 | src=00:00:02:00:00:01 | kwargs=${dict} |
-    ...    ---
-    ...
-    ...    2. Build Ip:
-    ...
-    ...    1). src_ip_count: \ 源ip变化数量
-    ...
-    ...    2). dst_ip_count: \ 目的ip变化数量
-    ...
-    ...    举例：源ip递增10个
-    ...    | ${dict}= | Make Kwargs | src_ip_count=10 |
-    ...    | Build Ip | dst=00:00:01:00:00:01 | src=00:00:02:00:00:01 | kwargs=${dict} |
-    ...    ---
-    ...
-    ...    3. Build Ipv6:
-    ...
-    ...    1). dst_ipv6_count: \ 源ipv6变化数量
-    ...
-    ...    2). dst_ipv6_count: \ 目的ipv6变化数量
-    ...
-    ...    ---
-    @{kwlist}=    Create List    test    test
-    : FOR    ${istr}    IN    @{kwargs}
-    \    @{ilist}    String.Split String    ${istr}    =
-    \    @{kwlist}=    Collections.Combine Lists    ${kwlist}    ${ilist}
-    ${dict}=    Collections.Create Dictionary    @{kwlist}
-    Log    ${dict}
-    [Return]    ${dict}

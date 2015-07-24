@@ -26,7 +26,7 @@ class Tools(object):
     def __init__(self):
         pass
 
-    def incr_mac(self,mac,step=1,mask=6):
+    def incr_mac(self,mac,step=1,mask=6,lower=True):
         '''
         KeyWord: Incr Mac
 
@@ -72,7 +72,10 @@ class Tools(object):
         ss = l%dnum
         for i in range(mask):
             maclist[i] = ss[i*2:i*2+2]
-        return joinstr.join(maclist)
+        if lower:
+            return joinstr.join(maclist).lower()
+        else:
+            return joinstr.join(maclist).upper()
 
     def incr_ip(self,ip,step=1,mask=32):
         '''
