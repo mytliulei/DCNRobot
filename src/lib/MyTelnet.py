@@ -490,6 +490,17 @@ class MyTelnetConnection(telnetlib.Telnet):
         self._set_monitor(monitor)
         self._cp_rb = ''
 
+    def set_terminal_emulator(self,flag):
+        """Sets the terminal_emulator in the current connection.
+
+        If terminal emulation is used, the newline can not be changed on an open
+        connection.
+
+        See `Configuration` section for more information about global and
+        connection specific configuration.
+        """
+        self._terminal_emulator = self._check_terminal_emulation(flag)
+
     def _set_monitor(self,monitor):
         ''''''
         self._monitor = monitor
