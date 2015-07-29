@@ -158,9 +158,9 @@ class Pktgen(object):
             raise AssertionError('iface %s not defined' % iface)
         fname = self.if_cap_file[iface]
         if in_flag:
-            cmd = "ps -ef | grep \"tcpdump -n -P in -i %s -w %s\" | head -n 1 | awk '{print $2}' | xargs kill" % (iface,fname)
+            cmd = "ps -ef | grep \"tcpdump -n -U -P in -i %s -w %s\" | head -n 1 | awk '{print $2}' | xargs kill" % (iface,fname)
         else:
-            cmd = "ps -ef | grep \"tcpdump -n -i %s -w %s\" | head -n 1 | awk '{print $2}' | xargs kill" % (iface,fname)
+            cmd = "ps -ef | grep \"tcpdump -n -U -i %s -w %s\" | head -n 1 | awk '{print $2}' | xargs kill" % (iface,fname)
         return cmd
 
     def _clear_statics(self,iface):
