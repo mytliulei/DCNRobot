@@ -145,9 +145,9 @@ class Pktgen(object):
         """
         fname = "/tmp/%s.pcap" % int(time.time())
         if in_flag:
-            cmd = "tcpdump -n -P in -i %s -w %s" % (iface,fname)
+            cmd = "tcpdump -n -U -P in -i %s -w %s" % (iface,fname)
         else:
-            cmd = "tcpdump -n -i %s -w %s" % (iface,fname)
+            cmd = "tcpdump -n -U -i %s -w %s" % (iface,fname)
         self.if_cap_file[iface] = fname
         return cmd
 
