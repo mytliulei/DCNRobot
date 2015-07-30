@@ -496,7 +496,7 @@ Start Debug
     ...    参数：
     ...    - alias：设备console别名
     ...    - cmd：debug命令
-    Telnet.Switch Connection    ${alias}
+    AC.Enable Mode    ${alias}
     Telnet.Write    ${cmd}
 
 Get Debug Output Until Timeout

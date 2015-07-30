@@ -380,8 +380,10 @@ Get Debug Output Until Expect
     ...    - 最后关闭debug： Stop Debug
     Telnet.Switch Connection    ${alias}
     Telnet.Set Timeout    ${timeout}
-    @{res}=    Telnet.Debug Read Until    ${expect}
+    Telnet.Set Terminal Emulator    ${False}
+    @{res}=    Telnet.Debug Read Until Regexp    ${expect}
     Telnet.Set Timeout    ${sw_timeout}
+    Telnet.Set Terminal Emulator    ${True}
     Log    ${res}
     [Return]    @{res}
 
