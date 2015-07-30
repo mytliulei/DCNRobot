@@ -78,7 +78,7 @@ Library           String
 Library           Collections
 
 *** Variables ***
-${sc_prompt}      \    #
+${sc_prompt}      \#
 ${sc_timeout}     ${60}
 ${sc_newline}     ${None}
 ${sc_path_separator}    ${None}
@@ -858,7 +858,7 @@ Start Transmit
     ${cmd_list}    ${cmd_start}    Pktgen.Start Transmit    ${interface}
     Log Many    @{cmd_list}
     : FOR    ${cmd}    IN    @{cmd_list}
-    \    Sta.Pktgen Set Dev    ${alias}    @{cmd}[0]    @{cmd}[1]     ${interface}
+    \    Sta.Pktgen Set Dev    ${alias}    @{cmd}[0]    @{cmd}[1]    ${interface}
     Sta.Start Command    ${alias}    ${cmd_start}
     [Return]    ${0}
 
