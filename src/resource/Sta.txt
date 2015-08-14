@@ -70,6 +70,7 @@ Documentation     控制Station的关键字集合，使用规范：
 ...               9. *注意事项*
 ...               - 命令执行结束的标志为匹配到提示符，timeout时间为1分钟，如果命令的执行时间多于1分钟，用Sa.Set Client Configuration暂时修改timeout时间，然后执行完毕后再恢复默认值
 ...               - Sta发包 采用的是pktgen，因此只支持设置mac，ip，vlan，ipv6，不支持tcp，icmp，arp等协议
+...               - 在同一个Sta上，同时只能有1个interface发包，暂时不支持多个interface同时发包
 ...               - Sta发包 不支持速率统计，在测试中请使用抓包方式来检查
 Library           SSHLibrary
 Library           ../lib/Tools.py
@@ -839,7 +840,7 @@ Build Packet
     [Return]    ${rc}
 
 Start Transmit
-    [Arguments]    ${alias}    ${interface}
+    [Arguments]    ${alias}    ${interface}    ${dev}=/proc/net/pktgen/kpktgend_0
     [Documentation]    start to transmit stream
     ...
     ...    args:
@@ -849,6 +850,7 @@ Start Transmit
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
+    Sta.Stop Transmit    ${alias}    ${interface}    ${dev}
     ${cmd_init}=    Pktgen.Init Pktgen
     ${init_code}=    Sta.Execute Command    ${alias}    ${cmd_init}    return_stdout=${False}    return_rc=${True}
     Should Be Equal As Integers    ${init_code}    ${0}    ${alias} can not load module \ pktgen,please check
