@@ -811,12 +811,13 @@ Build Ipv6
     [Return]    ${packetlen}
 
 Set Stream Control
-    [Arguments]    ${interface}    ${numPackets}    ${Rate}    ${RateP}
+    [Arguments]    ${alias}    ${interface}    ${numPackets}    ${Rate}    ${RateP}
     [Documentation]    set stream trasmit mode
     ...
     ...    Note:please use this keyword after Set Stream Packet
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: network interface
     ...    - numPackets: send packet num, 0 for loop
     ...    - Rate: stream send rate, bps
@@ -827,7 +828,7 @@ Set Stream Control
     ...    - non zero: error code
     ...
     ...    *参数Rate 和 RateP 只能配置1个，另一个可设置为None*
-    ${rc}=    Pktgen.Set Stream Control    ${interface}    ${numPackets}    ${Rate}    ${RateP}
+    ${rc}=    Pktgen.Set Stream Control    ${alias}    ${interface}    ${numPackets}    ${Rate}    ${RateP}
     [Return]    ${rc}
 
 Build Packet
@@ -851,13 +852,13 @@ Start Transmit
     ...    - 0: ok
     ...    - non zero: error code
     Sta.Stop Transmit    ${alias}    ${interface}    ${dev}
-    ${cmd_init}=    Pktgen.Init Pktgen
-    ${init_code}=    Sta.Execute Command    ${alias}    ${cmd_init}    return_stdout=${False}    return_rc=${True}
-    Should Be Equal As Integers    ${init_code}    ${0}    ${alias} can not load module \ pktgen,please check
-    ${cmd_check}=    Pktgen.Check Pktgen
-    ${check_code}=    Sta.Execute Command    ${alias}    ${cmd_check}    return_stdout=${False}    return_rc=${True}
-    Should Be Equal As Integers    ${check_code}    ${0}    ${alias} pktgen thread not run, please check
-    ${cmd_list}    ${cmd_start}    Pktgen.Start Transmit    ${interface}
+    Builtin.Comment    ${cmd_init}=    Pktgen.Init Pktgen
+    Builtin.Comment    ${init_code}=    Sta.Execute Command    ${alias}    ${cmd_init}    return_stdout=${False}    return_rc=${True}
+    Builtin.Comment    Should Be Equal As Integers    ${init_code}    ${0}    ${alias} can not load module \ pktgen,please check
+    Builtin.Comment    ${cmd_check}=    Pktgen.Check Pktgen
+    Builtin.Comment    ${check_code}=    Sta.Execute Command    ${alias}    ${cmd_check}    return_stdout=${False}    return_rc=${True}
+    Builtin.Comment    Should Be Equal As Integers    ${check_code}    ${0}    ${alias} pktgen thread not run, please check
+    ${cmd_list}    ${cmd_start}    Pktgen.Start Transmit    ${alias}    ${interface}
     Log Many    @{cmd_list}
     : FOR    ${cmd}    IN    @{cmd_list}
     \    Sta.Pktgen Set Dev    ${alias}    @{cmd}[0]    @{cmd}[1]    ${interface}
@@ -884,7 +885,7 @@ Stop Transmit
     ${check_stop}=    Sta.Execute Command    ${alias}    cat ${dev}
     ${stop_flag}=    Tools.Is Match From String    ${check_stop}    Stopped: ${interface}
     Run Keyword If    ${stop_flag}    Return From Keyword    ${0}
-    ${cmd_stop}=    Pktgen.Stop Transmit    ${interface}
+    ${cmd_stop}=    Pktgen.Stop Transmit    ${alias}    ${interface}
     ${rc}=    Sta.Execute Command    ${alias}    ${cmd_stop}    return_stdout=${False}    return_rc=${True}
     [Return]    ${rc}
 
@@ -893,6 +894,7 @@ Start Capture
     [Documentation]    start to capture stream
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: \ \ network interface
     ...
     ...    return:
@@ -904,7 +906,7 @@ Start Capture
     ${cmd_check_P}=    Pktgen.Check Tcpdump Paramter In
     ${check_output}=    Sta.Execute Command    ${alias}    ${cmd_check_P}    return_stdout=${False}    return_stderr=${True}
     ${p_flag}=    Tools.Is Match From String    ${check_output}    -P in\\|out\\|inout
-    ${cmd_start_cap}=    Pktgen.Start Capture    ${interface}    ${p_flag}
+    ${cmd_start_cap}=    Pktgen.Start Capture    ${alias}    ${interface}    ${p_flag}
     Sta.Start Command    ${alias}    ${cmd_start_cap}
 
 Stop Capture
@@ -912,6 +914,7 @@ Stop Capture
     [Documentation]    stop to capture stream
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: \ \ network interface
     ...
     ...    return:
@@ -923,9 +926,9 @@ Stop Capture
     ${cmd_check_P}=    Pktgen.Check Tcpdump Paramter In
     ${check_output}=    Sta.Execute Command    ${alias}    ${cmd_check_P}    return_stdout=${False}    return_stderr=${True}
     ${p_flag}=    Tools.Is Match From String    ${check_output}    -P in\\|out\\|inout
-    ${cmd_stop_cap}=    Pktgen.Stop Capture    ${interface}    ${p_flag}
+    ${cmd_stop_cap}=    Pktgen.Stop Capture    ${alias}    ${interface}    ${p_flag}
     Sta.Execute Command    ${alias}    ${cmd_stop_cap}
-    ${cmd_num}=    Pktgen.Get Capture Packet Num    ${interface}
+    ${cmd_num}=    Pktgen.Get Capture Packet Num    ${alias}    ${interface}
     ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
     ${rc}=    Tools.Get Value From String    ${output_num}    (?m)^(\\d+)$
     [Return]    ${rc}
@@ -937,6 +940,7 @@ Get Filter Capture Packet Num
     ...    Note:please use this keyword after Stop Capture
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: \ \ network interface
     ...    - filter_express: filter expression, default None,not filter capture packets;to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html WinPcap用户指南--过滤串表达式的语法
     ...
@@ -1093,7 +1097,7 @@ Get Filter Capture Packet Num
     ...    不能和下面的混淆
     ...    not ( host vs or ace )
     ...    表达式参数即可以作为单个参数，也可以作为多个参数传递给tcpdump，后者更加方便一些。一般的，如果表达式包含一个Shell的元字符，那么用一个参数传递比较容易，最好把它括起来，多个参数在传递前，用空格连接起来。
-    ${cmd_num}=    Pktgen.Filter Capture Packet    ${interface}    ${fliter_express}
+    ${cmd_num}=    Pktgen.Filter Capture Packet    ${alias}    ${interface}    ${fliter_express}
     ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
     ${rc}=    Tools.Get Value From String    ${output_num}    (?m)^(\\d+)$
     [Return]    ${rc}
@@ -1103,12 +1107,13 @@ Get Capture Packet Num
     [Documentation]    get capture packet num,please use this keyword after Start Capture and Stop Capture
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: \ \ network interface
     ...
     ...    return:
     ...    - non negative number: num of capture packet
     ...    - negative number: error code
-    ${cmd_num}=    Pktgen.Get Capture Packet Num    ${interface}
+    ${cmd_num}=    Pktgen.Get Capture Packet Num    ${alias}    ${interface}
     ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
     ${rc}=    Tools.Get Value From String    ${output_num}    (?m)^(\\d+)$
     [Return]    ${rc}
@@ -1120,30 +1125,32 @@ Get Filter Capture Packet
     ...    Note:please use this keyword after Start Capture and Stop Capture
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: \ \ network interface
     ...    - filter_express: filter expression, default None,not filter capture packets;to know detail information,please visit http://www.ferrisxu.com/WinPcap/html/index.html WinPcap用户指南--过滤串表达式的语法
     ...
     ...    return:
     ...    - non negative number: num of capture packet
     ...    - negative number: error code
-    ${cmd_num}=    Pktgen.Get Filter Capture Packet    ${interface}    ${filter_express}
+    ${cmd_num}=    Pktgen.Get Filter Capture Packet    ${alias}    ${interface}    ${filter_express}
     ${output_num}=    Sta.Execute Command    ${alias}    ${cmd_num}
     Log    ${output_num}
     [Return]    ${output_num}
 
 Set Stream Packet
-    [Arguments]    ${interface}
+    [Arguments]    ${alias}    ${interface}
     [Documentation]    set a packet on interface of station
     ...
     ...    Note:please use this keyword after Build Packet
     ...
     ...    args:
+    ...    - ${alias}: sta别名
     ...    - interface: \ \ network interface
     ...
     ...    return:
     ...    - 0: ok
     ...    - non zero: error code
-    ${rc}=    Pktgen.Set Stream Packet    ${interface}
+    ${rc}=    Pktgen.Set Stream Packet    ${alias}    ${interface}
     [Return]    ${rc}
 
 Pktgen Set Dev
@@ -1151,7 +1158,7 @@ Pktgen Set Dev
     Sta.Execute Command    ${alias}    ${cmd}${dev}
     ${rate_result}=    Sta.Execute Command    ${alias}    cat ${dev}
     ${rate_flag}=    Tools.Is Match From String    ${rate_result}    Result: No such parameter "rate"|Result: No such parameter "ratep"
-    ${delay_cmd}=    Run Keyword If    ${rate_flag}    Pktgen.Get Stream Delay    ${iface}
+    ${delay_cmd}=    Run Keyword If    ${rate_flag}    Pktgen.Get Stream Delay    ${alias}    ${iface}
     Run Keyword If    ${rate_flag}    Sta.Execute Command    ${alias}    ${delay_cmd}${dev}
-    ${result}=    Sta.Execute Command    ${alias}    cat ${dev} | fgrep "Result: OK"
-    Should Match Regexp    ${result}    OK
+    ${result}=    Sta.Execute Command    ${alias}    cat ${dev}
+    Should Match Regexp    ${result}    Result: OK

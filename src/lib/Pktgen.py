@@ -108,105 +108,113 @@ class Pktgen(object):
         cmd = "tcpdump -h"
         return cmd
 
-    def set_stream_packet(self,iface):
+    def set_stream_packet(self,station,iface):
         """
         """
         cmdlist = []
         cmdstr = self._pkt_class.get_packet_cmd_pktgen()[0]
-        self.if_pkt_size[iface] = self._pkt_class.get_packet_cmd_pktgen()[1]
+        iface_key = "%s-%s" % (station,iface)
+        self.if_pkt_size[iface_key] = self._pkt_class.get_packet_cmd_pktgen()[1]
         for icmd in cmdstr.split("@"):
             for jcmd in icmd.split("!"):
                 cmdlist.append(jcmd)
-        self.if_pkt_cmdlist[iface] = cmdlist
+        self.if_pkt_cmdlist[iface_key] = cmdlist
         return cmdlist
 
-    def start_transmit(self,iface):
+    def start_transmit(self,station,iface):
         """
         """
-        if iface not in self.if_pkt_cmdlist.keys() or iface not in self.if_control_cmdlist.keys():
-            raise AssertionError('iface %s not define packet or stream control' % iface)
+        iface_key = "%s-%s" % (station,iface)
+        if iface_key not in self.if_pkt_cmdlist.keys() or iface_key not in self.if_control_cmdlist.keys():
+            raise AssertionError('iface %s not define packet or stream control in station %s' % (iface,station))
         cmdlist = []
         cmdlist.append(["echo rem_device_all > ", self._pg_thread])
         cmdlist.append(["echo add_device %s > " % iface, self._pg_thread])
-        cmdlist += self._trans_cmd(iface, self.if_control_cmdlist[iface] + self.if_pkt_cmdlist[iface])
+        cmdlist += self._trans_cmd(iface, self.if_control_cmdlist[iface_key] + self.if_pkt_cmdlist[iface_key])
         cmd_start = "echo start > %s" % self._pg_ctrl
         return cmdlist,cmd_start
 
-    def stop_transmit(self,iface):
+    def stop_transmit(self,station,iface):
         """
         """
-        if iface not in self.if_pkt_cmdlist.keys() or iface not in self.if_control_cmdlist.keys():
-            raise AssertionError('iface %s not defined' % iface)
+        iface_key = "%s-%s" % (station,iface)
+        if iface_key not in self.if_pkt_cmdlist.keys() or iface_key not in self.if_control_cmdlist.keys():
+            raise AssertionError('iface %s not defined in station %s' % (iface,station))
         cmd_stop = "ps -ef | grep \"echo start > %s\" | head -n 1 | awk '{print $2}' | xargs kill" % self._pg_ctrl
         return cmd_stop
 
-    def start_capture(self,iface,in_flag=True):
+    def start_capture(self,station,iface,in_flag=True):
         """
         """
+        iface_key = "%s-%s" % (station,iface)
         fname = "/tmp/%s.pcap" % int(time.time())
         if in_flag:
             cmd = "tcpdump -n -U -P in -i %s -w %s" % (iface,fname)
         else:
             cmd = "tcpdump -n -U -i %s -w %s" % (iface,fname)
-        self.if_cap_file[iface] = fname
+        self.if_cap_file[iface_key] = fname
         return cmd
 
-    def stop_capture(self,iface,in_flag=True):
+    def stop_capture(self,station,iface,in_flag=True):
         """
         """
-        if iface not in self.if_cap_file.keys():
-            raise AssertionError('iface %s not defined' % iface)
-        fname = self.if_cap_file[iface]
+        iface_key = "%s-%s" % (station,iface)
+        if iface_key not in self.if_cap_file.keys():
+            raise AssertionError('iface %s not defined in station %s' % (iface,station))
+        fname = self.if_cap_file[iface_key]
         if in_flag:
             cmd = "ps -ef | grep \"tcpdump -n -U -P in -i %s -w %s\" | head -n 1 | awk '{print $2}' | xargs kill" % (iface,fname)
         else:
             cmd = "ps -ef | grep \"tcpdump -n -U -i %s -w %s\" | head -n 1 | awk '{print $2}' | xargs kill" % (iface,fname)
         return cmd
 
-    def _clear_statics(self,iface):
+    def _clear_statics(self,station,iface):
         """
         """
         pass
 
-    def filter_capture_packet(self,iface,express):
+    def filter_capture_packet(self,station,iface,express):
         """
         """
-        if iface not in self.if_cap_file.keys():
-            raise AssertionError('iface %s not defined' % iface)
-        fname = self.if_cap_file[iface]
+        iface_key = "%s-%s" % (station,iface)
+        if iface_key not in self.if_cap_file.keys():
+            raise AssertionError('iface %s not defined in station %s' % (iface,station))
+        fname = self.if_cap_file[iface_key]
         if express:
             cmd = "tcpdump -n -r %s '%s' | wc -l" % (fname,express)
         else:
             cmd = "tcpdump -n -r %s | wc -l" % fname
         return cmd
 
-    def get_filter_capture_packet(self,iface,express):
+    def get_filter_capture_packet(self,station,iface,express):
         """
         """
-        if iface not in self.if_cap_file.keys():
-            raise AssertionError('iface %s not defined' % iface)
-        fname = self.if_cap_file[iface]
+        iface_key = "%s-%s" % (station,iface)
+        if iface_key not in self.if_cap_file.keys():
+            raise AssertionError('iface %s not defined in station %s' % (iface,station))
+        fname = self.if_cap_file[iface_key]
         if express:
             cmd = "tcpdump -n -XX -r %s '%s'" % (fname,express)
         else:
             cmd ="tcpdump -n -XX -r %s" % fname
         return cmd
 
-    def get_capture_packet_num(self,iface):
+    def get_capture_packet_num(self,station,iface):
         """
         """
-        if iface not in self.if_cap_file.keys():
-            raise AssertionError('iface %s not defined' % iface)
-        fname = self.if_cap_file[iface]
+        iface_key = "%s-%s" % (station,iface)
+        if iface_key not in self.if_cap_file.keys():
+            raise AssertionError('iface %s not defined in station %s' % (iface,station))
+        fname = self.if_cap_file[iface_key]
         cmd = "tcpdump -n -r %s | wc -l" % fname
         return cmd
 
-    def _get_statistics(self,iface):
+    def _get_statistics(self,station,iface):
         """
         """
         pass
 
-    def _get_statis_beckmark(self,iface):
+    def _get_statis_beckmark(self,station,iface):
         """
         """
         cmdlist = []
@@ -216,32 +224,34 @@ class Pktgen(object):
         cmdlist.append("cat /sys/class/net/%s/statistics/rx_bytes" % iface)
         return cmdlist
 
-    def set_stream_control(self,iface,count,rate=None,ratep=None):
+    def set_stream_control(self,station,iface,count,rate=None,ratep=None):
         """
         """
+        iface_key = "%s-%s" % (station,iface)
         cmdlist = []
         cmdlist.append("count %s" % count)
         cmdlist.append("clone_skb 0")
-        cmdlist.append("pkt_size %s" % self.if_pkt_size[iface])
+        cmdlist.append("pkt_size %s" % self.if_pkt_size[iface_key])
         if ratep:
             cmdlist.append("ratep %s" % ratep)
             t_delay = 1000000000 / int(ratep)
         elif rate:
             cmdlist.append("rate %s" % rate)
-            t_delay = 1000000000 / int(rate) / (int(self.if_pkt_size[iface]) * 8)
+            t_delay = 1000000000 / int(rate) / (int(self.if_pkt_size[iface_key]) * 8)
         else:
             cmdlist.append("ratep 10")
             t_delay = 100000000
-        self.if_control_delay[iface] = t_delay
-        self.if_control_cmdlist[iface] = cmdlist
+        self.if_control_delay[iface_key] = t_delay
+        self.if_control_cmdlist[iface_key] = cmdlist
         return cmdlist
 
-    def get_stream_delay(self,iface):
+    def get_stream_delay(self,station,iface):
         """
         """
-        if iface not in self.if_control_delay.keys():
-            raise AssertionError('iface %s not defined' % iface)
-        cmd = "echo delay %s >" % self.if_control_delay[iface]
+        iface_key = "%s-%s" % (station,iface)
+        if iface_key not in self.if_control_delay.keys():
+            raise AssertionError('iface %s not defined in station %s' % (iface,station))
+        cmd = "echo delay %s >" % self.if_control_delay[iface_key]
         return cmd
 
     def _trans_cmd(self, iface, cmdlist=None):
