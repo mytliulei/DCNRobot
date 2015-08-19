@@ -1162,3 +1162,30 @@ Pktgen Set Dev
     Run Keyword If    ${rate_flag}    Sta.Execute Command    ${alias}    ${delay_cmd}${dev}
     ${result}=    Sta.Execute Command    ${alias}    cat ${dev}
     Should Match Regexp    ${result}    Result: OK
+
+Sta Dhclient Return Ip
+    [Arguments]    ${alias}    ${netcard_name}    ${timeout}=${60}
+    [Documentation]    station 通过dhcp获取地址
+    ...
+    ...    参数
+    ...    - timeout : 默认60s，执行dhclient获取地址的命令后，等待的时间
+    ...
+    ...    返回：(result,ip)
+    ...    True：成功获取
+    ...    False：未获取
+    Sta.Write    ${alias}    dhclient -nw ${netcard_name}
+    Sta.Read Until Prompt    ${alias}
+    Sleep    ${timeout}
+    ${ip}=    Sta.Sta Get Interface Ip    ${alias}    ${netcard_name}
+    ${retFlag}=    Tools.Is None    ${ip}
+    ${retFlag}=    Evaluate    not ${retFlag}
+    [Return]    ${retFlag}    ${ip}
+
+Check Sta Ping On Specific Int
+    [Arguments]    ${alias}    ${ipaddress}    ${interface}    ${pingCount}=30
+    [Documentation]    注意：关键字返回的是ping失败率，如失败率为70%，则返回数字70
+    ${output}=    Sta.Execute Command    ${alias}    ping ${ipaddress} -I ${interface} -c ${pingCount}
+    ${lossStr}=    Tools.Get Value From String    ${output}    (\\d+)% packet loss
+    ${lossValue}=    Convert To Integer    ${lossStr}
+    Log    ${output}
+    [Return]    ${lossValue}
