@@ -1,0 +1,433 @@
+*** Settings ***
+Suite Setup       Init_Test_Case_2.2.3
+Suite Teardown    Uninit_Test_Case_2.2.3
+Test Setup
+Force Tags        all    6222
+Resource          ap_configuration_vars.txt
+Resource          ap_configuration_modifiable.txt
+
+*** Test Cases ***
+2.2.3.1非Controller上无法触发手动独立升级
+    [Documentation]    2.2.3.1 非Controller上无法触发手动独立升级ap image
+    AC.Enable Mode    ${ac2}
+    ${output}=    AC.Exec Cmd    ${ac2}    wireless ap download start
+    ${return}=    Tools.Is Match From String    ${output}    peer switch is not the cluster controller
+    Should Be True    ${return}
+
+2.2.3.2-3Controller上可以指定Ap的Mac进行独立升级
+    [Documentation]    2.2.3.2	Controller上可以wireless ap download start <ap1_mac>触发手动独立升级ap1 image,ap1重启后被AC管理，image版本已经更新成功。
+    ...    2.2.3.3	Controller上可以wireless ap download start <ap1_mac>触发手动独立升级ap1 image,ap2不会被触发。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start ${WIFI_AFFIRM_AP1_MAC}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start ${WIFI_AFFIRM_AP1_MAC}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+
+2.2.3.4-6Controller上可以按Image类型升级
+    [Documentation]    2.2.3.4 Controller上可以wireless ap download start imagetype x触发手动独立升级imagetype x的所有ap，自己管理ap重启后被AC管理，image版本已经更新成功。
+    ...    2.2.3.5 Controller上可以wireless ap download start imagetype x触发手动独立升级imagetype x的所有ap，peer上ap重启后被AC管理，image版本已经更新成功。
+    ...    2.2.3.6 Controller上可以wireless ap download start imagetype x触发手动独立升级imagetype x的所有ap，其它 imagetype的ap不会被触发。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start imagetype ${ap1_image_type}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start imagetype ${ap1_image_type}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+
+2.2.3.7-9Controller上可以按ap-group升级
+    [Documentation]    2.2.3.7 Controller上可以wireless ap download start ap-group <word>触发手动独立升级此ap-group的所有ap，自己管理ap重启后被AC管理，image版本已经更新成功。
+    ...    2.2.3.8 Controller上可以wireless ap download start ap-group <word>触发手动独立升级此ap-group的所有ap，peer上ap重启后被AC管理，image版本已经更新成功。
+    ...    2.2.3.9 Controller上可以wireless ap download start ap-group <word>触发手动独立升级此ap-group的所有ap，其它ap-group的ap不会被触发。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    ap-group 111    permit-ap-name ${WIFI_AFFIRM_AP1_MAC}    exit
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start ap-group 111
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start ap-group 111
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd    ${ac1}    no ap-group 111
+
+2.2.3.10-11Controller上可以同时升级所有Ap
+    [Documentation]    2.2.3.10	Controller上可以wireless ap download start 触发手动独立升级所有ap，自己管理ap重启后被AC管理，image版本已经更新成功。
+    ...    2.2.3.11	Controller上可以wireless ap download start 触发手动独立升级所有ap，peer上ap重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+
+2.2.3.12-13Controller上下载过程中可取消操作
+    [Documentation]    2.2.3.12 Controller上可以wireless ap download start 触发手动独立升级所有ap，ap正在下载image，show wireless ap download显示ap状态为Code Transfer In Progress，可以使用wireless ap download abort命令终止AP Image更新进程。show wireless ap download显示Download Status为Aborted。
+    ...    2.2.3.13 （接上）show wireless ap download显示Download Status为Aborted的时候，Controller上可以wireless ap download start 重新触发手动独立升级所有ap，ap重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    AC.Get Debug Output Until Expect    ${ap1}    ETA
+    AC.Exec Cmd    ${ac1}    wireless ap download abort
+    sleep    1
+    AC.Exec Cmd    ${ac1}    wireless ap download abort
+    sleep    1
+    AC.Exec Cmd    ${ac1}    wireless ap download abort
+    sleep    1
+    AC.Exec Cmd    ${ac1}    wireless ap download abort
+    AC.Enable Mode    ${ac1}
+    ${output}=    AC.Exec Cmd    ${ac1}    show wireless ap download
+    ${return}=    Tools.Is Match From String    ${output}    Aborted
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    sleep    60
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+
+2.2.3.14Controller分组独立升级状态测试1
+    [Documentation]    2.2.3.14 分组手动独立升级AP image：Controller上可以wireless ap download start 触发手动独立升级所有ap，第一组ap先下载Image，show wireless ap download显示前x个ap状态处于Code Transfer In Progress，其它等待ap状态处于Requested（使用wireless ap download group-size x配置每组同时下载Image的 AP数目小于目前管理AP数）
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 1
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    5
+    AC.Enable Mode    ${ac1}
+    ${output}=    AC.Exec Cmd    ${ac1}    show wireless ap download
+    ${return}=    Tools.Is Match From String    ${output}    Code Transfer
+    Should Be True    ${return}
+    ${return}=    Tools.Is Match From String    ${output}    Requested
+    Should Be True    ${return}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 10
+
+2.2.3.15Controller分组独立升级状态测试2
+    [Documentation]    2.2.3.15 分组手动独立升级AP image：Controller上可以wireless ap download start 触发手动独立升级所有ap，下载完Image的ap状态处于Waiting For APs To Dow，正在下载的ap状态处于Code Transfer In Progress，其它等待ap状态处于Requested
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 1
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    AC.Get Debug Output Until Expect    ${ap1}    watchdog
+    AC.Enable Mode    ${ac1}
+    ${output}=    AC.Exec Cmd    ${ac1}    show wireless ap download
+    ${return}=    Tools.Is Match From String    ${output}    Code Transfer
+    Should Be True    ${return}
+    ${return}=    Tools.Is Match From String    ${output}    Waiting For
+    Should Be True    ${return}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 10
+
+2.2.3.16Controller分组独立升级状态测试3
+    [Documentation]    2.2.3.16 分组手动独立升级AP image：Controller上可以wireless ap download start 触发手动独立升级所有ap，ap全部下载完Image后状态都为NVRAM Update In Progress，ap全部重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 1
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    180
+    AC.Enable Mode    ${ac1}
+    ${output}=    AC.Exec Cmd    ${ac1}    show wireless ap download
+    ${return}=    Tools.Is Match From String    ${output}    NVRAM
+    Should Be True    ${return}
+    sleep    ${300}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 10
+
+2.2.3.17Controller分组独立升级Abort测试1
+    [Documentation]    2.2.3.17 分组手动独立升级AP image的时候，ap处于Code Transfer In Progress和Requested，Controller上可以使用wireless ap download abort命令终止AP Image更新进程，之后Controller上可以wireless ap download start 重新触发手动独立升级所有ap，ap重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 1
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    1
+    AC.Exec Cmd    ${ac1}    wireless ap download abort
+    AC.Enable Mode    ${ac1}
+    ${output}=    AC.Exec Cmd    ${ac1}    show wireless ap download
+    ${return}=    Tools.Is Match From String    ${output}    Aborted
+    Should Be True    ${return}
+    sleep    60
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 10
+
+2.2.3.18Controller分组独立升级Abort测试2
+    [Documentation]    2.2.3.18 分组手动独立升级AP image的时候，ap处于Waiting For APs To Dow和Code Transfer In Progress，Controller上可以使用wireless ap download abort命令终止AP Image更新进程，之后Controller上可以wireless ap download start 重新触发手动独立升级所有ap，ap重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_old_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 1
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    AC.Get Debug Output Until Expect    ${ap1}    watchdog
+    AC.Exec Cmd    ${ac1}    wireless ap download abort
+    AC.Enable Mode    ${ac1}
+    ${output}=    AC.Exec Cmd    ${ac1}    show wireless ap download
+    ${return}=    Tools.Is Match From String    ${output}    Aborted
+    Should Be True    ${return}
+    sleep    60
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} ${ap1_now_image_string}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap2_image_type} ${ap2_now_image_string}
+    AC.Enable Mode    ${ac1}
+    AC.Exec Cmd    ${ac1}    wireless ap download start
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download group-size 10

@@ -1,0 +1,97 @@
+*** Settings ***
+Suite Setup       Init_Test_Case
+Suite Teardown    Uninit_Test_Case
+Test Setup
+Force Tags        6222
+Resource          ap_configuration_vars.txt
+Resource          ap_configuration_modifiable.txt
+
+*** Test Cases ***
+2.2.5.1单Ap上线自动升级
+    [Documentation]    2.2.5.1	单ap场景：ap上线自动升级，ap重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap integrated \ image-type ${ap1_image_type} ${ap1_6222_old_image_string}    ap auto-upgrade
+    AP.Reboot AP    ${ap1}
+    sleep    ${ap_upgrade_time}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap integrated \ image-type ${ap1_image_type} ${ap1_6222_now_image_string}
+    AP.Reboot AP    ${ap1}
+    sleep    ${ap_upgrade_time}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    no ap auto-upgrade
+
+2.2.5.2多Type的Ap自动集成升级
+    [Documentation]    2.2.5.4	多ap场景：多个不同image-type 的ap（需要都配置指定image文件），ap上线自动升级，ap重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap integrated \ image-type ${ap1_image_type} ${ap1_6222_old_image_string}    ap auto-upgrade
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap integrated \ image-type ${ap2_image_type} ${ap2_6222_old_image_string}
+    AP.Reboot AP    ${ap1}
+    sleep    ${ap_upgrade_time}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap integrated \ image-type ${ap1_image_type} ${ap1_6222_now_image_string}    wireless ap integrated \ image-type ${ap2_image_type} ${ap2_6222_now_image_string}
+    AP.Reboot AP    ${ap1}
+    sleep    ${ap_upgrade_time}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    no ap auto-upgrade
+
+2.2.5.3Ac上没有保存指定Image文件不会升级
+    [Documentation]    2.2.5.6	开启自动集成升级AP image，配置指定image文件，ac上没有保存此tar文件，ap上线不会自动升级
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap integrated \ image-type ${ap1_image_type} flash:/8888888888.tar    ap auto-upgrade
+    AP.Reboot AP    ${ap1}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    no ap auto-upgrade
+
+2.2.5.4Ac上Image版本与Ap一致时不会进行升级
+    [Documentation]    2.2.5.7	开启自动集成升级AP image，ap版本已经和ac上的image文件版本一致，ap上线不会再升级
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap integrated \ image-type ${ap1_image_type} ${ap1_6222_now_image_string}    ap auto-upgrade
+    AP.Reboot AP    ${ap1}
+    sleep    ${profile_apply_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    no ap auto-upgrade

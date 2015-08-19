@@ -1,0 +1,25 @@
+*** Variables ***
+${ac1_console_ip}    172.16.31.41    # ccm
+${ac1_console_port}    ${10007}
+${ap1_console_ip}    172.16.31.41
+${ap1_console_port}    ${10009}
+${ap2_console_ip}    172.16.31.41
+${ap2_console_port}    ${10010}
+${ac2_console_ip}    172.16.31.41
+${ac2_console_port}    ${10008}
+${ap1_image_type}    8
+${ap2_image_type}    2
+${ap1_now_image_string}    ftp://upload:upload123@192.168.1.200/WL8200-I2_2.1.2.19.tar
+${ap1_old_image_string}    ftp://upload:upload123@192.168.1.200/WL8200-I2_2.1.2.17.tar
+${ap2_now_image_string}    ftp://upload:upload123@192.168.1.200/DCWL_79XX_R4_R5_2_0_5_63.tar
+${ap2_old_image_string}    ftp://upload:upload123@192.168.1.200/DCWL_79XX_R4_R5_2_0_5_57.tar
+${ap1_now_version_string}    2.1.2.19
+${ap1_old_version_string}    2.1.2.17
+${ap2_now_version_string}    2.0.5.63
+${ap2_old_version_string}    2.0.5.57
+${ap1_6222_now_image_string}    flash:/wl8200-i2_2.1.2.19.tar
+${ap1_6222_old_image_string}    flash:/wl8200-i2_2.1.2.17.tar
+${ap2_6222_now_image_string}    flash:/dcwl_79xx_r4_r5_2_0_5_63.tar
+${ap2_6222_old_image_string}    flash:/dcwl_79xx_r4_r5_2_0_5_57.tar
+${ap1_tftp_now_image_string}    tftp://192.168.1.200/WL8200-I2_2.1.2.19.tar
+${ap1_tftp_old_image_string}    tftp://192.168.1.200/WL8200-I2_2.1.2.17.tar

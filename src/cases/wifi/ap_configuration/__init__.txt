@@ -1,0 +1,12 @@
+*** Settings ***
+Documentation     组网方式为 两ac、两ap、ftp/tftp服务器 二层直连 \
+...               Ethernet端口号随意
+...               运行前需要更改ap_configuration_modifiable中所有参数
+...               每款ap需上传两个版本在ftp上
+...               只有6222可以进行集成方式升级
+...               版本文件也需要提前上传到6222上
+...               运行6222请选tag 6222
+...               其他ac请选tag all
+Suite Setup       Init_All_Config
+Resource          ap_configuration_vars.txt
+Resource          ap_configuration_modifiable.txt

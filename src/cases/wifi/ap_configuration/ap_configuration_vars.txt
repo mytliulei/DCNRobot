@@ -1,0 +1,206 @@
+*** Settings ***
+Resource          ../../../resource/AC.txt
+Resource          ../../../resource/AP.txt
+Resource          ../../../resource/Sta.txt
+Resource          ../../../resource/Switch.txt
+Resource          ap_configuration_modifiable.txt
+
+*** Variables ***
+${ac1}            ac1
+${ap1}            ap1
+${ap2}            ap2
+${ap1_profile}    1
+${ap2_profile}    2
+${network1_ssid}    ap_config_auto
+${ap_network}     1
+${ap1_ip}         192.168.1.11
+${ap2_ip}         192.168.1.12
+${ap_reset_time}    120
+${profile_apply_time}    100
+${ac2}            ac2
+${ac1_ip}         192.168.1.1
+${ac2_ip}         192.168.1.2
+${ap_upgrade_time}    420
+
+*** Keywords ***
+Init_All_Config
+    [Documentation]    功能：初始化所有配置
+    AP.Open Console    ${ap1_console_ip}    ${ap1_console_port}    ${ap1}
+    AP.Open Console    ${ap2_console_ip}    ${ap2_console_port}    ${ap2}
+    BuiltIn.Comment    Sta.Open SSH Connection    ${sta_ip}    ${sta}    ${sta_username}    ${sta_password}    ${sta_port}
+    AC.Open Console    ${ac1_console_ip}    ${ac1_console_port}    ${ac1}
+    AC.Open Console    ${ac2_console_ip}    ${ac2_console_port}    ${ac2}
+    BuiltIn.Comment    AP.Factory Reset    ${ap1}
+    BuiltIn.Comment    AP.Factory Reset    ${ap2}
+    BuiltIn.Comment    AC.Set Default    ${ac1}
+    BuiltIn.Comment    AC.Write Config    ${ac1}
+    BuiltIn.Comment    AC.Reload AC    ${ac1}
+    AP.Enable Mode    ${ap1}
+    AP.Enable Mode    ${ap1}
+    AP.Exec Cmd    ${ap1}    set managed-ap switch-address-1 ${ac1_ip}
+    AP.Exec Cmd    ${ap2}    set managed-ap switch-address-1 ${ac1_ip}
+    AP.Exec Cmd    ${ap1}    set management static-ip ${ap1_ip}
+    AP.Exec Cmd    ${ap2}    set management static-ip ${ap2_ip}
+    AP.Save Running    ${ap1}
+    AP.Save Running    ${ap2}
+    AC.Exec Cmd List In ConfigMode    ${ac1}    int vlan 1    ip address ${ac1_ip} 255.255.255.0    exit
+    AC.Exec Cmd List In WirelessMode    ${ac1}    enable    no auto-ip-assign    static-ip ${ac1_ip}
+    Get Dynamic Vars
+    AC.Exec Cmd List In WirelessMode    ${ac1}    no discovery method l2-multicast
+    AC.Exec Cmd List In WirelessMode    ${ac1}    ap profile ${ap1_profile}    hwtype ${WIFI_AFFIRM_HWTYPE1}    end
+    AC.Exec Cmd List In WirelessMode    ${ac1}    ap profile ${ap2_profile}    hwtype ${WIFI_AFFIRM_HWTYPE2}    end
+    AC.Exec Cmd List In WirelessMode    ${ac1}    network ${ap_network}    vlan 1    ssid ${network1_ssid}    exit
+    AC.Exec Cmd List In WirelessMode    ${ac1}    ap database ${WIFI_AFFIRM_AP1_MAC}    exit
+    AC.Exec Cmd List In WirelessMode    ${ac1}    ap database ${WIFI_AFFIRM_AP2_MAC}    exit
+    BuiltIn.Comment    AC.Exec Cmd List In WirelessMode    ${ac1}    discovery ip-list ${ap1_ip}
+    BuiltIn.Comment    AC.Exec Cmd List In WirelessMode    ${ac1}    discovery ip-list ${ap2_ip}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    no discovery method l2-multicast
+    AC.Exec Cmd List In WirelessMode    ${ac1}    discovery ip-list ${ac2_ip}
+    AC.Exec Cmd List In ConfigMode    ${ac2}    int vlan 1    ip address ${ac2_ip} 255.255.255.0    exit
+    AC.Exec Cmd List In WirelessMode    ${ac2}    enable    no auto-ip-assign    static-ip ${ac2_ip}
+    AC.Exec Cmd List In WirelessMode    ${ac2}    ap profile ${ap1_profile}    hwtype ${WIFI_AFFIRM_HWTYPE1}    end
+    AC.Exec Cmd List In WirelessMode    ${ac2}    ap profile ${ap2_profile}    hwtype ${WIFI_AFFIRM_HWTYPE2}    end
+    AC.Exec Cmd List In WirelessMode    ${ac2}    network ${ap_network}    vlan 1    ssid ${network1_ssid}    exit
+    AC.Exec Cmd List In WirelessMode    ${ac2}    ap database ${WIFI_AFFIRM_AP1_MAC}    exit
+    AC.Exec Cmd List In WirelessMode    ${ac2}    ap database ${WIFI_AFFIRM_AP2_MAC}    exit
+    AC.Exec Cmd List In WirelessMode    ${ac2}    discovery ip-list ${ac1_ip}
+    AC.Exec Cmd List In WirelessMode    ${ac2}    no discovery method l2-multicast
+    Sleep    100s
+    ${output}=    AC.Exec Cmd List    ${ac1}    show wireless ap status
+    AC.Close Console    ${ac1}
+    AP.Close Console    ${ap1}
+    AP.Close Console    ${ap2}
+    AC.Close Console    ${ac2}
+
+Get_Dynamic_Vars
+    BuiltIn.Comment    获取sta1 wlan card mac
+    BuiltIn.Comment    ${output}=    Sta.Execute Command    ${sta}    ifconfig -v ${sta1_netcard}
+    BuiltIn.Comment    ${sta1mac}=    Tools.Get Value From String    ${output}    (?m)ether\\s([^\\s]+)\\s
+    BuiltIn.Comment    Should Not Be Equal    ${sta1mac}    ${None}
+    BuiltIn.Comment    ${sta1mac}=    Tools.Convert Macaddress Format    ${sta1mac}
+    BuiltIn.Comment    Set Global Variable    ${WIFI_AFFIRM_STA1_MAC}    ${sta1mac}
+    BuiltIn.Comment    获取ap1 device type
+    ${output}=    AP.Exec Cmd    ${ap1}    get system device-type
+    ${ap1type}=    Tools.Get Value From String    ${output}    (?m)^(\\d+)\\s
+    Should Not Be Equal    ${ap1type}    ${None}
+    Set Global Variable    ${WIFI_AFFIRM_HWTYPE1}    ${ap1type}
+    BuiltIn.Comment    获取ac1 vlan mac
+    ${ac1Vlanmac}=    AC.Get Vlan Mac    ${ac1}
+    Set Global Variable    ${WIFI_AFFIRM_AC1_VLANMAC}    ${ac1Vlanmac}
+    BuiltIn.Comment    获取ap1 mac
+    ${ap1mac}=    AP.Get Management Mac    ${ap1}
+    ${ap1mac}=    Tools.Convert Macaddress Format    ${ap1mac}
+    Set Global Variable    ${WIFI_AFFIRM_AP1_MAC}    ${ap1mac}
+    Set Global Variable    ${WIFI_AFFIRM_AP1_VAP0_MAC}    ${ap1mac}
+    BuiltIn.Comment    获取ap1 ip
+    ${ap1ip}=    AP.Get AP ipaddr    ${ap1}
+    Set Global Variable    ${WIFI_AFFIRM_AP1_IP}    ${ap1ip}
+    BuiltIn.Comment    ap2 device type
+    ${output}=    AP.Exec Cmd    ${ap2}    get system device-type
+    ${ap2type}=    Tools.Get Value From String    ${output}    (?m)^(\\d+)\\s
+    Should Not Be Equal    ${ap2type}    ${None}
+    Set Global Variable    ${WIFI_AFFIRM_HWTYPE2}    ${ap2type}
+    BuiltIn.Comment    获取ap2 mac
+    ${ap2mac}=    AP.Get Management Mac    ${ap2}
+    ${ap2mac}=    Tools.Convert Macaddress Format    ${ap2mac}
+    Set Global Variable    ${WIFI_AFFIRM_AP2_MAC}    ${ap2mac}
+    BuiltIn.Comment    获取ap2 ip
+    BuiltIn.Comment    ${ap2ip}=    AP.Get AP ipaddr    ${ap2}
+    BuiltIn.Comment    Set Global Variable    ${WIFI_AFFIRM_AP2_IP}    ${ap2ip}
+
+Reset_Ap_From_Ac
+    [Arguments]    ${ac_alias}    ${ap_alias}    ${apmac}    ${timeout}=80
+    AC.Enable Mode    ${ac_alias}
+    Telnet.Write    wireless ap reset ${apmac}
+    Telnet.Read Until Regexp    Y/N
+    Telnet.Write    y
+    AP.Enable Mode    ${ap_alias}
+    Telnet.Set Timeout    ${timeout}
+    Telnet.Read Until Regexp    Starting mapd
+    Sleep    ${120}
+    Telnet.Read
+    AP.Enable Mode    ${ap_alias}
+
+Init_Test_Case
+    AP.Open Console    ${ap1_console_ip}    ${ap1_console_port}    ${ap1}
+    AC.Open Console    ${ac1_console_ip}    ${ac1_console_port}    ${ac1}
+    AP.Open Console    ${ap2_console_ip}    ${ap2_console_port}    ${ap2}
+    AC.Open Console    ${ac2_console_ip}    ${ac2_console_port}    ${ac2}
+
+Uninit_Test_Case
+    AC.Close Console    ${ac1}
+    AP.Close Console    ${ap1}
+    AP.Close Console    ${ap2}
+    AC.Close Console    ${ac2}
+
+Show_Wireless_Ap_Status
+    [Arguments]    ${alias}    ${apmac}
+    AC.Enable Mode    ${alias}
+    ${output}=    Telnet.Execute Command    show wireless ap status
+    ${return}=    Tools.Is Match From String    ${output}    (?m)${WIFI_AFFIRM_AP1_MAC} .+?Success
+    Should Be True    ${return}
+
+Init_Test_Case_2.2.3
+    AP.Open Console    ${ap1_console_ip}    ${ap1_console_port}    ${ap1}
+    AC.Open Console    ${ac1_console_ip}    ${ac1_console_port}    ${ac1}
+    AP.Open Console    ${ap2_console_ip}    ${ap2_console_port}    ${ap2}
+    AC.Open Console    ${ac2_console_ip}    ${ac2_console_port}    ${ac2}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    cluster-priority 10
+    AC.Exec Cmd List In ConfigMode    ${ac2}
+    AC.Exec Cmd List In ConfigMode    ${ac2}    int vlan 1    ip address ${ac2_ip} 255.255.255.0    exit
+    AC.Exec Cmd List In WirelessMode    ${ac2}    enable    no auto-ip-assign    static-ip ${ac2_ip}
+    AP.Enable Mode    ${ap2}
+    AP.Exec Cmd    ${ap2}    set managed-ap switch-address-1 ${ac2_ip}
+    AP.Exec Cmd    ${ap2}    set management static-ip ${ap2_ip}
+    AP.Save Running    ${ap2}
+    AP.Reboot AP    ${ap2}
+    sleep    ${profile_apply_time}
+
+Uninit_Test_Case_2.2.3
+    AP.Enable Mode    ${ap2}
+    AP.Exec Cmd    ${ap2}    set managed-ap switch-address-1 ${ac1_ip}
+    AP.Exec Cmd    ${ap2}    set management static-ip ${ap2_ip}
+    AP.Save Running    ${ap2}
+    AP.Reboot AP    ${ap2}
+    sleep    ${profile_apply_time}
+    AC.Close Console    ${ac1}
+    AP.Close Console    ${ap1}
+    AP.Close Console    ${ap2}
+    AC.Close Console    ${ac2}
+
+Init_Test_Case_2.2.2
+    AP.Open Console    ${ap1_console_ip}    ${ap1_console_port}    ${ap1}
+    AC.Open Console    ${ac1_console_ip}    ${ac1_console_port}    ${ac1}
+    AP.Open Console    ${ap2_console_ip}    ${ap2_console_port}    ${ap2}
+    AC.Open Console    ${ac2_console_ip}    ${ac2_console_port}    ${ac2}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    cluster-priority 10
+    AC.Exec Cmd List In ConfigMode    ${ac2}
+    AC.Exec Cmd List In ConfigMode    ${ac2}    int vlan 1    ip address 8.8.8.8 255.255.255.0    exit
+    sleep    ${profile_apply_time}
+
+Uninit_Test_Case_2.2.2
+    AC.Exec Cmd List In ConfigMode    ${ac2}    int vlan 1    ip address ${ac2_ip} 255.255.255.0    exit
+    AC.Exec Cmd List In WirelessMode    ${ac2}    enable    no auto-ip-assign    static-ip ${ac2_ip}
+    AC.Close Console    ${ac1}
+    AP.Close Console    ${ap1}
+    AP.Close Console    ${ap2}
+    AC.Close Console    ${ac2}
+
+Init_Test_Case_2.2.4
+    AP.Open Console    ${ap1_console_ip}    ${ap1_console_port}    ${ap1}
+    AC.Open Console    ${ac1_console_ip}    ${ac1_console_port}    ${ac1}
+    AP.Open Console    ${ap2_console_ip}    ${ap2_console_port}    ${ap2}
+    AC.Open Console    ${ac2_console_ip}    ${ac2_console_port}    ${ac2}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    cluster-priority 10
+    AC.Exec Cmd List In ConfigMode    ${ac2}
+    AC.Exec Cmd List In ConfigMode    ${ac2}    int vlan 1    ip address ${ac2_ip} 255.255.255.0    exit
+    AC.Exec Cmd List In WirelessMode    ${ac2}    enable    no auto-ip-assign    static-ip ${ac2_ip}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    no wireless ap download image-type ${ap1_image_type}    no wireless ap download image-type ${ap2_image_type}    ap independent auto-upgrade
+    sleep    ${profile_apply_time}
+
+Uninit_Test_Case_2.2.4
+    AC.Exec Cmd List In WirelessMode    ${ac1}    no wireless ap download image-type ${ap1_image_type}    no wireless ap download image-type ${ap2_image_type}    no ap independent auto-upgrade
+    AC.Close Console    ${ac1}
+    AP.Close Console    ${ap1}
+    AP.Close Console    ${ap2}
+    AC.Close Console    ${ac2}

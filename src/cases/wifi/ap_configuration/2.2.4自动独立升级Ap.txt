@@ -1,0 +1,72 @@
+*** Settings ***
+Suite Setup       Init_Test_Case_2.2.4
+Suite Teardown    Uninit_Test_Case_2.2.4
+Test Setup
+Force Tags        all    6222
+Resource          ap_configuration_vars.txt
+Resource          ap_configuration_modifiable.txt
+
+*** Test Cases ***
+2.2.4.1单Ap上线自动升级
+    [Documentation]    2.2.4.1	单ap场景：ap上线自动升级，ap重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} version ${ap1_old_version_string} ${ap1_old_image_string}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} version ${ap1_now_version_string} ${ap1_now_image_string}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+
+2.2.4.2多Ap上线自动升级
+    [Documentation]    2.2.4.4	多ap场景：多个不同image-type 的ap（需要都配置指定image文件），ap上线自动升级，ap重启后被AC管理，image版本已经更新成功。
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} version ${ap1_old_version_string} ${ap1_old_image_string}    wireless ap download image-type ${ap2_image_type} version ${ap2_old_version_string} ${ap2_old_image_string}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_old_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_old_version_string}
+    Should Be True    ${return}
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} version ${ap1_now_version_string} ${ap1_now_image_string}    wireless ap download image-type ${ap2_image_type} version ${ap2_now_version_string} ${ap2_now_image_string}
+    sleep    ${ap_upgrade_time}
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
+
+2.2.4.3版本一致不会升级
+    [Documentation]    2.2.4.6	开启自动独立升级AP image功能，ap版本已经和ac上配置的image文件版本一致，ap上线不会再升级
+    AC.Exec Cmd List In WirelessMode    ${ac1}    wireless ap download image-type ${ap1_image_type} version ${ap1_now_version_string} ${ap1_now_image_string}    wireless ap download image-type ${ap2_image_type} version ${ap2_now_version_string} ${ap2_now_image_string}
+    sleep    60
+    AP.Enable Mode    ${ap1}
+    Telnet.Switch Connection    ${ap1}
+    ${output}=    AP.Exec Cmd    ${ap1}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap1_now_version_string}
+    Should Be True    ${return}
+    AP.Enable Mode    ${ap2}
+    Telnet.Switch Connection    ${ap2}
+    ${output}=    AP.Exec Cmd    ${ap2}    get system
+    ${return}=    Tools.Is Match From String    ${output}    (?im)^version\\s+${ap2_now_version_string}
+    Should Be True    ${return}
