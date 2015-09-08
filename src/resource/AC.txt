@@ -372,21 +372,6 @@ Enter BootRom From BootRom
     Telnet.Set Timeout    ${wifi_ac_timeout}
     Telnet.Read
 
-Login
-    [Arguments]    ${alias}    ${username}=${wifi_ac_username}    ${password}=${wifi_ac_password}
-    [Documentation]    登陆AC
-    ...
-    ...    args：
-    ...    - ${alias}：Open Console时设置的别名
-    ...    - ${username}: 用户名，默认为admin
-    ...    - ${password}: 密码，默认为admin
-    Telnet.Switch Connection    ${alias}
-    Telnet.Read
-    Telnet.Write    ${username}
-    Telnet.Read Until Regexp    Password:
-    Telnet.Write    ${password}
-    Telnet.Read Until Prompt
-
 Exec Cmd List In WirelessMode
     [Arguments]    ${alias}    @{cmd_list}
     [Documentation]    KeyWord: Exec Cmd List In ConfigMode
@@ -484,7 +469,7 @@ Stop Debug
     ...    参数：
     ...    - alias：设备console别名
     ...    - cmd： 默认为ctrl-o
-    Telnet.Switch Connection    ${alias}
+    AC.Enable Mode    ${alias}
     Telnet.Write    ${cmd}
     Telnet.Read Until Prompt
     Telnet.Read
