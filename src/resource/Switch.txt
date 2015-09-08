@@ -68,6 +68,9 @@ ${sw_monitor}     ${True}
 ${sw_monitor_loglevel}    INFO
 ${sw_newline}     LF
 ${apc_prompt}     (?m)^User\\s+Name\\s+:|^Password\\s+:|^APC>
+${sw_login_regexp}    (?m)^Username:
+${sw_username}    admin
+${sw_password}    admin
 
 *** Keywords ***
 Open Console
@@ -100,7 +103,9 @@ Enable Mode
     Telnet.Switch Connection    ${alias}
     Telnet.Read
     Telnet.Write Bare    \x03
-    Telnet.Read Until Prompt
+    ${output}=    Telnet.Read Until Regexp    ${sw_login_regexp}    ${sw_prompt}
+    ${loginFlag}=    Tools.Is Match From String    ${output}    ${sw_login_regexp}
+    Run Keyword If    ${loginFlag}    Switch.Login    ${alias}
     Telnet.Read
     Telnet.Execute Command    enable
     Telnet.Execute Command    terminal length 0
@@ -500,3 +505,18 @@ APC OFF
     Telnet.Read
     ${output}=    Telnet.Execute Command    off ${id}
     Switch.APC Logout    ${alias}
+
+Login
+    [Arguments]    ${alias}    ${username}=${sw_username}    ${password}=${sw_password}
+    [Documentation]    登陆switch
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
+    ...    - ${username}: 用户名，默认为admin
+    ...    - ${password}: 密码，默认为admin
+    Telnet.Switch Connection    ${alias}
+    Telnet.Read
+    Telnet.Write    ${username}
+    Telnet.Read Until Regexp    Password:
+    Telnet.Write    ${password}
+    Telnet.Read Until Prompt
