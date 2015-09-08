@@ -521,3 +521,18 @@ Get Debug
     Telnet.Switch Connection    ${alias}
     ${output}=    Telnet.My Read Eager
     Log    ${output}
+
+Login
+    [Arguments]    ${alias}    ${username}=${wifi_ac_username}    ${password}=${wifi_ac_password}
+    [Documentation]    登陆ac
+    ...
+    ...    args：
+    ...    - ${alias}：Open Console时设置的别名
+    ...    - ${username}: 用户名，默认为admin
+    ...    - ${password}: 密码，默认为admin
+    Telnet.Switch Connection    ${alias}
+    Telnet.Read
+    Telnet.Write    ${username}
+    Telnet.Read Until Regexp    Password:
+    Telnet.Write    ${password}
+    Telnet.Read Until Prompt
